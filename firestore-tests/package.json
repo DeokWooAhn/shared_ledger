@@ -1,0 +1,13 @@
+{
+  "name": "shared-ledger-firestore-tests",
+  "private": true,
+  "type": "module",
+  "description": "Firestore 보안 규칙 테스트. 프로젝트 루트에서 에뮬레이터와 함께 실행한다 (AGENTS.md 참고).",
+  "scripts": {
+    "test": "node --test"
+  },
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "^6.0.0",
+    "firebase": "^13.0.0"
+  }
+}

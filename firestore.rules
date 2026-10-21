@@ -1,0 +1,219 @@
+rules_version = '2';
+
+// 구조와 역할 설명은 docs/firestore.md, 테스트는 firestore-tests/rules.test.js.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ---------- 공통 ----------
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function uid() {
+      return request.auth.uid;
+    }
+
+    function householdData(householdId) {
+      return get(/databases/$(database)/documents/households/$(householdId)).data;
+    }
+
+    function isMemberOf(household) {
+      return signedIn() && uid() in household.memberUids;
+    }
+
+    // 관리자와 편집자만 쓸 수 있다.
+    function canWriteIn(household) {
+      return signedIn()
+        && (household.ownerUid == uid() || household.roles.get(uid(), '') == 'editor');
+    }
+
+    // 만들 때: 작성자는 나, 시간은 서버 시간.
+    function createdNow() {
+      let data = request.resource.data;
+      return data.createdBy == uid()
+        && data.updatedBy == uid()
+        && data.createdAt == request.time
+        && data.updatedAt == request.time;
+    }
+
+    // 고칠 때: 처음 작성 기록은 그대로, 마지막 수정자는 나.
+    function updatedNow() {
+      let data = request.resource.data;
+      return data.createdBy == resource.data.createdBy
+        && data.createdAt == resource.data.createdAt
+        && data.updatedBy == uid()
+        && data.updatedAt == request.time;
+    }
+
+    // ---------- 가구 ----------
+
+    function validName(name) {
+      return name is string && name.size() >= 1 && name.size() <= 40;
+    }
+
+    // memberUids = 관리자 + roles의 키. roles 값은 편집자·보기 전용만.
+    function consistentMembers(data) {
+      return data.ownerUid is string
+        && data.roles is map
+        && data.memberUids is list
+        && !(data.ownerUid in data.roles)
+        && data.roles.values().hasOnly(['editor', 'viewer'])
+        && data.memberUids.size() == data.roles.size() + 1
+        && data.memberUids.toSet() == data.roles.keys().toSet().union([data.ownerUid].toSet());
+    }
+
+    match /households/{householdId} {
+      allow get: if isMemberOf(resource.data);
+      // '내 가구 목록'은 memberUids array-contains 조회로만 읽는다.
+      allow list: if signedIn() && uid() in resource.data.memberUids;
+
+      allow create: if signedIn()
+        && request.resource.data.keys().hasOnly(['name', 'ownerUid', 'roles', 'memberUids', 'createdAt', 'updatedAt'])
+        && validName(request.resource.data.name)
+        && request.resource.data.ownerUid == uid()
+        && request.resource.data.roles == {}
+        && request.resource.data.memberUids == [uid()]
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time;
+
+      // 관리자: 이름 변경, 역할 변경, 내보내기. 구성원을 직접 추가할 수는 없다(초대로만).
+      function ownerManages() {
+        let before = resource.data;
+        let after = request.resource.data;
+        return signedIn()
+          && before.ownerUid == uid()
+          && after.diff(before).affectedKeys().hasOnly(['name', 'roles', 'memberUids', 'updatedAt'])
+          && validName(after.name)
+          && consistentMembers(after)
+          && after.roles.diff(before.roles).addedKeys().size() == 0
+          && after.updatedAt == request.time;
+      }
+
+      // 편집자·보기 전용: 스스로 나가기.
+      function leavesSelf() {
+        let before = resource.data;
+        let after = request.resource.data;
+        let rolesDiff = after.roles.diff(before.roles);
+        return signedIn()
+          && uid() in before.roles
+          && after.diff(before).affectedKeys().hasOnly(['roles', 'memberUids', 'updatedAt'])
+          && rolesDiff.affectedKeys() == [uid()].toSet()
+          && rolesDiff.removedKeys() == [uid()].toSet()
+          && after.memberUids.size() == before.memberUids.size() - 1
+          && after.memberUids.toSet() == before.memberUids.toSet().difference([uid()].toSet())
+          && after.updatedAt == request.time;
+      }
+
+      // 초대 코드로 참여: 자기 uid만, 초대에 적힌 역할로.
+      function joinsWithInvite() {
+        let before = resource.data;
+        let after = request.resource.data;
+        let invite = get(/databases/$(database)/documents/invites/$(after.inviteCode)).data;
+        let rolesDiff = after.roles.diff(before.roles);
+        return signedIn()
+          && !(uid() in before.memberUids)
+          && after.diff(before).affectedKeys().hasOnly(['roles', 'memberUids', 'inviteCode', 'updatedAt'])
+          && invite.householdId == householdId
+          && invite.expiresAt > request.time
+          && rolesDiff.addedKeys() == [uid()].toSet()
+          && rolesDiff.affectedKeys() == [uid()].toSet()
+          && after.roles[uid()] == invite.role
+          && after.memberUids == before.memberUids.concat([uid()])
+          && after.updatedAt == request.time;
+      }
+
+      allow update: if ownerManages() || leavesSelf() || joinsWithInvite();
+      allow delete: if signedIn() && resource.data.ownerUid == uid();
+
+      // ---------- 가구 설정: 구성원 이름표, 분류, 결제수단, 고정 지출 템플릿 ----------
+
+      match /{settings}/{docId} {
+        function isSettings() {
+          return settings in ['members', 'categories', 'paymentMethods', 'templates'];
+        }
+
+        allow read: if isSettings() && isMemberOf(householdData(householdId));
+        allow create: if isSettings() && canWriteIn(householdData(householdId)) && createdNow();
+        allow update: if isSettings() && canWriteIn(householdData(householdId)) && updatedNow();
+        allow delete: if isSettings() && canWriteIn(householdData(householdId));
+      }
+
+      // ---------- 가계부 항목: months/{yyyy-MM}/{종류}/{id} ----------
+
+      match /months/{month}/{entryType}/{entryId} {
+        function isEntryType() {
+          return entryType in ['incomes', 'planned', 'extras', 'cardBills'];
+        }
+
+        function validMonth() {
+          return month.matches('^[0-9]{4}-(0[1-9]|1[0-2])$');
+        }
+
+        // 금액은 0 이상의 정수(원). 기본 월 지출(planned)만 비워 둘 수 있다.
+        function validAmount() {
+          let amount = request.resource.data.get('amount', null);
+          return (entryType == 'planned' && amount == null)
+            || (amount is int && amount >= 0);
+        }
+
+        function validTrash() {
+          let deletedAt = request.resource.data.get('deletedAt', null);
+          return deletedAt == null || deletedAt is timestamp;
+        }
+
+        allow read: if isEntryType() && isMemberOf(householdData(householdId));
+        allow create: if isEntryType()
+          && validMonth()
+          && canWriteIn(householdData(householdId))
+          && createdNow()
+          && validAmount()
+          && validTrash();
+        allow update: if isEntryType()
+          && canWriteIn(householdData(householdId))
+          && updatedNow()
+          && validAmount()
+          && validTrash();
+        // 휴지통(deletedAt)에 있는 항목만 완전히 지울 수 있다.
+        allow delete: if isEntryType()
+          && canWriteIn(householdData(householdId))
+          && resource.data.get('deletedAt', null) != null;
+      }
+
+      // ---------- 변경 기록: 추가만 가능 ----------
+
+      match /activity/{activityId} {
+        allow read: if isMemberOf(householdData(householdId));
+        allow create: if canWriteIn(householdData(householdId))
+          && request.resource.data.keys().hasOnly(['actorUid', 'at', 'action', 'summary'])
+          && request.resource.data.actorUid == uid()
+          && request.resource.data.at == request.time
+          && request.resource.data.action is string
+          && request.resource.data.summary is string;
+        allow update, delete: if false;
+      }
+    }
+
+    // ---------- 초대 ----------
+
+    match /invites/{code} {
+      // 코드를 아는 사람만 한 건씩 읽는다. 목록 조회는 막는다.
+      allow get: if signedIn();
+      allow list: if false;
+
+      allow create: if signedIn()
+        && code.matches('^[A-Za-z0-9]{8,32}$')
+        && request.resource.data.keys().hasOnly(['householdId', 'role', 'createdBy', 'createdAt', 'expiresAt'])
+        && request.resource.data.householdId is string
+        && householdData(request.resource.data.householdId).ownerUid == uid()
+        && request.resource.data.role in ['editor', 'viewer']
+        && request.resource.data.createdBy == uid()
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.expiresAt is timestamp
+        && request.resource.data.expiresAt > request.time
+        && request.resource.data.expiresAt <= request.time + duration.value(7, 'd');
+      allow update: if false;
+      allow delete: if signedIn() && householdData(resource.data.householdId).ownerUid == uid();
+    }
+  }
+}

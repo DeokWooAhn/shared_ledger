@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "252682659102",
+    "project_id": "simple-shared-ledger",
+    "storage_bucket": "simple-shared-ledger.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:252682659102:android:16223adfc39b3fcf01950f",
+        "android_client_info": {
+          "package_name": "com.ahn.sharedledger"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAt56Ae6_sa8tZKFT0wqApFZ62Rau5z3hI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
