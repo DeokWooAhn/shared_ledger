@@ -14,6 +14,9 @@ class FakeAuthRepository implements AuthRepository {
   final _changes = StreamController<AuthUser?>.broadcast();
   AuthUser signInAs = const AuthUser(uid: 'me');
   bool cancelNextSignIn = false;
+
+  /// true면 다음 로그아웃이 실패한다.
+  bool failNextSignOut = false;
   int googleCalls = 0;
   int appleCalls = 0;
   int signOutCalls = 0;
@@ -45,6 +48,10 @@ class FakeAuthRepository implements AuthRepository {
   @override
   Future<void> signOut() async {
     signOutCalls++;
+    if (failNextSignOut) {
+      failNextSignOut = false;
+      throw StateError('sign-out failed');
+    }
     _set(null);
   }
 
@@ -120,15 +127,24 @@ class FakeLedgerRepository implements LedgerRepository {
     if (failure != null) throw JoinLedgerException(failure);
     final target = joinable[code];
     if (target == null) throw const JoinLedgerException(JoinFailure.notFound);
-    final ledger = target.ledger;
-    _ledgers.add(
-      Ledger(
-        id: ledger.id,
-        name: ledger.name,
-        ownerUid: ledger.ownerUid,
-        roles: {...ledger.roles, uid: target.role},
-      ),
+    // 실제 저장소처럼: 이미 있는 가계부면 그 문서를 바꾸고, 두 명이 찼거나 이미 구성원이면
+    // 보안 규칙이 거부하므로 unavailable로 실패한다.
+    final index = _ledgers.indexWhere((l) => l.id == target.ledger.id);
+    final current = index >= 0 ? _ledgers[index] : target.ledger;
+    if (current.isFull || current.memberUids.contains(uid)) {
+      throw const JoinLedgerException(JoinFailure.unavailable);
+    }
+    final joined = Ledger(
+      id: current.id,
+      name: current.name,
+      ownerUid: current.ownerUid,
+      roles: {...current.roles, uid: target.role},
     );
+    if (index >= 0) {
+      _ledgers[index] = joined;
+    } else {
+      _ledgers.add(joined);
+    }
     _changes.add(null);
   }
 }

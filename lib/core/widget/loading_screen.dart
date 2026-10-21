@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../data/providers.dart';
 import 'keep_all.dart';
+import 'sign_out.dart';
 
 /// 로그인·가계부 정보를 불러오는 동안 보이는 화면. 가계부를 불러오지 못하면 안내와 로그아웃 버튼을 보여준다.
 class LoadingScreen extends ConsumerWidget {
@@ -23,7 +24,7 @@ class LoadingScreen extends ConsumerWidget {
                   ),
                   const SizedBox(height: 16),
                   TextButton(
-                    onPressed: () => ref.read(authRepositoryProvider).signOut(),
+                    onPressed: () => signOutWithFeedback(context, ref),
                     child: const Text('로그아웃'),
                   ),
                 ],

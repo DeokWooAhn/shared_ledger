@@ -116,7 +116,7 @@ class _InviteSheetState extends ConsumerState<InviteSheet> {
                   if (_error case final error?) ...[
                     const SizedBox(height: 12),
                     Text(
-                      error,
+                      keepAll(error),
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: theme.colorScheme.error,
                       ),

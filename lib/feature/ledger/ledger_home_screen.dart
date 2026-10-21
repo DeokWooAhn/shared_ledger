@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/data/providers.dart';
 import '../../core/widget/keep_all.dart';
+import '../../core/widget/sign_out.dart';
 import 'invite_sheet.dart';
 import 'member_role_label.dart';
 
@@ -24,7 +25,8 @@ class LedgerHomeScreen extends ConsumerWidget {
         title: Text(ledger.name),
         actions: [
           TextButton(
-            onPressed: () => ref.read(authRepositoryProvider).signOut(),
+            key: const Key('sign-out'),
+            onPressed: () => signOutWithFeedback(context, ref),
             child: const Text('로그아웃'),
           ),
         ],

@@ -207,6 +207,90 @@ void main() {
       expect(findSentence('초대 코드를 다시 확인해 주세요.'), findsOneWidget);
     });
 
+    testWidgets('참여에 실패한 뒤 같은 코드로 다시 누르면 바로 다시 시도한다', (tester) async {
+      // 이전 오류가 남아 있어도 첫 누름이 무시되면 안 된다.
+      final ledgers = FakeLedgerRepository()
+        ..joinable['ABCDEFGH23'] = (
+          ledger: partnerLedger,
+          role: MemberRole.editor,
+        )
+        ..nextJoinFailure = JoinFailure.unavailable;
+      await pumpApp(
+        tester,
+        auth: FakeAuthRepository(signedIn: me),
+        ledgers: ledgers,
+      );
+
+      await enterVisible(tester, const Key('invite-code'), 'ABCDEFGH23');
+      await tapVisible(tester, const Key('join-ledger'));
+      expect(
+        findSentence('이 가계부에는 더 들어갈 수 없어요. 초대한 사람에게 확인해 주세요.'),
+        findsOneWidget,
+      );
+
+      await tapVisible(tester, const Key('join-ledger'));
+
+      expect(ledgers.joins, hasLength(2));
+      expect(find.text('바다네 가계부'), findsOneWidget);
+    });
+
+    testWidgets('두 명이 다 찬 가계부의 코드면 들어갈 수 없다고 안내한다', (tester) async {
+      final ledgers = FakeLedgerRepository()
+        ..joinable['ABCDEFGH23'] = (
+          ledger: const Ledger(
+            id: 'l-full',
+            name: '가득 찬 가계부',
+            ownerUid: 'partner',
+            roles: {'someone': MemberRole.editor},
+          ),
+          role: MemberRole.editor,
+        );
+      await pumpApp(
+        tester,
+        auth: FakeAuthRepository(signedIn: me),
+        ledgers: ledgers,
+      );
+
+      await enterVisible(tester, const Key('invite-code'), 'ABCDEFGH23');
+      await tapVisible(tester, const Key('join-ledger'));
+
+      expect(
+        findSentence('이 가계부에는 더 들어갈 수 없어요. 초대한 사람에게 확인해 주세요.'),
+        findsOneWidget,
+      );
+      expect(find.byType(LedgerStartScreen), findsOneWidget);
+    });
+
+    testWidgets('로그아웃에 실패하면 안내하고 화면에 남는다', (tester) async {
+      final auth = FakeAuthRepository(signedIn: me)..failNextSignOut = true;
+      await pumpApp(tester, auth: auth, ledgers: FakeLedgerRepository());
+
+      await tapVisible(tester, const Key('sign-out'));
+
+      expect(findSentence('로그아웃하지 못했어요. 잠시 후 다시 시도해 주세요.'), findsOneWidget);
+      expect(find.byType(LedgerStartScreen), findsOneWidget);
+    });
+
+    testWidgets('화면 읽기 도구는 입력란을 이름표와 함께 읽는다', (tester) async {
+      final semantics = tester.ensureSemantics();
+      await pumpApp(
+        tester,
+        auth: FakeAuthRepository(signedIn: me),
+        ledgers: FakeLedgerRepository(),
+      );
+
+      for (final (key, label) in [
+        (const Key('ledger-name'), '가계부 이름'),
+        (const Key('invite-code'), '초대 코드'),
+      ]) {
+        await scrollTo(tester, key);
+        final node = tester.getSemantics(find.byKey(key));
+        expect(node.label, contains(label));
+        expect(node.flagsCollection.isTextField, isTrue);
+      }
+      semantics.dispose();
+    });
+
     testWidgets('가계부 시작 화면에서 로그아웃하면 로그인 화면으로 간다', (tester) async {
       final auth = FakeAuthRepository(signedIn: me);
       await pumpApp(tester, auth: auth, ledgers: FakeLedgerRepository());
@@ -239,7 +323,7 @@ void main() {
       expect(find.text('2명'), findsOneWidget);
       expect(find.byKey(const Key('create-invite')), findsNothing);
 
-      await tester.tap(find.text('로그아웃'));
+      await tester.tap(find.byKey(const Key('sign-out')));
       await settle(tester);
 
       expect(auth.signOutCalls, 1);

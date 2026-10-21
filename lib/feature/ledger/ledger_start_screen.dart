@@ -8,6 +8,7 @@ import '../../core/model/ledger.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widget/keep_all.dart';
 import '../../core/widget/labeled_field.dart';
+import '../../core/widget/sign_out.dart';
 
 /// 가계부 이름 검사. 통과하면 null, 아니면 안내 문구.
 String? validateLedgerName(String? value) {
@@ -44,7 +45,6 @@ class LedgerStartScreen extends ConsumerStatefulWidget {
 
 class _LedgerStartScreenState extends ConsumerState<LedgerStartScreen> {
   final _createForm = GlobalKey<FormState>();
-  final _joinForm = GlobalKey<FormState>();
   final _name = TextEditingController(text: '우리 가계부');
   final _code = TextEditingController();
   bool _busy = false;
@@ -76,8 +76,11 @@ class _LedgerStartScreenState extends ConsumerState<LedgerStartScreen> {
   }
 
   Future<void> _join() async {
-    setState(() => _joinError = null);
-    if (!(_joinForm.currentState?.validate() ?? false)) return;
+    // 입력 검사 오류와 참여 실패 안내를 모두 _joinError 하나로 보여준다.
+    // (Form의 validate()는 forceErrorText가 남아 있으면 검사를 건너뛰고 실패해서 쓰지 않는다)
+    final inputError = validateInviteCodeInput(_code.text);
+    setState(() => _joinError = inputError);
+    if (inputError != null) return;
     final user = ref.read(authUserProvider).value;
     if (user == null) return;
     setState(() => _busy = true);
@@ -170,31 +173,26 @@ class _LedgerStartScreenState extends ConsumerState<LedgerStartScreen> {
                   title: '초대 코드로 참여',
                   description: '받은 코드를 넣으면 바로 같이 써요',
                   children: [
-                    Form(
-                      key: _joinForm,
-                      child: LabeledField(
-                        label: '초대 코드',
-                        child: TextFormField(
-                          key: const Key('invite-code'),
-                          controller: _code,
-                          enabled: !_busy,
-                          decoration: const InputDecoration(
-                            hintText: '받은 코드를 붙여 넣어 주세요',
-                          ),
-                          forceErrorText: keepAllOrNull(_joinError),
-                          validator: (value) =>
-                              keepAllOrNull(validateInviteCodeInput(value)),
-                          textCapitalization: TextCapitalization.characters,
-                          autocorrect: false,
-                          enableSuggestions: false,
-                          textInputAction: TextInputAction.done,
-                          onChanged: (_) {
-                            if (_joinError != null) {
-                              setState(() => _joinError = null);
-                            }
-                          },
-                          onFieldSubmitted: (_) => _join(),
+                    LabeledField(
+                      label: '초대 코드',
+                      child: TextField(
+                        key: const Key('invite-code'),
+                        controller: _code,
+                        enabled: !_busy,
+                        decoration: InputDecoration(
+                          hintText: '받은 코드를 붙여 넣어 주세요',
+                          errorText: keepAllOrNull(_joinError),
                         ),
+                        textCapitalization: TextCapitalization.characters,
+                        autocorrect: false,
+                        enableSuggestions: false,
+                        textInputAction: TextInputAction.done,
+                        onChanged: (_) {
+                          if (_joinError != null) {
+                            setState(() => _joinError = null);
+                          }
+                        },
+                        onSubmitted: (_) => _join(),
                       ),
                     ),
                     Text(
@@ -219,7 +217,7 @@ class _LedgerStartScreenState extends ConsumerState<LedgerStartScreen> {
                     ),
                     onPressed: _busy
                         ? null
-                        : () => ref.read(authRepositoryProvider).signOut(),
+                        : () => signOutWithFeedback(context, ref),
                     child: const Text('로그아웃'),
                   ),
                 ),
