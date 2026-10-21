@@ -1,0 +1,522 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+#
+# 이 파일이 있으면 CodeRabbit 웹 대시보드 설정보다 우선한다.
+# Flutter 앱(lib/) 하나가 Android(android/)와 iOS(ios/) 네이티브 셸 위에서 돌고, 서버 대신 Firestore 보안 규칙이
+# 권한을 검사한다. path_instructions 를 경로별로 나눠 각 층(Dart·Flutter, 레이어, 네이티브, Firebase, CI)의 기준으로
+# 리뷰하게 한다. 이 저장소의 규칙 원본은 AGENTS.md 와 .claude/skills/ 이고, knowledge_base 로 함께 읽힌다.
+language: ko-KR
+
+knowledge_base:
+  code_guidelines:
+    enabled: true
+    filePatterns:
+      - "AGENTS.md"
+      - ".claude/skills/review/SKILL.md"
+      - ".claude/skills/verification/SKILL.md"
+      - ".claude/skills/new-feature/SKILL.md"
+
+reviews:
+  path_filters:
+    # --- Flutter / Dart ---
+    - "lib/**/*.dart"
+    - "test/**/*.dart"
+    - "pubspec.yaml"
+    - "analysis_options.yaml"
+    - ".fvmrc"
+    - "!**/*.g.dart"
+    - "!**/*.freezed.dart"
+    - "!**/*.mocks.dart"
+    # flutterfire configure 가 만든다.
+    - "!lib/firebase_options.dart"
+    - "!**/.dart_tool/**"
+    - "!**/build/**"
+    - "!pubspec.lock"
+    # --- Android / Gradle ---
+    - "android/**/*.kt"
+    - "android/**/*.kts"
+    - "android/**/AndroidManifest.xml"
+    - "android/gradle.properties"
+    - "!android/**/build/**"
+    - "!android/.gradle/**"
+    - "!android/gradle/wrapper/**"
+    - "!android/**/GeneratedPluginRegistrant.java"
+    - "!android/app/google-services.json"
+    # --- iOS / Swift ---
+    - "ios/Runner/**/*.swift"
+    - "ios/Runner/Info.plist"
+    - "ios/Runner/*.entitlements"
+    - "ios/Runner.xcodeproj/project.pbxproj"
+    - "ios/Flutter/Debug.xcconfig"
+    - "ios/Flutter/Release.xcconfig"
+    - "ios/Flutter/AppFrameworkInfo.plist"
+    - "!ios/Runner/GeneratedPluginRegistrant.*"
+    - "!ios/Runner/GoogleService-Info.plist"
+    - "!ios/**/xcuserdata/**"
+    - "!ios/**/*.xcworkspace/**"
+    # --- Firebase ---
+    - "firestore.rules"
+    - "firestore.indexes.json"
+    - "firebase.json"
+    - "firestore-tests/**/*.js"
+    - "firestore-tests/package.json"
+    - "!firestore-tests/node_modules/**"
+    # --- CI ---
+    - ".github/workflows/**"
+
+  path_instructions:
+    # ---------------------------------------------------------------
+    # Dart 언어
+    # ---------------------------------------------------------------
+    - path: "**/*.dart"
+      instructions: |-
+        Dart 공통 리뷰 기준.
+
+        프로젝트 배경:
+        - 커플·부부가 함께 쓰는 가계부 앱이다. Flutter 3.47.7(fvm, `.fvmrc`) / Dart 3.13,
+          Riverpod 3, go_router, Firebase(Auth·Firestore). 별도 API 서버 없이 Firestore 를 직접 읽고 쓴다.
+        - `analysis_options.yaml` 은 flutter_lints + strict-casts·strict-inference·strict-raw-types 다.
+          포맷과 린트가 잡는 것은 CI 가 막으니 다시 지적하지 말 것.
+        - 주석·문서·테스트 설명·화면 문구는 한국어, 코드 식별자는 영어(AGENTS.md).
+          한국어 주석·테스트 설명을 영어로 바꾸라는 지적은 하지 말 것.
+        - 공개 저장소다. 실제 금액·이름·이메일·uid 가 코드나 주석에 들어오면 반드시 지적.
+
+        Null safety:
+        - `!` 는 null 이 아님을 바로 위 코드가 보장할 때만. 근거 없는 `!` 는 지적하고 `?.`/`??`/패턴 매칭 제안
+        - `late` 는 초기화가 보장될 때만. 초기화 전에 읽힐 경로가 있으면 지적
+        - `as` 캐스트로 타입 검사를 우회하지 말 것. Firestore 의 `Map<String, dynamic>` 값은
+          `is` 검사나 패턴(`case {'name': String name}`)으로 꺼낸다
+
+        불변성과 값 타입:
+        - 필드는 `final`, 생성자는 가능하면 `const`
+        - 외부로 내보내는 컬렉션은 수정할 수 없게(`List.unmodifiable`, `const []`). 내부 리스트를 그대로 노출하면 지적
+        - 값으로 비교되는 모델은 `==` 와 `hashCode` 를 함께 구현 (Riverpod·위젯이 같은 값인지 판단할 때 쓴다)
+
+        Dart 3 타입 설계:
+        - 정해진 몇 가지 상태·결과는 `sealed class` + `switch` 식으로 표현하고, `default`/`_` 없이 모든 경우를 다뤄
+          경우가 늘면 컴파일 에러로 잡히게 할 것
+        - enum 에 동작이 필요하면 enhanced enum(필드·getter)으로 (`HouseholdRole.canWrite`)
+        - 잠깐 묶어 돌려주는 값은 record, 이름 붙은 개념이면 클래스
+        - 구현만 허용할 인터페이스는 `abstract interface class`, 상속을 막을 것은 `final class`
+        - 확장 메서드에 비즈니스 로직을 숨기지 말 것
+
+        비동기:
+        - 반환된 `Future` 를 기다리지 않고 버리면 지적. 의도했다면 `unawaited(...)` 로 드러낸다
+        - `async` 콜백에서 난 예외가 아무 데서도 처리되지 않으면 지적
+        - `StreamSubscription`·`StreamController` 는 닫는 곳이 있어야 한다
+        - 서로 기다릴 필요 없는 작업을 하나씩 `await` 하면 `Future.wait` 제안
+
+        오류 처리:
+        - 빈 `catch {}`, 이유 없는 `catch (_)` 지적. 잡았으면 사용자에게 알리거나 다시 던진다
+        - `Error`(StateError, TypeError 같은 프로그래머 오류)를 잡아 숨기지 말 것.
+          `on FirebaseException` 처럼 처리할 예외만 골라 잡는다
+        - 사용자가 로그인 창을 닫은 것은 오류가 아니다. 실패와 구분하는지
+        - `// ignore:` 는 이유 주석 없이 쓰면 지적
+
+        금액:
+        - 금액은 원 단위 `int` 다. `double` 로 계산·저장하면 반드시 지적
+        - 0원, 음수 금액이 들어왔을 때의 처리가 정해져 있는지
+
+        보안:
+        - 하드코딩된 키·토큰·비밀번호 금지 (Firebase 설정 값은 비밀이 아니다)
+        - 초대 코드처럼 추측되면 안 되는 값은 `Random.secure()`
+        - `print`/`debugPrint`/로그에 금액·메모·이메일·토큰을 남기지 말 것
+
+    # ---------------------------------------------------------------
+    # 레이어: core/budget·model → core/data → feature (+ router)
+    # ---------------------------------------------------------------
+    - path: "lib/core/{budget,model}/**/*.dart"
+      instructions: |-
+        도메인 레이어 — 순수 Dart(계산 규칙과 모델).
+
+        가장 중요한 불변조건:
+        - `package:flutter`, `cloud_firestore`, `firebase_auth`, `flutter_riverpod` import 가 들어오면 반드시 지적.
+          이 폴더는 Dart SDK 만 쓴다
+        - Firestore 타입(`DocumentSnapshot`, `Timestamp`, `FieldValue`)이 모델에 들어오면 지적. 변환은 core/data 에서 한다
+
+        계산 규칙 (core/budget):
+        - 구글 시트 수식을 옮긴 것이다. `test/core/budget/sheet_golden_test.dart` 의 정답 숫자가 바뀌면
+          시트와 어긋나는 것이 의도인지 PR 설명에 있어야 한다
+        - 지표 정의(현금 유입·유출, 이번 달 지출, 저축, 남는 현금, 카드 이번 달 사용분·저번 달 사용분)는
+          `docs/plan.md` 의 '계산 규칙' 이 원본이다. 정의와 다르게 계산하면 지적
+        - 휴지통(`deletedAt`) 항목은 합계에서 뺀다
+        - 부수효과 없는 순수 함수로 유지. 현재 시간(`DateTime.now()`)을 안에서 읽지 말고 인자로 받는다
+
+        모델:
+        - 불변(`final` 필드, `const` 생성자), 값 비교가 필요하면 `==`/`hashCode`
+        - 역할·권한 판단(`household.dart`)은 `firestore.rules` 와 같은 내용이어야 한다. 한쪽만 바뀌면 반드시 지적
+        - enum 값을 추가하면 Firestore 에서 읽을 때 모르는 값을 건너뛰는 처리(`householdFromFirestore`)도 확인
+        - 이전 컨셉 이름인 '가구(household)' 를 새 타입·문구에 늘리지 말 것 (컨셉은 커플·부부)
+    - path: "lib/core/data/**/*.dart"
+      instructions: |-
+        데이터 레이어 — 저장소 인터페이스, Firebase 구현, Riverpod 공급자.
+
+        레이어 규칙:
+        - 저장소는 `abstract interface class XxxRepository` + `FirestoreXxxRepository` 구현. 화면은 인터페이스만 안다
+        - `DocumentSnapshot`·`QuerySnapshot`·Firestore `Map` 이 저장소 밖으로 새면 지적. 모델로 바꿔서 돌려준다
+        - 새 인터페이스에는 `test/support/fakes.dart` 의 가짜가 있어야 한다
+
+        Firestore 쓰기:
+        - 쓰는 문서의 필드는 `firestore.rules` 가 받는 필드와 정확히 같아야 한다. 앱 테스트는 가짜 저장소로 돌아서 못 잡는다.
+          필드를 바꿨는데 규칙·규칙 테스트·필드 목록 테스트(`household_repository_test.dart`)·`docs/firestore.md` 가
+          그대로면 반드시 지적
+        - 시간 필드는 `FieldValue.serverTimestamp()`. 규칙이 `== request.time` 을 보므로
+          `DateTime.now()`·`Timestamp.now()` 는 실제로 거부된다
+        - 여러 문서를 함께 바꿔야 일관성이 맞으면 `WriteBatch` 나 트랜잭션. 따로 쓰다 중간에 실패하면 반쪽 상태가 남는다
+        - 오프라인에서는 보기와 새 항목 추가만 허용한다(docs/plan.md). 수정·삭제가 오프라인 대기열에 쌓이게 짜이면 지적
+
+        Firestore 읽기:
+        - 읽은 문서 수가 곧 비용이고, Firestore 는 Google Cloud 지출 한도(cap) 대상이 아니다.
+          컬렉션 전체 구독, `limit` 없는 목록, 같은 쿼리 중복 구독을 지적
+        - 방금 쓴 문서는 `serverTimestamp` 가 아직 null 이다(지연 쓰기). 정렬·표시에서 null 을 처리하는지
+        - 모르는 값(새 enum, 빠진 필드)을 만나도 앱이 죽지 않고 건너뛰는지. `data['x'] as String` 같은 강제 캐스트 지적
+        - 여러 조건 쿼리에는 `firestore.indexes.json` 색인이 같이 있어야 한다
+
+        오류:
+        - `FirebaseException`/`FirebaseAuthException` 은 `code` 로 처리할 것만 고르고 나머지는 다시 던진다
+        - `permission-denied` 를 빈 목록으로 바꿔 숨기지 말 것. 규칙과 쿼리가 어긋났다는 신호다
+
+        Riverpod 공급자 (`providers.dart`):
+        - 공급자 안에서 다른 공급자는 `ref.watch` 로 의존한다. `ref.read` 로 읽으면 바뀌어도 다시 계산되지 않는다
+        - 로그인하지 않았을 때 빈 값을 내보내는지 (`myHouseholdsProvider`)
+        - 공급자 본문에서 쓰기·외부 요청 같은 부수효과를 일으키지 말 것
+        - 정리가 필요한 자원은 `ref.onDispose`
+        - Riverpod 3 의 `AsyncValue.value` 는 nullable 이다. 로딩·오류·데이터 세 경우를 모두 다루는지
+    - path: "lib/core/data/auth_repository.dart"
+      instructions: |-
+        로그인 저장소.
+        - 사용자가 로그인 창을 닫은 경우(`GoogleSignInException` 의 `canceled`, `FirebaseAuthException` 의 `canceled`)는
+          `false` 를 돌려주고 던지지 않는다. 화면은 이 값으로 오류 안내 여부를 정한다
+        - iOS 는 `GoogleSignIn.instance.initialize(clientId:)` 가 필요하고 한 번만 부른다(`_googleInitialization`)
+        - Apple 로그인은 지금 iOS 만 된다. Android 경로를 열면 Firebase 콘솔의 Apple 제공자에 Services ID·키 설정이
+          됐는지 PR 설명을 요구 (firebase 스킬)
+        - 로그아웃은 Google 세션과 Firebase 세션을 함께 정리한다
+        - idToken·이메일을 로그로 남기지 말 것
+    - path: "lib/feature/**/*.dart"
+      instructions: |-
+        Flutter 화면 best practices.
+
+        레이어 규칙:
+        - 다른 `lib/feature/*` 폴더를 import 하면 지적. 둘 이상이 쓰는 것은 `lib/core` 로 올린다
+        - `cloud_firestore`·`firebase_auth`·`google_sign_in` 을 직접 import 하면 반드시 지적. `core/data` 의 공급자만 쓴다
+        - 로그인·가계부 만들기·불러오는 중 화면으로 직접 `context.go` 하면 지적. `router.dart` 의 `redirectFor` 가 상태를 보고 옮긴다
+        - 컨셉이 커플·부부라 새 문구에 '가구' 를 쓰면 지적
+
+        위젯 구성:
+        - 위젯을 돌려주는 private 메서드(`Widget _buildHeader()`)보다 작은 위젯 클래스로 나누기를 제안.
+          클래스여야 `const` 로 재사용되고 다시 그리는 범위가 줄어든다
+        - `build` 가 한 화면을 넘게 길어지면 하위 위젯으로 분리 제안
+        - 바뀌지 않는 위젯은 `const`
+        - `build` 는 순수해야 한다. `build` 안에서 저장소 호출, `setState`, 화면 이동, 스낵바 표시 금지
+
+        상태:
+        - 화면 안에서만 쓰는 상태(입력 중인 값, 진행 중 표시)만 `State` 에, 공유·서버 상태는 Riverpod 공급자에
+        - 기본은 `ConsumerWidget`, 컨트롤러·진행 상태가 있을 때만 `ConsumerStatefulWidget`
+        - 그릴 값은 `ref.watch`, 버튼 콜백에서 쓰는 저장소는 `ref.read`. `build` 에서 `ref.read` 로 읽은 값을 그리면 갱신되지 않는다
+        - 상태 변화에 따른 스낵바·화면 이동은 `ref.listen` 으로
+        - `AsyncValue` 는 `switch` 로 로딩·오류·데이터를 모두 그린다. 오류를 빈 화면으로 삼키면 지적
+
+        생명주기:
+        - `TextEditingController`, `FocusNode`, `ScrollController`, `AnimationController`, `StreamSubscription` 은 `dispose` 에서 정리
+        - `await` 뒤에 `context`·`setState` 를 쓰기 전에 `mounted` 확인 (State 밖의 BuildContext 는 `context.mounted`)
+        - 비동기 버튼은 진행 중 다시 눌리지 않게 막는다(`_busy`). 실패는 알리고, 사용자 취소는 오류로 보여주지 않는다
+
+        목록:
+        - 긴 목록은 `ListView.builder`/`SliverList` 로 필요한 만큼만 만든다. `Column` + `map` 으로 전부 만들면 지적
+        - 항목 위젯에는 안정적인 id 로 `ValueKey`. 인덱스를 키로 쓰면 삭제·재정렬 때 상태가 섞인다
+
+        적응형 레이아웃:
+        - 아이패드와 Mac(아이패드 앱)에서도 쓴다. 넓은 화면은 `LayoutBuilder`/`MediaQuery.sizeOf` 로 배치를 바꾼다
+          (docs/plan.md: 왼쪽 목록 + 오른쪽 요약). 화면 폭을 고정 숫자로 가정하면 지적
+        - `SafeArea`, 키보드가 올라와도 입력란이 가려지지 않는지(스크롤되는 부모)
+        - 글자 크기를 키워도 넘치지 않는지 (고정 높이 컨테이너, `Text` overflow)
+        - 플랫폼 분기는 `defaultTargetPlatform`/`Theme.of(context).platform`.
+          `dart:io` 의 `Platform` 은 웹(나중에 Windows 대응)에서 깨진다
+
+        테마:
+        - 색은 `Theme.of(context).colorScheme`, 글자는 `textTheme`. 이유 없는 하드코딩 색(`Color(0xFF...)`, `Colors.red`)은
+          테마 값으로 제안 (Apple 로그인 버튼의 검정·흰색은 Apple 가이드라인이라 예외)
+        - 다크 모드에서도 읽히는지
+
+        접근성:
+        - 아이콘만 있는 버튼(`IconButton`)에 `tooltip` 이나 `Semantics(label:)`
+        - 장식용 이미지는 `ExcludeSemantics`
+        - 터치 영역 최소 48x48 (Flutter 는 iOS 에서도 Material 기준이 기본)
+        - 색만으로 의미를 전달하지 말 것 (수입·지출을 색으로만 구분 등)
+
+        테스트 연결:
+        - 테스트에서 찾는 위젯은 `Key('kebab-case')`. Key 이름을 바꿨으면 테스트도 같이 바뀌었는지
+    - path: "lib/core/widget/**/*.dart"
+      instructions: |-
+        여러 화면이 같이 쓰는 위젯.
+        - 특정 feature 를 import 하거나 특정 화면 상태에 기대면 지적. 필요한 값은 생성자로 받는다
+        - 공개 위젯이면 짧은 문서 주석(무엇을 그리는지, 언제 쓰는지)
+        - 색·글자는 테마에서 가져온다. 이 위젯이 화면 간 일관성의 기준이 된다
+    - path: "lib/router.dart"
+      instructions: |-
+        화면 이동 (go_router). 화면을 모으는 조립 지점이라 feature 를 import 해도 된다.
+        - `redirect` 는 순수해야 한다. 안에서 비동기 작업·저장소 호출 금지. 상태는 `appGate`, 경로 계산은 `redirectFor`
+        - `AppGate` 나 `redirectFor` 를 바꿨으면 `test/router_test.dart` 에 그 경우가 추가됐는지
+        - 경로 문자열은 `Routes` 상수로만. 화면에 경로 문자열을 직접 쓰면 지적
+        - 리다이렉트가 순환(A→B→A)하지 않는지. 이미 대상 화면이면 null 을 돌려준다
+        - 준비가 끝난 상태에서 시작 화면이 아닌 경로는 그대로 둔다 (딥링크로 들어온 경로를 홈으로 덮어쓰지 않기)
+        - 경로 매개변수(id)는 없는 값으로 들어와도 앱이 죽지 않게 처리
+        - `GoRouter`·`ValueNotifier` 는 `ref.onDispose` 로 정리
+    - path: "lib/{main,app}.dart"
+      instructions: |-
+        앱 시작점.
+        - `Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform)` 은 `runApp` 전에 한 번
+        - `ProviderScope` 는 최상위에 하나
+        - 시작 시 무거운 작업으로 첫 화면을 막지 말 것. 필요한 데이터는 공급자와 불러오는 중 화면으로 처리
+        - App Check·Crashlytics 를 붙일 때는 디버그와 릴리스 provider 를 나누는지
+
+    # ---------------------------------------------------------------
+    # 테스트
+    # ---------------------------------------------------------------
+    - path: "test/**/*.dart"
+      instructions: |-
+        Flutter 테스트 best practices.
+
+        공통:
+        - 테스트 설명은 한국어로 상황과 기대 결과가 드러나게 (`'로그인을 취소하면 로그인 화면에 그대로 있다'`).
+          영어로 바꾸라는 지적은 하지 말 것
+        - 준비-실행-확인(Arrange-Act-Assert), 테스트 하나에 한 가지 개념
+        - 테스트 사이에 공유 가변 상태 금지. 필요하면 `setUp` 에서 새로 만든다
+        - 테스트 데이터는 가상이어야 한다. 실제 금액·이름·이메일이면 반드시 지적
+        - 초기값과 기대값이 같아 아무것도 검증하지 못하는 단언 지적
+        - 새 저장소·계산 함수·`AppGate` 경우가 추가됐는데 테스트가 없으면 지적
+
+        위젯 테스트:
+        - Firebase 를 모킹하지 않고 `ProviderScope(overrides:)` 로 `test/support/fakes.dart` 의 가짜 저장소를 끼운다.
+          mockito·mocktail 을 들이면 이유를 묻는다
+        - 위젯은 화면 문구보다 `find.byKey` 로 찾는다
+        - 진행 표시가 계속 도는 화면에서 `pumpAndSettle` 은 시간 초과로 끝난다. `settle()` 처럼 정해진 횟수만 그린다
+        - 플랫폼 분기는 `variant: TargetPlatformVariant.only(...)`. `debugDefaultTargetPlatformOverride` 를 직접 바꾸면
+          const 위젯이 다시 그려지지 않아 다른 테스트까지 깨진다(실제로 있었던 일)
+        - 실제 시간을 기다리는 테스트는 지적. `tester.pump(duration)` 으로 시간을 넘긴다
+
+        단위 테스트:
+        - 계산 규칙은 실제 객체로 검증. `sheet_golden_test.dart` 의 정답 숫자를 바꾸면 이유가 PR 에 있어야 한다
+        - Firestore 변환 함수는 필드 목록 전체를 단언한다 (규칙이 받는 필드와 맞추는 장치)
+        - 경계값: 0원, 음수, 빈 이름, 최대 길이(40자), 모르는 enum 값
+    - path: "test/support/**/*.dart"
+      instructions: |-
+        가짜 저장소.
+        - 실제 구현과 같은 인터페이스를 `implements` 해야 한다. 인터페이스가 바뀌면 컴파일 에러로 드러나야 한다
+        - 실제 구현이 지키는 약속(로그아웃 상태면 빈 목록, 취소면 false)을 가짜도 지키는지. 다르면 테스트가 거짓 통과한다
+        - 호출 기록(`created`, `googleCalls`)으로 검증할 수 있게
+
+    # ---------------------------------------------------------------
+    # 패키지·린트·Flutter 버전
+    # ---------------------------------------------------------------
+    - path: "pubspec.yaml"
+      instructions: |-
+        패키지 리뷰.
+        - 새 패키지는 목적, 대안, 유지보수 상태(최근 릴리스, verified publisher), 라이선스, 지원 플랫폼(Android·iOS,
+          나중에 웹)을 PR 설명에 요구
+        - 코드 생성(build_runner, freezed, json_serializable, riverpod_generator)과 다른 상태 관리(Bloc, GetX, provider)는
+          지금 쓰지 않는다(AGENTS.md). 들어오면 이유를 묻는다
+        - Firebase 패키지는 4.x 세대(firebase_core 4.x)로 고정했다. firebase_core 5 이상은 google_sign_in_ios 와 iOS 의존성
+          (gtm-session-fetcher)이 충돌해 iOS 빌드가 깨진다(2026-10-21 확인). 올리면 iOS 빌드를 확인했는지 묻는다
+        - `dependency_overrides` 는 이유 주석 없이 쓰면 지적
+        - 버전 제약은 `^`. `any` 나 범위 없는 제약은 지적
+        - `environment` 의 sdk·flutter 제약을 바꾸면 `.fvmrc` 와 맞는지
+        - 테스트·개발 도구는 `dev_dependencies` 에
+        - `pubspec.lock` 이 함께 커밋됐는지 (CI 가 `--enforce-lockfile` 로 확인한다)
+    - path: "analysis_options.yaml"
+      instructions: |-
+        - 린트 규칙을 끄거나 strict 모드를 내리면 이유를 묻는다
+        - 경고를 없애려고 `exclude` 를 넓히면 지적. 코드를 고치는 쪽이 먼저다
+    - path: ".fvmrc"
+      instructions: |-
+        Flutter 버전 고정 파일. CI 도 이 값을 읽는다.
+        - 버전을 바꾸면 `pubspec.lock`, Android(AGP·Kotlin)·iOS 빌드 확인, AGENTS.md·README 의 버전 표기가 같이 바뀌었는지
+        - 전역 Flutter(3.35.5)로 실행하면 이 프로젝트는 빌드되지 않는다
+
+    # ---------------------------------------------------------------
+    # Android (네이티브 셸)
+    # ---------------------------------------------------------------
+    - path: "android/**/*.kts"
+      instructions: |-
+        Gradle Kotlin DSL 리뷰 (Flutter 앱의 Android 쪽).
+
+        - AGP 9.1 / Kotlin 2.4 / Gradle 9.3 / Java 17 조합이다. 하나만 바꾸면 호환표와 맞는지, 빌드를 확인했는지 묻는다
+        - `minSdk`·`targetSdk`·`compileSdk` 는 `flutter.*` 값을 쓴다. 숫자로 덮어쓰면 이유를 묻는다
+        - `namespace`·`applicationId` 는 `com.ahn.sharedledger`. 바뀌면 반드시 지적 (스토어·Firebase 앱 등록과 묶여 있다)
+        - `versionCode`·`versionName` 은 `flutter.versionCode`·`flutter.versionName`(pubspec 의 version)에서 온다. 하드코딩하면 지적
+        - google-services 플러그인 버전은 `settings.gradle.kts` 의 FlutterFire 블록에서 관리한다
+        - 서명 설정에 키스토어 경로·비밀번호를 평문으로 넣지 말 것. 출시 서명 값은 환경 변수나 CI 시크릿으로
+        - `jcenter()` 금지. 새 저장소 추가는 이유를 묻는다
+        - release 에서 R8(`isMinifyEnabled`)을 켜면 Firebase·google_sign_in 이 깨지지 않는지 확인했는지 묻는다
+    - path: "android/gradle.properties"
+      instructions: |-
+        - `android.newDsl=false`, `android.builtInKotlin=false` 는 Flutter 템플릿 값이다.
+          firebase_auth·firebase_core·google_sign_in_android 가 아직 Kotlin Gradle Plugin 을 직접 적용해서,
+          바꾸면 플러그인 빌드가 깨질 수 있다
+        - JVM 메모리(`org.gradle.jvmargs`)를 크게 바꾸면 CI 러너 메모리와 맞는지
+    - path: "android/**/AndroidManifest.xml"
+      instructions: >-
+        AndroidManifest review:
+
+
+        - 새 권한은 사유와 런타임 권한 요청 코드가 PR 에 함께 있는지. 지금 앱은 위험 권한이 필요 없다
+
+        - `android:exported="true"` 는 런처 액티비티 하나뿐이다. 늘어나면 노출 사유를 묻는다
+
+        - intent-filter 의 딥링크 scheme·host 가 너무 넓지 않은지. 딥링크를 넣으면 `android:autoVerify` 와 App Links 확인
+
+        - `usesCleartextTraffic` 은 켜지 않는다 (Firebase 는 HTTPS 만 쓴다)
+
+        - `allowBackup`·`dataExtractionRules` 를 바꾸면 Firebase 로그인 정보가 다른 기기로 복원돼도 되는지 검토
+
+        - `debug`·`profile` 매니페스트에만 있어야 할 설정이 `main` 으로 옮겨 오지 않는지
+    - path: "android/**/*.kt"
+      instructions: |-
+        Kotlin(Android 네이티브) 리뷰.
+        - `MainActivity` 는 `FlutterActivity()` 만 상속하는 셸이다. 앱 동작을 네이티브로 옮기지 말 것 (Dart 에 둔다)
+        - 플랫폼 채널을 추가하면: 채널 이름을 상수로, 메서드 이름·인자 타입이 Dart 쪽과 같은지,
+          메인 스레드에서 오래 걸리는 작업 금지, `result.success/error/notImplemented` 를 모든 경로에서 정확히 한 번
+        - Kotlin 기본: `!!` 금지, `val` 우선, 예외 삼키기 금지
+        - 패키지 선언은 `com.ahn.sharedledger`. 폴더 경로와 어긋나면 지적
+
+    # ---------------------------------------------------------------
+    # iOS (네이티브 셸)
+    # ---------------------------------------------------------------
+    - path: "ios/Runner/**/*.swift"
+      instructions: |-
+        Swift(iOS 네이티브) 리뷰.
+
+        프로젝트 배경:
+        - iOS 15 최소, Xcode 27. 생명주기는 UIScene 방식이다. `AppDelegate` 는 `FlutterImplicitEngineDelegate` 로
+          엔진이 만들어질 때 플러그인을 등록하고, `SceneDelegate` 는 `FlutterSceneDelegate` 를 상속하는 셸이다
+        - iOS 의존성은 Swift Package Manager 만 쓴다. CocoaPods 관련 코드·설정이 들어오면 지적
+
+        규칙:
+        - `AppDelegate`·`SceneDelegate` 에 앱 동작을 넣지 말 것 (Dart 에 둔다)
+        - `GeneratedPluginRegistrant.register` 는 `didInitializeImplicitFlutterEngine` 에서 한 번.
+          엔진을 따로 만들거나 두 번 등록하면 지적
+        - 플랫폼 채널을 추가하면 채널 이름·메서드·인자 타입이 Dart 쪽과 같은지, `result` 를 모든 경로에서 한 번 부르는지,
+          메인 스레드를 막지 않는지
+        - URL 처리(`openURL`, 유니버설 링크)를 추가하면 Google 로그인이 돌아오는 URL 스킴(`REVERSED_CLIENT_ID`)을
+          가로채지 않는지
+        - Swift 기본: 강제 언래핑(`!`, `try!`, `as!`) 금지, `let` 우선, 빈 `catch` 금지
+    - path: "ios/Runner/Info.plist"
+      instructions: |-
+        - `CFBundleURLSchemes` 의 Google 스킴은 `GoogleService-Info.plist` 의 `REVERSED_CLIENT_ID` 와 같아야 한다.
+          Firebase 설정을 다시 받았는데 이 값이 그대로면 지적
+        - `UIApplicationSceneManifest`(SceneDelegate 연결)를 지우거나 클래스 이름을 바꾸면 앱이 빈 화면으로 뜬다
+        - 카메라·사진 같은 권한을 쓰면 `NS…UsageDescription` 이 한국어로 사용 이유를 설명하는지 (없으면 심사 거절·크래시)
+        - `NSAppTransportSecurity` 로 HTTP 를 허용하지 말 것
+        - `CFBundleDisplayName` 은 '심플 공유 가계부'
+        - `CFBundleShortVersionString`·`CFBundleVersion` 은 `$(FLUTTER_BUILD_NAME)`·`$(FLUTTER_BUILD_NUMBER)`. 하드코딩하면 지적
+    - path: "ios/Runner/*.entitlements"
+      instructions: |-
+        - `com.apple.developer.applesignin` 은 iOS Apple 로그인에 필요하다. 지우면 반드시 지적
+        - 새 권한(푸시, 앱 그룹, Associated Domains 등)은 Apple 개발자 사이트의 App ID 설정과 함께 바뀌어야 한다.
+          PR 설명에 그 내용이 있는지
+    - path: "ios/Runner.xcodeproj/project.pbxproj"
+      instructions: |-
+        Xcode 가 자동으로 바꾸는 줄이 많으니 아래만 본다.
+        - `IPHONEOS_DEPLOYMENT_TARGET` 은 15.0. `ios/Flutter/AppFrameworkInfo.plist` 의 `MinimumOSVersion` 과 같이 바뀌어야 한다
+        - Runner 의 `PRODUCT_BUNDLE_IDENTIFIER` 는 `com.ahn.SharedLedger`. 바뀌면 반드시 지적
+        - `CODE_SIGN_ENTITLEMENTS = Runner/Runner.entitlements` 가 Runner 의 Debug·Release·Profile 에 모두 있는지
+        - `[CP] Check Pods Manifest.lock` 같은 Pods 빌드 단계나 `Pods_Runner.framework` 참조가 다시 생기면 지적 (SPM 만 쓴다)
+        - `ARCHS` 를 고정하는 설정은 지적. Flutter 3.35 + Xcode 27 때 넣었던 우회는 Flutter 3.47.7 로 올리며 지웠다
+    - path: "ios/Flutter/{Debug,Release}.xcconfig"
+      instructions: |-
+        - `#include "Generated.xcconfig"` 한 줄만 있어야 한다. `Pods-Runner` include 가 생기면 다른 Flutter 버전(전역 3.35.5)으로
+          실행한 흔적이다. 되돌리라고 지적 (같은 때 `ios/Podfile` 이 생기고 `pubspec.lock` 이 바뀐다)
+    - path: "ios/Flutter/AppFrameworkInfo.plist"
+      instructions: |-
+        - `MinimumOSVersion` 은 15.0. Xcode 프로젝트의 `IPHONEOS_DEPLOYMENT_TARGET` 과 같아야 한다
+
+    # ---------------------------------------------------------------
+    # Firebase (서버 대신 보안 규칙)
+    # ---------------------------------------------------------------
+    - path: "firestore.rules"
+      instructions: |-
+        Firestore 보안 규칙 리뷰. 이 앱에는 API 서버가 없어서 이 규칙이 유일한 권한 검사다.
+
+        기본 원칙:
+        - 기본은 거부. 넓은 와일드카드(`match /{document=**}`)로 여는 규칙이 생기면 반드시 지적
+        - `if true`, 또는 `request.auth != null` 만으로 쓰기를 여는 규칙은 반드시 지적. 로그인만 했다고 남의 가계부에 쓸 수 있으면 안 된다
+        - `allow write` 보다 `create`·`update`·`delete` 로 나눠 각각 조건을 둔다
+        - 목록 쿼리(`list`)는 쿼리 조건이 규칙을 만족해야 통과한다. `memberUids` `array-contains` 쿼리와 규칙이 맞는지
+
+        데이터 검증:
+        - create 는 `request.resource.data.keys().hasOnly([...])` 로 허용 필드를 제한하고,
+          update 는 `diff(...).affectedKeys().hasOnly([...])` 로 바꿀 수 있는 필드를 제한한다
+        - 타입·길이 검사(`is string`, `size() <= 40`, `is int`)
+        - 감사 필드: `createdAt`·`updatedAt == request.time`, 작성자 필드 `== request.auth.uid`. 빠지면 지적
+        - `ownerUid`·`roles`·`memberUids` 를 일반 구성원이 바꿀 수 있게 열리면 반드시 지적 (권한 상승)
+        - 휴지통에 없는 항목(`deletedAt` 없음)을 완전히 지울 수 있게 되면 지적
+        - 변경 기록(`activity`)은 추가만 된다. update·delete 가 열리면 지적
+        - 월 id 는 `YYYY-MM` 형식 검사를 유지
+
+        이 저장소의 약속:
+        - 역할별 권한은 `lib/core/model/household.dart` 와 같아야 한다. 한쪽만 바뀌면 반드시 지적
+        - 바뀐 규칙마다 `firestore-tests/rules.test.js` 에 허용·거부 테스트가 둘 다 있는지
+        - `get()`·`exists()` 는 문서 읽기 비용이 들고 요청당 횟수 제한이 있다. 같은 문서를 여러 번 읽으면 함수로 묶기 제안
+        - 규칙을 넓히는 변경은 이유가 PR 설명에 있어야 한다. 배포는 PR 이 합쳐진 뒤에 한다
+    - path: "firestore-tests/**"
+      instructions: |-
+        보안 규칙 테스트 (@firebase/rules-unit-testing + node:test).
+        - 패키지를 바꾸면 `package-lock.json` 도 함께 커밋됐는지 (CI 가 `npm ci` 로 설치한다).
+          @firebase/rules-unit-testing 6 은 Node 24.12 이상이 필요하다
+        - 프로젝트 id 는 `demo-` 로 시작해야 실제 프로젝트에 닿지 않는다
+        - 테스트마다 `clearFirestore()` 로 데이터를 비워 서로 영향이 없게
+        - 준비 데이터는 `withSecurityRulesDisabled` 로 넣고, 검증은 실제 사용자 컨텍스트(`authenticatedContext`)로
+        - '막혀야 한다' 테스트는 통과하는 경우와 딱 한 가지만 달라야 한다. 여러 군데가 다르면 엉뚱한 이유로 막혀도 통과한다
+        - `assertFails` 만 있고 짝이 되는 `assertSucceeds` 가 없으면 지적 (규칙이 전부 막아도 통과한다)
+        - 테스트 설명은 한국어
+    - path: "firestore.indexes.json"
+      instructions: |-
+        - 앱 쿼리에 필요한 색인만 둔다. 쓰지 않는 색인은 쓰기 비용만 늘린다
+        - 색인을 바꿨으면 `firebase deploy --only firestore:indexes` 가 필요하다는 점이 PR 에 있는지
+    - path: "firebase.json"
+      instructions: |-
+        - `flutterfire configure` 는 이 파일을 한 줄로 압축해 다시 쓴다. 한 줄로 바뀌었으면 펼쳐 달라고 한다
+        - Firestore `location`(asia-northeast3)은 바꿀 수 없다. 바뀌면 지적
+        - 에뮬레이터 포트를 바꾸면 규칙 테스트와 CI 가 같은 포트를 쓰는지
+
+    # ---------------------------------------------------------------
+    # CI
+    # ---------------------------------------------------------------
+    - path: ".github/workflows/**"
+      instructions: |-
+        GitHub Actions 워크플로 리뷰 기준.
+
+        보안:
+        - `${{ github.event.* }}`(PR 제목, 브랜치명, 커밋 메시지 등 외부 입력)를 `run:` 스크립트에 직접 넣으면
+          명령 주입이 된다. `env:` 로 받아 쉘 변수로 쓰도록 지적
+        - 지금 CI 는 시크릿이 필요 없다(`demo-` 에뮬레이터, 디버그 빌드). 시크릿이 들어오면 왜 필요한지 묻고,
+          echo 하거나 artifact 로 올리는 코드는 지적
+        - `permissions` 는 `contents: read`. 넓히면 이유를 묻는다
+        - `pull_request_target` 은 포크 PR 코드에 쓰기 권한·시크릿을 준다. 쓰면 반드시 지적
+        - 새 서드파티 Action 이 들어오면 출처와 필요성을 묻는다. 쓰는 Action 은 이유를 주석으로 남긴다
+        - `actions/checkout` 에는 `persist-credentials: false`. 이 CI 는 git push 를 하지 않는다
+
+        재현성:
+        - Flutter 버전은 `.fvmrc` 에서 읽는다. 하드코딩하면 로컬(fvm)과 어긋난다
+        - `flutter pub get --enforce-lockfile` 을 빼면 다른 Flutter 버전으로 바뀐 lock 파일이 통과한다
+        - firebase-tools 는 버전을 고정한다(`firebase-tools@15.20.0`). `@latest` 로 바꾸면 새 릴리스에 CI 가 깨진다
+        - Firestore 에뮬레이터는 Java 21, Android 빌드는 Java 17
+
+        이 저장소의 함정:
+        - 포맷 검사는 `dart format --output=none --set-exit-if-changed lib test`. 대상 폴더를 줄이면 지적
+        - iOS 빌드는 아직 CI 에 없다. 넣으면 러너의 Xcode 가 iOS 15 와 Flutter 3.47.7 요구를 만족하는지 확인
+        - 실패하는 단계를 `continue-on-error` 로 넘기면 지적
+
+  tools:
+    actionlint:
+      enabled: true
+    # 공개 저장소라 키·토큰이 섞여 들어오는 것을 막는다.
+    gitleaks:
+      enabled: true
+
+  auto_review:
+    # 기본 브랜치(main)는 자동으로 포함되므로 여기 적지 않는다.
+    ignore_usernames:
+      - dependabot
+      - dependabot[bot]
+      - renovate
+      - renovate[bot]
