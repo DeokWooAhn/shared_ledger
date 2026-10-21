@@ -6,30 +6,33 @@
 
 ```
 lib/
-  core/      여러 기능이 같이 쓰는 것. 계산 규칙(core/budget)과 모델(core/model)은 순수 Dart
-  feature/   기능별 폴더 (auth, household, summary, entry, template, settings …)
+  main.dart, app.dart   앱 시작점
+  router.dart           화면 이동 규칙(go_router). feature 화면을 모으는 곳이라 feature를 import해도 된다
+  core/
+    budget/, model/     계산 규칙과 모델. 순수 Dart
+    data/               Firebase 저장소(로그인, 가구)와 Riverpod 공급자
+    widget/             여러 화면이 같이 쓰는 위젯
+  feature/              기능별 폴더 (auth, household, summary, entry, template, settings …)
 ```
 
 - feature끼리 서로 import하지 않는다. 둘 이상이 쓰게 되면 core로 올린다.
 - `core/budget`, `core/model`에는 Flutter·Firebase import를 넣지 않는다 (테스트가 쉬워야 함).
+- 화면은 `core/data`의 인터페이스(`AuthRepository`, `HouseholdRepository`)만 쓰고, 테스트는 `test/support/fakes.dart`의 가짜로 바꿔 끼운다.
 
 ## 명령
 
+**이 프로젝트는 fvm으로 Flutter 3.47.7에 고정돼 있다(`.fvmrc`).** 전역 Flutter(3.35.5)로 돌리면 빌드가 안 되니 `fvm flutter` / `fvm dart`를 쓴다.
+
 ```bash
-dart format lib test
-flutter analyze
-flutter test
-flutter build apk --debug
-flutter build ios --simulator --debug
+fvm dart format lib test
+fvm flutter analyze
+fvm flutter test
+fvm flutter build apk --debug
+fvm flutter build ios --simulator --debug
 ```
 
-Flutter는 fvm 전역 버전(3.35.5)을 쓴다. CocoaPods가 UTF-8 경고를 내면 `export LANG=en_US.UTF-8`을 먼저 한다.
-
-### Xcode 27에서 iOS 빌드 (2026-10-21 확인, Xcode 27.1)
-
-- Xcode 27의 `lipo`는 `-verify_arch`에 아키텍처를 하나만 받는다. Flutter 3.35는 시뮬레이터 빌드에서 `arm64 x86_64`를 한꺼번에 확인하다 `debug_unpack_ios`가 실패한다. 그래서 Runner 프로젝트에 `ARCHS[sdk=iphonesimulator*] = arm64`를 두었다(Apple Silicon 전용). 기기 빌드는 원래 arm64 하나라 영향이 없다.
-- Xcode 27은 iOS 15.0 미만 대상을 빌드하지 않는다. `ios/Podfile`의 `post_install`에서 모든 Pod의 최소 버전을 15.0으로 맞추고 시뮬레이터 x86_64를 뺀다.
-- Flutter를 올렸을 때 이 문제가 고쳐졌으면 위 두 설정은 지워도 된다.
+- 패키지 버전을 바꾼 뒤 Android 빌드에서 플러그인 클래스를 못 찾으면 캐시 문제다. `fvm flutter clean` 후 다시 빌드한다.
+- iOS 의존성은 **Swift Package Manager만** 쓴다(CocoaPods 없음, Podfile 없음). 생명주기는 UIScene(`SceneDelegate.swift`) 방식이다. Xcode 27.1에서 확인(2026-10-21).
 
 ## Firebase
 
@@ -41,7 +44,9 @@ Flutter는 fvm 전역 버전(3.35.5)을 쓴다. CocoaPods가 UTF-8 경고를 내
 flutterfire configure --project=simple-shared-ledger --platforms=android,ios --ios-bundle-id=com.ahn.SharedLedger --android-package-name=com.ahn.sharedledger --yes
 ```
 
-- iOS 최소 버전은 15.0이다(Firebase 요구). Podfile, Xcode 프로젝트, `ios/Flutter/AppFrameworkInfo.plist`를 같이 맞춘다.
+- `flutterfire configure`는 `firebase.json`을 한 줄로 압축해 다시 쓴다. 실행한 뒤 보기 좋게 펼친다: `node -e "const f=require('fs');f.writeFileSync('firebase.json',JSON.stringify(JSON.parse(f.readFileSync('firebase.json','utf8')),null,2)+'\n')"`
+- **Firebase 패키지는 4.x 세대로 고정했다**(firebase_core 4.15, firebase_auth 6.7, cloud_firestore 6.10). firebase_core 5(Firebase iOS SDK 13)는 google_sign_in_ios 6.3.8(GoogleSignIn 9)과 `gtm-session-fetcher` 버전이 겹치지 않아 iOS 빌드가 안 된다(2026-10-21). google_sign_in_ios가 따라오면 올린다.
+- iOS 최소 버전은 15.0이다(Firebase 요구). Xcode 프로젝트와 `ios/Flutter/AppFrameworkInfo.plist`를 같이 맞춘다.
 - Firestore는 `(default)` 하나, asia-northeast3(서울), Standard, 삭제 보호 켬. 위치는 바꿀 수 없다.
 - 보안 규칙은 `firestore.rules`, 색인은 `firestore.indexes.json`. 배포는 이렇게 한다.
 
@@ -51,7 +56,13 @@ firebase deploy --only firestore:rules --project simple-shared-ledger
 
 - Firestore는 Google Cloud 지출 한도(cap) 대상이 아니다. 읽기가 폭주하지 않게 리스너 범위와 쿼리를 좁게 짠다.
 - 데이터 구조와 역할별 권한은 `docs/firestore.md`. 관리자는 `ownerUid`, 나머지 구성원은 `roles`(editor·viewer), 목록 조회용 `memberUids`.
-- **실제 프로젝트에는 아직 '전부 막기' 규칙이 올라가 있다.** 저장소의 `firestore.rules`는 로그인을 붙일 때 배포한다.
+- 저장소의 `firestore.rules`가 실제 프로젝트에 배포돼 있다(2026-10-21). 규칙을 고치면 아래 테스트를 통과시킨 뒤 배포한다.
+
+### 로그인
+
+- Google(Android·iOS)과 Apple(iOS만)을 Firebase Authentication에서 켰다. Android에서 Apple 로그인을 하려면 Apple 개발자 사이트의 서비스 ID와 키가 따로 필요해서 미뤘다.
+- Android Google 로그인은 서명 지문이 Firebase에 등록돼 있어야 한다. 이 컴퓨터의 디버그 키(SHA-1·SHA-256)는 등록했다. **출시용 서명 키 지문은 Play 서명을 정할 때 따로 등록한다.**
+- iOS: `Info.plist`의 URL 스킴은 `GoogleService-Info.plist`의 `REVERSED_CLIENT_ID`와 같아야 한다(설정을 다시 받으면 확인). Apple 로그인 권한은 `ios/Runner/Runner.entitlements`에 있고, 기기 빌드에는 Sign in with Apple을 켠 개발 팀이 필요하다.
 
 ### 보안 규칙 테스트
 

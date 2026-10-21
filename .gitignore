@@ -49,3 +49,6 @@ firestore-tests/node_modules/
 
 # Firebase 에뮬레이터 로그
 *-debug.log
+
+# fvm (프로젝트 Flutter 버전은 .fvmrc)
+.fvm/

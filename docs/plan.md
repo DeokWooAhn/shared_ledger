@@ -47,7 +47,7 @@
 - '내 가구 목록'은 가구 문서의 `memberUids`로 조회한다. 처음 계획한 `users/{uid}` 문서는 쓰지 않는다.
 - 구성원은 초대 코드(7일 유효)로만 들어온다.
 - 모든 항목에 `createdBy`·`createdAt`·`updatedBy`·`updatedAt`을 남기고, 휴지통(`deletedAt`)에 있는 항목만 완전히 지울 수 있다. 휴지통 항목은 합계에서 뺀다.
-- 규칙 테스트 29개(`firestore-tests/`)가 에뮬레이터에서 통과한다(2026-10-21). 실제 프로젝트에는 아직 '전부 막기' 규칙이 올라가 있고, 로그인을 붙일 때 이 규칙으로 바꿔 배포한다.
+- 규칙 테스트 29개(`firestore-tests/`)가 에뮬레이터에서 통과하고, 같은 규칙을 실제 프로젝트에 배포했다(2026-10-21).
 
 ## 화면 (첫 출시)
 
@@ -65,13 +65,14 @@
 
 | 영역 | 선택 |
 |---|---|
+| Flutter | 3.47.7 (fvm으로 이 프로젝트만 고정) |
 | 상태 관리 / 화면 이동 | Riverpod / go_router |
 | 서버 | firebase_auth, cloud_firestore, cloud_functions |
-| 로그인 | Google, Apple, 카카오 (kakao_flutter_sdk + Cloud Functions 커스텀 토큰) |
+| 로그인 | Google, Apple(iOS), 카카오 (kakao_flutter_sdk + Cloud Functions 커스텀 토큰) |
 | 품질 | Crashlytics, Analytics, App Check |
 | 테스트 | flutter_test, Firestore 에뮬레이터(보안 규칙), Maestro(E2E) |
 
-패키지는 필요한 단계에서 추가한다.
+패키지는 필요한 단계에서 추가한다. Firebase 패키지는 google_sign_in과 iOS 의존성이 맞는 4.x 세대에 고정해 두었다(이유는 AGENTS.md).
 
 ## 단계
 
@@ -79,7 +80,7 @@
 |---|---|---|---|
 | 0. 준비 | 프로젝트 생성, 린트, 빌드 확인, 앱 이름, 번들 ID, Firebase 프로젝트(Blaze·예산 알림)·앱 등록·초기화 / CI | 빈 앱이 Android·iOS에서 뜸 | CI만 남음 |
 | 1. 계산 규칙 | core 모델·계산 규칙·테스트 | 시트 10·11월 숫자가 테스트에서 그대로 나옴 | 완료 |
-| 2. 서버·로그인 | Firestore 구조, 보안 규칙·테스트 / Google·Apple 로그인, 가구 만들기, 규칙 배포 | 다른 가구 접근이 테스트에서 막힘 | 구조·규칙·테스트 완료 |
+| 2. 서버·로그인 | Firestore 구조, 보안 규칙·테스트 / Google·Apple 로그인, 가구 만들기, 규칙 배포 | 다른 가구 접근이 테스트에서 막힘 | 구현·규칙 배포 완료. 실제 계정으로 로그인·가구 만들기 확인 남음 |
 | 3. 핵심 화면 | 월 요약, 항목 입력·목록, 템플릿에서 월 생성, 설정 | 시트 없이 한 달 기록 가능 | |
 | 4. 공유 | 초대, 역할, 변경 기록·휴지통, 실시간 반영, 오프라인 정책 | 두 기기에서 동시에 써도 어긋나지 않음 | |
 | 5. 실사용 | 시트 대신 앱으로 한두 달 사용 | 시트로 돌아갈 일이 없음 | |

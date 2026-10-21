@@ -56,13 +56,16 @@ class DefaultFirebaseOptions {
     projectId: 'simple-shared-ledger',
     storageBucket: 'simple-shared-ledger.firebasestorage.app',
   );
-
   static const FirebaseOptions ios = FirebaseOptions(
     apiKey: 'AIzaSyDRdau-F3qSrFfXi-LhBQjC56RSksfxF8g',
     appId: '1:252682659102:ios:90ae5b7ddf6e82ad01950f',
     messagingSenderId: '252682659102',
     projectId: 'simple-shared-ledger',
     storageBucket: 'simple-shared-ledger.firebasestorage.app',
+    androidClientId:
+        '252682659102-bm8mubpo59o7b7eapgubdp65inekrkbp.apps.googleusercontent.com',
+    iosClientId:
+        '252682659102-bghhpv3o07t92prelgiricepcp6vs2bf.apps.googleusercontent.com',
     iosBundleId: 'com.ahn.SharedLedger',
   );
 }
