@@ -492,7 +492,8 @@ reviews:
           echo 하거나 artifact 로 올리는 코드는 지적
         - `permissions` 는 `contents: read`. 넓히면 이유를 묻는다
         - `pull_request_target` 은 포크 PR 코드에 쓰기 권한·시크릿을 준다. 쓰면 반드시 지적
-        - 새 서드파티 Action 이 들어오면 출처와 필요성을 묻는다
+        - 새 서드파티 Action 이 들어오면 출처와 필요성을 묻는다. 쓰는 Action 은 이유를 주석으로 남긴다
+        - `actions/checkout` 에는 `persist-credentials: false`. 이 CI 는 git push 를 하지 않는다
 
         재현성:
         - Flutter 버전은 `.fvmrc` 에서 읽는다. 하드코딩하면 로컬(fvm)과 어긋난다

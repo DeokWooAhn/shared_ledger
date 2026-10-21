@@ -24,14 +24,18 @@ jobs:
     timeout-minutes: 20
 
     steps:
+      # 이 CI는 git push를 하지 않으니 체크아웃 토큰을 git 설정에 남기지 않는다.
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       # 로컬과 같은 버전을 쓰도록 fvm 설정 파일에서 읽는다.
       - name: Read Flutter version
         id: flutter-version
         run: echo "version=$(jq -r .flutter .fvmrc)" >> "$GITHUB_OUTPUT"
 
+      # Flutter 설치용으로 가장 널리 쓰이는 커뮤니티 Action(subosito/flutter-action). SDK를 캐시한다.
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
@@ -58,8 +62,11 @@ jobs:
     timeout-minutes: 15
 
     steps:
+      # 이 CI는 git push를 하지 않으니 체크아웃 토큰을 git 설정에 남기지 않는다.
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -92,8 +99,11 @@ jobs:
     timeout-minutes: 30
 
     steps:
+      # 이 CI는 git push를 하지 않으니 체크아웃 토큰을 git 설정에 남기지 않는다.
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - name: Read Flutter version
         id: flutter-version
@@ -105,6 +115,7 @@ jobs:
           distribution: temurin
           java-version: 17
 
+      # Flutter 설치용으로 가장 널리 쓰이는 커뮤니티 Action(subosito/flutter-action). SDK를 캐시한다.
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
@@ -112,6 +123,8 @@ jobs:
           flutter-version: ${{ steps.flutter-version.outputs.version }}
           cache: true
 
+      # Gradle 사가 관리하는 공식 Action. flutter build apk가 내부에서 부르는 Gradle의
+      # 의존성·배포판을 캐시한다. 캐시는 main 실행에서만 쓰고 PR에서는 읽기만 한다.
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
 
