@@ -1,0 +1,122 @@
+name: CI
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+# 같은 브랜치에 새 커밋이 오면 이전 실행은 취소한다.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  flutter:
+    name: Flutter 포맷·분석·테스트
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # 로컬과 같은 버전을 쓰도록 fvm 설정 파일에서 읽는다.
+      - name: Read Flutter version
+        id: flutter-version
+        run: echo "version=$(jq -r .flutter .fvmrc)" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: ${{ steps.flutter-version.outputs.version }}
+          cache: true
+
+      # 다른 Flutter 버전으로 lock 파일이 바뀐 채 올라오면 여기서 막는다.
+      - name: Install packages
+        run: flutter pub get --enforce-lockfile
+
+      - name: Check formatting
+        run: dart format --output=none --set-exit-if-changed lib test
+
+      - name: Analyze
+        run: flutter analyze
+
+      - name: Test
+        run: flutter test
+
+  firestore-rules:
+    name: Firestore 보안 규칙 테스트
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: firestore-tests/package-lock.json
+
+      # Firestore 에뮬레이터는 Java 21 이상이 필요하다.
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Install test packages
+        run: npm --prefix firestore-tests ci
+
+      # demo- 프로젝트라 실제 Firebase 프로젝트에 닿지 않고 로그인도 필요 없다.
+      - name: Run rules tests on emulator
+        run: >-
+          npx --yes firebase-tools@15.20.0 emulators:exec
+          --only firestore
+          --project demo-shared-ledger
+          "npm --prefix firestore-tests test"
+
+  android-build:
+    name: Android 디버그 빌드
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Read Flutter version
+        id: flutter-version
+        run: echo "version=$(jq -r .flutter .fvmrc)" >> "$GITHUB_OUTPUT"
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: ${{ steps.flutter-version.outputs.version }}
+          cache: true
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Install packages
+        run: flutter pub get --enforce-lockfile
+
+      - name: Build debug APK
+        run: flutter build apk --debug
