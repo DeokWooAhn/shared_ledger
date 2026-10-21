@@ -10,7 +10,7 @@ enum PaymentKind {
   card,
 }
 
-/// 가구가 쓰는 결제수단. 카드는 카드마다 하나씩 만든다.
+/// 가계부에서 쓰는 결제수단. 카드는 카드마다 하나씩 만든다.
 class PaymentMethod {
   const PaymentMethod({
     required this.id,

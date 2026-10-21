@@ -47,7 +47,7 @@ description: 심플 공유 가계부(shared_ledger)의 코드를 리뷰할 때 �
 
 - **앱이 쓰는 필드 = 보안 규칙이 받는 필드.** 앱 테스트는 가짜 저장소로 돌아서, 규칙이 받지 않는 필드가 하나만 있어도 실제 쓰기 거부를 못 잡는다.
   쓰기 데이터나 규칙을 바꿨으면 new-feature 스킬의 'Firestore 필드·컬렉션을 바꿀 때' 목록이 같이 바뀌었는지 본다. → 반드시 고침
-- **권한 판단이 두 곳에 있다.** `firestore.rules`와 `lib/core/model/household.dart`. 한쪽만 바뀌면 → 반드시 고침
+- **권한 판단이 두 곳에 있다.** `firestore.rules`와 `lib/core/model/ledger.dart`(두 명 제한 포함). 한쪽만 바뀌면 → 반드시 고침
 - **감사 필드는 서버 시간이다**(`docs/firestore.md`). 기기 시간(`DateTime.now()`)을 쓰면 규칙이 거부한다.
   방금 쓴 문서는 서버 시간이 아직 null이라 정렬·표시에서 처리하는지 본다. → 반드시 고침
 - **휴지통 항목은 합계에서 뺀다**(`docs/plan.md`). 합계·목록 쿼리를 바꿨으면 `deletedAt` 처리를 본다. → 반드시 고침

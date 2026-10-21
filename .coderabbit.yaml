@@ -94,7 +94,7 @@ reviews:
         Dart 3 타입 설계:
         - 정해진 몇 가지 상태·결과는 `sealed class` + `switch` 식으로 표현하고, `default`/`_` 없이 모든 경우를 다뤄
           경우가 늘면 컴파일 에러로 잡히게 할 것
-        - enum 에 동작이 필요하면 enhanced enum(필드·getter)으로 (`HouseholdRole.canWrite`)
+        - enum 에 동작이 필요하면 enhanced enum(필드·getter)으로 (`MemberRole.canWrite`)
         - 잠깐 묶어 돌려주는 값은 record, 이름 붙은 개념이면 클래스
         - 구현만 허용할 인터페이스는 `abstract interface class`, 상속을 막을 것은 `final class`
         - 확장 메서드에 비즈니스 로직을 숨기지 말 것
@@ -143,9 +143,8 @@ reviews:
 
         모델:
         - 불변(`final` 필드, `const` 생성자), 값 비교가 필요하면 `==`/`hashCode`
-        - 역할·권한 판단(`household.dart`)은 `firestore.rules` 와 같은 내용이어야 한다. 한쪽만 바뀌면 반드시 지적
-        - enum 값을 추가하면 Firestore 에서 읽을 때 모르는 값을 건너뛰는 처리(`householdFromFirestore`)도 확인
-        - 이전 컨셉 이름인 '가구(household)' 를 새 타입·문구에 늘리지 말 것 (컨셉은 커플·부부)
+        - 역할·권한 판단과 두 명 제한(`ledger.dart`)은 `firestore.rules` 와 같은 내용이어야 한다. 한쪽만 바뀌면 반드시 지적
+        - enum 값을 추가하면 Firestore 에서 읽을 때 모르는 값을 건너뛰는 처리(`ledgerFromFirestore`)도 확인
     - path: "lib/core/data/**/*.dart"
       instructions: |-
         데이터 레이어 — 저장소 인터페이스, Firebase 구현, Riverpod 공급자.
@@ -157,7 +156,7 @@ reviews:
 
         Firestore 쓰기:
         - 쓰는 문서의 필드는 `firestore.rules` 가 받는 필드와 정확히 같아야 한다. 앱 테스트는 가짜 저장소로 돌아서 못 잡는다.
-          필드를 바꿨는데 규칙·규칙 테스트·필드 목록 테스트(`household_repository_test.dart`)·`docs/firestore.md` 가
+          필드를 바꿨는데 규칙·규칙 테스트·필드 목록 테스트(`ledger_repository_test.dart`)·`docs/firestore.md` 가
           그대로면 반드시 지적
         - 시간 필드는 `FieldValue.serverTimestamp()`. 규칙이 `== request.time` 을 보므로
           `DateTime.now()`·`Timestamp.now()` 는 실제로 거부된다
@@ -177,7 +176,7 @@ reviews:
 
         Riverpod 공급자 (`providers.dart`):
         - 공급자 안에서 다른 공급자는 `ref.watch` 로 의존한다. `ref.read` 로 읽으면 바뀌어도 다시 계산되지 않는다
-        - 로그인하지 않았을 때 빈 값을 내보내는지 (`myHouseholdsProvider`)
+        - 로그인하지 않았을 때 빈 값을 내보내는지 (`myLedgersProvider`)
         - 공급자 본문에서 쓰기·외부 요청 같은 부수효과를 일으키지 말 것
         - 정리가 필요한 자원은 `ref.onDispose`
         - Riverpod 3 의 `AsyncValue.value` 는 nullable 이다. 로딩·오류·데이터 세 경우를 모두 다루는지
@@ -199,7 +198,9 @@ reviews:
         - 다른 `lib/feature/*` 폴더를 import 하면 지적. 둘 이상이 쓰는 것은 `lib/core` 로 올린다
         - `cloud_firestore`·`firebase_auth`·`google_sign_in` 을 직접 import 하면 반드시 지적. `core/data` 의 공급자만 쓴다
         - 로그인·가계부 만들기·불러오는 중 화면으로 직접 `context.go` 하면 지적. `router.dart` 의 `redirectFor` 가 상태를 보고 옮긴다
-        - 컨셉이 커플·부부라 새 문구에 '가구' 를 쓰면 지적
+        - 컨셉이 커플·부부라 화면 문구에 '가구'·'가족' 을 쓰면 지적. 한 가계부에 두 명까지다
+        - 색은 `Theme.of(context)`·`context.appColors` 에서 꺼낸다. `AppPalette` 를 화면에서 직접 쓰면 지적
+        - 여러 단어로 된 한글 문장(설명·안내·오류)에 `keepAll()` 이 빠졌으면 제안. 없으면 단어 중간에서 줄이 바뀐다
 
         위젯 구성:
         - 위젯을 돌려주는 private 메서드(`Widget _buildHeader()`)보다 작은 위젯 클래스로 나누기를 제안.
@@ -453,7 +454,7 @@ reviews:
         - 월 id 는 `YYYY-MM` 형식 검사를 유지
 
         이 저장소의 약속:
-        - 역할별 권한은 `lib/core/model/household.dart` 와 같아야 한다. 한쪽만 바뀌면 반드시 지적
+        - 역할별 권한과 두 명 제한(`maxMembers()`)은 `lib/core/model/ledger.dart` 와 같아야 한다. 한쪽만 바뀌면 반드시 지적
         - 바뀐 규칙마다 `firestore-tests/rules.test.js` 에 허용·거부 테스트가 둘 다 있는지
         - `get()`·`exists()` 는 문서 읽기 비용이 들고 요청당 횟수 제한이 있다. 같은 문서를 여러 번 읽으면 함수로 묶기 제안
         - 규칙을 넓히는 변경은 이유가 PR 설명에 있어야 한다. 배포는 PR 이 합쳐진 뒤에 한다

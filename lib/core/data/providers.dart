@@ -5,9 +5,9 @@ import 'package:google_sign_in/google_sign_in.dart';
 
 import '../../firebase_options.dart';
 import '../model/auth_user.dart';
-import '../model/household.dart';
+import '../model/ledger.dart';
 import 'auth_repository.dart';
-import 'household_repository.dart';
+import 'ledger_repository.dart';
 
 final authRepositoryProvider = Provider<AuthRepository>(
   (ref) => FirebaseAuthRepository(
@@ -18,8 +18,8 @@ final authRepositoryProvider = Provider<AuthRepository>(
   ),
 );
 
-final householdRepositoryProvider = Provider<HouseholdRepository>(
-  (ref) => FirestoreHouseholdRepository(FirebaseFirestore.instance),
+final ledgerRepositoryProvider = Provider<LedgerRepository>(
+  (ref) => FirestoreLedgerRepository(FirebaseFirestore.instance),
 );
 
 /// 로그인한 사용자. 로그아웃 상태면 null.
@@ -27,15 +27,15 @@ final authUserProvider = StreamProvider<AuthUser?>(
   (ref) => ref.watch(authRepositoryProvider).authStateChanges(),
 );
 
-/// 내가 속한 가구 목록. 로그아웃 상태면 빈 목록.
-final myHouseholdsProvider = StreamProvider<List<Household>>((ref) {
+/// 내가 속한 가계부 목록. 로그아웃 상태면 빈 목록.
+final myLedgersProvider = StreamProvider<List<Ledger>>((ref) {
   final user = ref.watch(authUserProvider).value;
   if (user == null) return Stream.value(const []);
-  return ref.watch(householdRepositoryProvider).watchMyHouseholds(user.uid);
+  return ref.watch(ledgerRepositoryProvider).watchMyLedgers(user.uid);
 });
 
-/// 지금 보고 있는 가구. 가구 전환은 나중에 만들고, 지금은 먼저 만든 가구를 쓴다.
-final currentHouseholdProvider = Provider<Household?>((ref) {
-  final households = ref.watch(myHouseholdsProvider).value;
-  return households == null || households.isEmpty ? null : households.first;
+/// 지금 보고 있는 가계부. 커플 가계부라 보통 하나이고, 여럿이면 먼저 만든 것을 쓴다.
+final currentLedgerProvider = Provider<Ledger?>((ref) {
+  final ledgers = ref.watch(myLedgersProvider).value;
+  return ledgers == null || ledgers.isEmpty ? null : ledgers.first;
 });
