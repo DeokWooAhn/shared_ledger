@@ -373,7 +373,7 @@
               "type": "text",
               "id": "jWWtc",
               "name": "Initial",
-              "fill": "#FFFFFF",
+              "fill": "$sky",
               "content": "하",
               "fontFamily": "$font",
               "fontSize": 14,
@@ -440,7 +440,7 @@
               "y": 0,
               "name": "Status",
               "enabled": false,
-              "fill": "$accent",
+              "fill": "$warn-soft",
               "cornerRadius": 6,
               "padding": [
                 2,
@@ -451,7 +451,7 @@
                   "type": "text",
                   "id": "Z3SW4",
                   "name": "Status Text",
-                  "fill": "$on-accent",
+                  "fill": "$warn",
                   "content": "지급 전",
                   "fontFamily": "$font",
                   "fontSize": 11,
@@ -895,7 +895,7 @@
                           "type": "text",
                           "id": "YO7ua",
                           "name": "Initial",
-                          "fill": "#FFFFFF",
+                          "fill": "$sky",
                           "content": "하",
                           "fontFamily": "$font",
                           "fontSize": 13,
@@ -911,8 +911,6 @@
                       "height": 32,
                       "fill": "$sea-soft",
                       "cornerRadius": 16,
-                      "stroke": "$member-line",
-                      "strokeWidth": 1,
                       "justifyContent": "center",
                       "alignItems": "center",
                       "children": [
@@ -967,7 +965,7 @@
                       "type": "text",
                       "id": "VJNpR",
                       "name": "Label",
-                      "fill": "$hero-sub",
+                      "fill": "#C8EDE5",
                       "content": "남는 현금",
                       "fontFamily": "$font",
                       "fontSize": 14,
@@ -977,7 +975,7 @@
                       "type": "text",
                       "id": "mAMJo",
                       "name": "Value",
-                      "fill": "$accent-on-dark",
+                      "fill": "#FFFFFF",
                       "content": "2,973,000원",
                       "fontFamily": "$font",
                       "fontSize": 34,
@@ -1023,13 +1021,13 @@
                               "height": 14,
                               "icon": "arrow-down-left",
                               "library": "lucide",
-                              "fill": "$hero-sub"
+                              "fill": "#C8EDE5"
                             },
                             {
                               "type": "text",
                               "id": "ZDe11",
                               "name": "Label",
-                              "fill": "$hero-sub",
+                              "fill": "#C8EDE5",
                               "content": "현금 유입",
                               "fontFamily": "$font",
                               "fontSize": 12,
@@ -1072,13 +1070,13 @@
                               "height": 14,
                               "icon": "arrow-up-right",
                               "library": "lucide",
-                              "fill": "$hero-sub"
+                              "fill": "#C8EDE5"
                             },
                             {
                               "type": "text",
                               "id": "ZOlmJ",
                               "name": "Label",
-                              "fill": "$hero-sub",
+                              "fill": "#C8EDE5",
                               "content": "현금 유출",
                               "fontFamily": "$font",
                               "fontSize": 12,
@@ -1663,7 +1661,7 @@
                           "cornerRadius": 4,
                           "id": "yU6mI",
                           "name": "Fill",
-                          "fill": "$bar-muted",
+                          "fill": "#B9C4BF",
                           "width": 60,
                           "height": 8
                         }
@@ -1826,7 +1824,7 @@
                           "cornerRadius": 4,
                           "id": "rjP45",
                           "name": "Fill",
-                          "fill": "$bar-muted",
+                          "fill": "#B9C4BF",
                           "width": 40,
                           "height": 8
                         }
@@ -1913,7 +1911,7 @@
                               "type": "text",
                               "id": "JhbXi",
                               "name": "Initial",
-                              "fill": "#FFFFFF",
+                              "fill": "$sky",
                               "content": "하",
                               "fontFamily": "$font",
                               "fontSize": 10,
@@ -1948,8 +1946,6 @@
                           "height": 24,
                           "fill": "$sea-soft",
                           "cornerRadius": 12,
-                          "stroke": "$member-line",
-                          "strokeWidth": 1,
                           "justifyContent": "center",
                           "alignItems": "center",
                           "children": [
@@ -2005,13 +2001,13 @@
               "width": "fill_container",
               "descendants": {
                 "dGaSD": {
-                  "fill": "$accent"
+                  "fill": "$primary-soft"
                 },
                 "IHELx": {
-                  "fill": "$on-accent"
+                  "fill": "$primary"
                 },
                 "tNoOY": {
-                  "fill": "$on-accent"
+                  "fill": "$primary"
                 }
               }
             },
@@ -2021,12 +2017,12 @@
               "name": "Add Button",
               "width": 58,
               "height": 58,
-              "fill": "$accent",
+              "fill": "$primary",
               "cornerRadius": 29,
               "effect": {
                 "type": "shadow",
                 "shadowType": "outer",
-                "color": "#2D5BFF40",
+                "color": "#1F6F6340",
                 "offset": {
                   "x": 0,
                   "y": 6
@@ -2104,12 +2100,12 @@
                   "name": "Logo",
                   "width": 84,
                   "height": 84,
-                  "fill": "$accent",
+                  "fill": "$primary",
                   "cornerRadius": 26,
                   "effect": {
                     "type": "shadow",
                     "shadowType": "outer",
-                    "color": "#2D5BFF33",
+                    "color": "#1F6F6333",
                     "offset": {
                       "x": 0,
                       "y": 10
@@ -2462,7 +2458,7 @@
                           "type": "text",
                           "id": "BQOGE",
                           "name": "Initial",
-                          "fill": "#FFFFFF",
+                          "fill": "$sky",
                           "content": "하",
                           "fontFamily": "$font",
                           "fontSize": 13,
@@ -2478,8 +2474,6 @@
                       "height": 32,
                       "fill": "$sea-soft",
                       "cornerRadius": 16,
-                      "stroke": "$member-line",
-                      "strokeWidth": 1,
                       "justifyContent": "center",
                       "alignItems": "center",
                       "children": [
@@ -2647,7 +2641,7 @@
                       "type": "frame",
                       "id": "TtogC",
                       "name": "Pill 지급 전 2건",
-                      "fill": "$accent",
+                      "fill": "$warn-soft",
                       "cornerRadius": 6,
                       "padding": [
                         2,
@@ -2658,7 +2652,7 @@
                           "type": "text",
                           "id": "X9vr7X",
                           "name": "Text",
-                          "fill": "$on-accent",
+                          "fill": "$warn",
                           "content": "지급 전 2건",
                           "fontFamily": "$font",
                           "fontSize": 11,
@@ -2777,7 +2771,7 @@
                     },
                     "jWWtc": {
                       "content": "하",
-                      "fill": "#FFFFFF"
+                      "fill": "$sky"
                     },
                     "uZRF0": {
                       "content": "주택담보대출 원금"
@@ -2866,7 +2860,7 @@
                     },
                     "jWWtc": {
                       "content": "하",
-                      "fill": "#FFFFFF"
+                      "fill": "$sky"
                     },
                     "uZRF0": {
                       "content": "주택담보대출 이자"
@@ -2973,9 +2967,7 @@
                   "width": "fill_container",
                   "descendants": {
                     "jaQok": {
-                      "fill": "$sea-soft",
-                      "stroke": "$member-line",
-                      "strokeWidth": 1
+                      "fill": "$sea-soft"
                     },
                     "jWWtc": {
                       "content": "바",
@@ -3005,7 +2997,7 @@
                     },
                     "jWWtc": {
                       "content": "하",
-                      "fill": "#FFFFFF"
+                      "fill": "$sky"
                     },
                     "uZRF0": {
                       "content": "ISA"
@@ -3095,9 +3087,7 @@
                   "width": "fill_container",
                   "descendants": {
                     "jaQok": {
-                      "fill": "$sea-soft",
-                      "stroke": "$member-line",
-                      "strokeWidth": 1
+                      "fill": "$sea-soft"
                     },
                     "jWWtc": {
                       "content": "바",
@@ -3130,9 +3120,7 @@
                   "width": "fill_container",
                   "descendants": {
                     "jaQok": {
-                      "fill": "$sea-soft",
-                      "stroke": "$member-line",
-                      "strokeWidth": 1
+                      "fill": "$sea-soft"
                     },
                     "jWWtc": {
                       "content": "바",
@@ -3161,7 +3149,7 @@
                     },
                     "jWWtc": {
                       "content": "하",
-                      "fill": "#FFFFFF"
+                      "fill": "$sky"
                     },
                     "uZRF0": {
                       "content": "보험"
@@ -3187,7 +3175,7 @@
                     },
                     "jWWtc": {
                       "content": "하",
-                      "fill": "#FFFFFF"
+                      "fill": "$sky"
                     },
                     "uZRF0": {
                       "content": "구독 서비스"
@@ -3226,13 +3214,13 @@
               "width": "fill_container",
               "descendants": {
                 "mtGn3": {
-                  "fill": "$accent"
+                  "fill": "$primary-soft"
                 },
                 "d9Y3ff": {
-                  "fill": "$on-accent"
+                  "fill": "$primary"
                 },
                 "g1xcX": {
-                  "fill": "$on-accent"
+                  "fill": "$primary"
                 }
               }
             },
@@ -3242,12 +3230,12 @@
               "name": "Add Button",
               "width": 58,
               "height": 58,
-              "fill": "$accent",
+              "fill": "$primary",
               "cornerRadius": 29,
               "effect": {
                 "type": "shadow",
                 "shadowType": "outer",
-                "color": "#2D5BFF40",
+                "color": "#1F6F6340",
                 "offset": {
                   "x": 0,
                   "y": 6
@@ -3477,7 +3465,7 @@
               "id": "kEawJ",
               "name": "Amount",
               "width": "fill_container",
-              "stroke": "$accent",
+              "stroke": "$primary",
               "strokeWidth": {
                 "bottom": 2
               },
@@ -4355,13 +4343,13 @@
               "width": "fill_container",
               "descendants": {
                 "xGun6": {
-                  "fill": "$accent"
+                  "fill": "$primary-soft"
                 },
                 "O6v36x": {
-                  "fill": "$on-accent"
+                  "fill": "$primary"
                 },
                 "qwWaE": {
-                  "fill": "$on-accent"
+                  "fill": "$primary"
                 }
               }
             }
@@ -4448,7 +4436,7 @@
                       "name": "Ledger Icon",
                       "width": 48,
                       "height": 48,
-                      "fill": "$accent",
+                      "fill": "$primary",
                       "cornerRadius": 16,
                       "justifyContent": "center",
                       "alignItems": "center",
@@ -4565,7 +4553,7 @@
                           "type": "text",
                           "id": "vYL71",
                           "name": "Initial",
-                          "fill": "#FFFFFF",
+                          "fill": "$sky",
                           "content": "하",
                           "fontFamily": "$font",
                           "fontSize": 17,
@@ -4630,8 +4618,6 @@
                       "height": 40,
                       "fill": "$sea-soft",
                       "cornerRadius": 20,
-                      "stroke": "$member-line",
-                      "strokeWidth": 1,
                       "justifyContent": "center",
                       "alignItems": "center",
                       "children": [
@@ -5281,13 +5267,13 @@
               "width": "fill_container",
               "descendants": {
                 "fI5K4": {
-                  "fill": "$accent"
+                  "fill": "$primary-soft"
                 },
                 "SV923": {
-                  "fill": "$on-accent"
+                  "fill": "$primary"
                 },
                 "vpYkg": {
-                  "fill": "$on-accent"
+                  "fill": "$primary"
                 }
               }
             }
@@ -5299,7 +5285,7 @@
   "variables": {
     "bg-app": {
       "type": "color",
-      "value": "#F5F5F4"
+      "value": "#F4F5F3"
     },
     "card": {
       "type": "color",
@@ -5307,27 +5293,27 @@
     },
     "primary": {
       "type": "color",
-      "value": "#1A1A1A"
+      "value": "#237A6D"
     },
     "primary-strong": {
       "type": "color",
-      "value": "#1A1A1A"
+      "value": "#1F6F63"
     },
     "brand": {
       "type": "color",
-      "value": "#1A1A1A"
+      "value": "#4AA596"
     },
     "primary-soft": {
       "type": "color",
-      "value": "#F0F0EE"
+      "value": "#E7F3F0"
     },
     "line": {
       "type": "color",
-      "value": "#E6E6E4"
+      "value": "#E3E7E4"
     },
     "line-soft": {
       "type": "color",
-      "value": "#F0F0EE"
+      "value": "#EEF1EF"
     },
     "text-primary": {
       "type": "color",
@@ -5335,27 +5321,35 @@
     },
     "text-secondary": {
       "type": "color",
-      "value": "#5F5F5F"
+      "value": "#5E6762"
     },
     "text-muted": {
       "type": "color",
-      "value": "#737373"
+      "value": "#6F7773"
     },
     "sky": {
       "type": "color",
-      "value": "#1A1A1A"
+      "value": "#3E63C9"
     },
     "sky-soft": {
       "type": "color",
-      "value": "#1A1A1A"
+      "value": "#EAF0FD"
     },
     "sea": {
       "type": "color",
-      "value": "#6B6B69"
+      "value": "#B04A32"
     },
     "sea-soft": {
       "type": "color",
-      "value": "#FFFFFF"
+      "value": "#FDEDE8"
+    },
+    "warn": {
+      "type": "color",
+      "value": "#9A5B00"
+    },
+    "warn-soft": {
+      "type": "color",
+      "value": "#FFF3DC"
     },
     "danger": {
       "type": "color",
@@ -5364,30 +5358,6 @@
     "font": {
       "type": "string",
       "value": "Noto Sans KR"
-    },
-    "member-line": {
-      "type": "color",
-      "value": "#D6D6D4"
-    },
-    "accent": {
-      "type": "color",
-      "value": "#2D5BFF"
-    },
-    "on-accent": {
-      "type": "color",
-      "value": "#FFFFFF"
-    },
-    "accent-on-dark": {
-      "type": "color",
-      "value": "#7C9BFF"
-    },
-    "hero-sub": {
-      "type": "color",
-      "value": "#BDBDBD"
-    },
-    "bar-muted": {
-      "type": "color",
-      "value": "#D4D4D2"
     }
   },
   "fileToken": "1c326fbc-e3bd-4201-a5b1-2eb8fb7772e7"
