@@ -14,18 +14,23 @@ service cloud.firestore {
       return request.auth.uid;
     }
 
-    function householdData(householdId) {
-      return get(/databases/$(database)/documents/households/$(householdId)).data;
+    // 커플·부부 가계부라 한 가계부에는 두 명까지 들어온다. 앱의 ledgerMaxMembers와 같다.
+    function maxMembers() {
+      return 2;
     }
 
-    function isMemberOf(household) {
-      return signedIn() && uid() in household.memberUids;
+    function ledgerData(ledgerId) {
+      return get(/databases/$(database)/documents/ledgers/$(ledgerId)).data;
+    }
+
+    function isMemberOf(ledger) {
+      return signedIn() && uid() in ledger.memberUids;
     }
 
     // 관리자와 편집자만 쓸 수 있다.
-    function canWriteIn(household) {
+    function canWriteIn(ledger) {
       return signedIn()
-        && (household.ownerUid == uid() || household.roles.get(uid(), '') == 'editor');
+        && (ledger.ownerUid == uid() || ledger.roles.get(uid(), '') == 'editor');
     }
 
     // 만들 때: 작성자는 나, 시간은 서버 시간.
@@ -46,13 +51,13 @@ service cloud.firestore {
         && data.updatedAt == request.time;
     }
 
-    // ---------- 가구 ----------
+    // ---------- 가계부 ----------
 
     function validName(name) {
       return name is string && name.size() >= 1 && name.size() <= 40;
     }
 
-    // memberUids = 관리자 + roles의 키. roles 값은 편집자·보기 전용만.
+    // memberUids = 관리자 + roles의 키. roles 값은 편집자·보기 전용만. 두 명까지.
     function consistentMembers(data) {
       return data.ownerUid is string
         && data.roles is map
@@ -60,12 +65,13 @@ service cloud.firestore {
         && !(data.ownerUid in data.roles)
         && data.roles.values().hasOnly(['editor', 'viewer'])
         && data.memberUids.size() == data.roles.size() + 1
+        && data.memberUids.size() <= maxMembers()
         && data.memberUids.toSet() == data.roles.keys().toSet().union([data.ownerUid].toSet());
     }
 
-    match /households/{householdId} {
+    match /ledgers/{ledgerId} {
       allow get: if isMemberOf(resource.data);
-      // '내 가구 목록'은 memberUids array-contains 조회로만 읽는다.
+      // '내 가계부 목록'은 memberUids array-contains 조회로만 읽는다.
       allow list: if signedIn() && uid() in resource.data.memberUids;
 
       allow create: if signedIn()
@@ -105,7 +111,7 @@ service cloud.firestore {
           && after.updatedAt == request.time;
       }
 
-      // 초대 코드로 참여: 자기 uid만, 초대에 적힌 역할로.
+      // 초대 코드로 참여: 자리가 있을 때, 자기 uid만, 초대에 적힌 역할로.
       function joinsWithInvite() {
         let before = resource.data;
         let after = request.resource.data;
@@ -113,8 +119,9 @@ service cloud.firestore {
         let rolesDiff = after.roles.diff(before.roles);
         return signedIn()
           && !(uid() in before.memberUids)
+          && before.memberUids.size() < maxMembers()
           && after.diff(before).affectedKeys().hasOnly(['roles', 'memberUids', 'inviteCode', 'updatedAt'])
-          && invite.householdId == householdId
+          && invite.ledgerId == ledgerId
           && invite.expiresAt > request.time
           && rolesDiff.addedKeys() == [uid()].toSet()
           && rolesDiff.affectedKeys() == [uid()].toSet()
@@ -126,17 +133,17 @@ service cloud.firestore {
       allow update: if ownerManages() || leavesSelf() || joinsWithInvite();
       allow delete: if signedIn() && resource.data.ownerUid == uid();
 
-      // ---------- 가구 설정: 구성원 이름표, 분류, 결제수단, 고정 지출 템플릿 ----------
+      // ---------- 가계부 설정: 구성원 이름표, 분류, 결제수단, 고정 지출 템플릿 ----------
 
       match /{settings}/{docId} {
         function isSettings() {
           return settings in ['members', 'categories', 'paymentMethods', 'templates'];
         }
 
-        allow read: if isSettings() && isMemberOf(householdData(householdId));
-        allow create: if isSettings() && canWriteIn(householdData(householdId)) && createdNow();
-        allow update: if isSettings() && canWriteIn(householdData(householdId)) && updatedNow();
-        allow delete: if isSettings() && canWriteIn(householdData(householdId));
+        allow read: if isSettings() && isMemberOf(ledgerData(ledgerId));
+        allow create: if isSettings() && canWriteIn(ledgerData(ledgerId)) && createdNow();
+        allow update: if isSettings() && canWriteIn(ledgerData(ledgerId)) && updatedNow();
+        allow delete: if isSettings() && canWriteIn(ledgerData(ledgerId));
       }
 
       // ---------- 가계부 항목: months/{yyyy-MM}/{종류}/{id} ----------
@@ -162,29 +169,29 @@ service cloud.firestore {
           return deletedAt == null || deletedAt is timestamp;
         }
 
-        allow read: if isEntryType() && isMemberOf(householdData(householdId));
+        allow read: if isEntryType() && isMemberOf(ledgerData(ledgerId));
         allow create: if isEntryType()
           && validMonth()
-          && canWriteIn(householdData(householdId))
+          && canWriteIn(ledgerData(ledgerId))
           && createdNow()
           && validAmount()
           && validTrash();
         allow update: if isEntryType()
-          && canWriteIn(householdData(householdId))
+          && canWriteIn(ledgerData(ledgerId))
           && updatedNow()
           && validAmount()
           && validTrash();
         // 휴지통(deletedAt)에 있는 항목만 완전히 지울 수 있다.
         allow delete: if isEntryType()
-          && canWriteIn(householdData(householdId))
+          && canWriteIn(ledgerData(ledgerId))
           && resource.data.get('deletedAt', null) != null;
       }
 
       // ---------- 변경 기록: 추가만 가능 ----------
 
       match /activity/{activityId} {
-        allow read: if isMemberOf(householdData(householdId));
-        allow create: if canWriteIn(householdData(householdId))
+        allow read: if isMemberOf(ledgerData(ledgerId));
+        allow create: if canWriteIn(ledgerData(ledgerId))
           && request.resource.data.keys().hasOnly(['actorUid', 'at', 'action', 'summary'])
           && request.resource.data.actorUid == uid()
           && request.resource.data.at == request.time
@@ -197,23 +204,31 @@ service cloud.firestore {
     // ---------- 초대 ----------
 
     match /invites/{code} {
+      // 관리자만, 자리가 남은 가계부에, 7일 이내로 만든다.
+      function createsInvite() {
+        let data = request.resource.data;
+        let ledger = ledgerData(data.ledgerId);
+        return signedIn()
+          && code.matches('^[A-Za-z0-9]{8,32}$')
+          && data.keys().hasOnly(['ledgerId', 'role', 'createdBy', 'createdAt', 'expiresAt'])
+          && data.ledgerId is string
+          && ledger.ownerUid == uid()
+          && ledger.memberUids.size() < maxMembers()
+          && data.role in ['editor', 'viewer']
+          && data.createdBy == uid()
+          && data.createdAt == request.time
+          && data.expiresAt is timestamp
+          && data.expiresAt > request.time
+          && data.expiresAt <= request.time + duration.value(7, 'd');
+      }
+
       // 코드를 아는 사람만 한 건씩 읽는다. 목록 조회는 막는다.
       allow get: if signedIn();
       allow list: if false;
 
-      allow create: if signedIn()
-        && code.matches('^[A-Za-z0-9]{8,32}$')
-        && request.resource.data.keys().hasOnly(['householdId', 'role', 'createdBy', 'createdAt', 'expiresAt'])
-        && request.resource.data.householdId is string
-        && householdData(request.resource.data.householdId).ownerUid == uid()
-        && request.resource.data.role in ['editor', 'viewer']
-        && request.resource.data.createdBy == uid()
-        && request.resource.data.createdAt == request.time
-        && request.resource.data.expiresAt is timestamp
-        && request.resource.data.expiresAt > request.time
-        && request.resource.data.expiresAt <= request.time + duration.value(7, 'd');
+      allow create: if createsInvite();
       allow update: if false;
-      allow delete: if signedIn() && householdData(resource.data.householdId).ownerUid == uid();
+      allow delete: if signedIn() && ledgerData(resource.data.ledgerId).ownerUid == uid();
     }
   }
 }

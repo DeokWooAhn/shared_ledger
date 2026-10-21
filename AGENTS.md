@@ -35,7 +35,7 @@ Claude Code는 `CLAUDE.md`를 통해 이 파일을 읽고, Codex 같은 다른 �
 - **공개 저장소다.** 실제 가계부 금액·이름·개인 이메일·실제 uid를 코드·테스트·문서·커밋에 넣지 않는다. 테스트 데이터는 가상으로 만든다.
 - 키스토어, 비밀번호, 토큰, 개인 키를 커밋하지 않는다. Firebase 설정 파일은 비밀 값이 아니다.
 - 로그와 Crashlytics에 금액·메모 같은 사용자 입력값과 개인 식별 정보를 남기지 않는다.
-- Firestore 보안 규칙을 넓히지 않는다. 바꿀 때는 규칙 테스트를 먼저 고치고, 같은 내용인 앱 쪽 권한 판단(`lib/core/model/household.dart`)도 같이 맞춘다.
+- Firestore 보안 규칙을 넓히지 않는다. 바꿀 때는 규칙 테스트를 먼저 고치고, 같은 내용인 앱 쪽 권한 판단(`lib/core/model/ledger.dart`)도 같이 맞춘다.
 - 서버는 Firebase Blaze(종량제)만 쓴다. 고정 월 요금이 드는 서비스(Supabase Pro 등)는 제안하지 않는다.
 
 ## 구조
@@ -48,17 +48,19 @@ lib/
     budget/, model/     계산 규칙과 모델. 순수 Dart
     data/               Firebase 저장소(로그인, 가계부)와 Riverpod 공급자
     widget/             여러 화면이 같이 쓰는 위젯
-  feature/<기능>/        기능별 화면 (auth, household, …)
+  feature/<기능>/        기능별 화면 (auth, ledger, …)
 test/                   lib와 같은 구조. test/support/fakes.dart에 가짜 저장소
 firestore.rules         보안 규칙. 테스트는 firestore-tests/
 ```
 
 - feature끼리 서로 import하지 않는다. 둘 이상이 쓰게 되면 core로 올린다.
 - `core/budget`, `core/model`에는 Flutter·Firebase import를 넣지 않는다.
-- 화면은 Firebase 패키지를 직접 import하지 않고 `core/data`의 인터페이스(`AuthRepository`, `HouseholdRepository`)만 쓴다.
+- 화면은 Firebase 패키지를 직접 import하지 않고 `core/data`의 인터페이스(`AuthRepository`, `LedgerRepository`)만 쓴다.
 - 어느 화면을 보여줄지는 `router.dart`의 `appGate`·`redirectFor`가 로그인·가계부 상태로 정한다. 화면에서 시작 화면들로 직접 이동하지 않는다.
-- **컨셉은 커플·부부의 가계부다.** 코드와 문서에 남은 '가구(household)'는 이전 컨셉의 이름이라 다음 작업에서 바꾼다.
-  새 코드와 화면 문구에 '가구'를 더 늘리지 않는다.
+- **컨셉은 커플·부부의 가계부다. 한 가계부에는 두 명까지 들어온다.** 이 제한은 보안 규칙(`maxMembers()`)과 앱(`ledgerMaxMembers`) 두 곳에 있어 같이 바꾼다.
+  화면 문구에는 '가구'·'가족' 대신 '가계부'·'두 사람'을 쓴다.
+- 색과 글자는 `lib/core/theme/app_theme.dart`가 `design/app.pen`의 토큰을 옮긴 것이다. 화면은 색을 직접 쓰지 않고 `Theme.of(context)`와 `context.appColors`로 꺼낸다. 화면 디자인은 `design/app/*.png`.
+- 여러 단어로 된 화면 문장(설명·안내·오류)은 `keepAll()`(`lib/core/widget/keep_all.dart`)로 감싼다. Flutter는 한글을 단어 중간에서 줄바꿈한다. 저장하거나 비교하는 값에는 쓰지 않는다.
 
 ### 지금 쓰지 않는 것
 

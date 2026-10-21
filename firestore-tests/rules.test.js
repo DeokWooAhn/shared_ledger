@@ -30,8 +30,11 @@ const VIEWER = 'viewer-uid';
 const OUTSIDER = 'outsider-uid';
 const NEWCOMER = 'newcomer-uid';
 
-const HOUSEHOLD = 'household-1';
-const OTHER_HOUSEHOLD = 'household-2';
+// 한 가계부에는 두 명까지 들어온다.
+const LEDGER = 'ledger-1'; // 관리자 + 편집자 (가득 참)
+const VIEWER_LEDGER = 'ledger-viewer'; // 관리자 + 보기 전용
+const SOLO_LEDGER = 'ledger-solo'; // 관리자 혼자
+const OTHER_LEDGER = 'ledger-2'; // OUTSIDER 혼자
 const MONTH = '2026-10';
 const DAY = 24 * 60 * 60 * 1000;
 
@@ -50,12 +53,13 @@ after(async () => {
   await env.cleanup();
 });
 
-// 매 테스트마다: 가구1(관리자·편집자·보기 전용), 가구2(OUTSIDER가 관리자).
 beforeEach(async () => {
   await env.clearFirestore();
   await seed(async (db) => {
-    await setDoc(householdRef(db), householdData(OWNER, { [EDITOR]: 'editor', [VIEWER]: 'viewer' }));
-    await setDoc(householdRef(db, OTHER_HOUSEHOLD), householdData(OUTSIDER, {}));
+    await setDoc(ledgerRef(db), ledgerData(OWNER, { [EDITOR]: 'editor' }));
+    await setDoc(ledgerRef(db, VIEWER_LEDGER), ledgerData(OWNER, { [VIEWER]: 'viewer' }));
+    await setDoc(ledgerRef(db, SOLO_LEDGER), ledgerData(OWNER, {}));
+    await setDoc(ledgerRef(db, OTHER_LEDGER), ledgerData(OUTSIDER, {}));
   });
 });
 
@@ -68,11 +72,11 @@ function seed(callback) {
   return env.withSecurityRulesDisabled((context) => callback(context.firestore()));
 }
 
-function householdRef(db, id = HOUSEHOLD) {
-  return doc(db, 'households', id);
+function ledgerRef(db, id = LEDGER) {
+  return doc(db, 'ledgers', id);
 }
 
-function householdData(ownerUid, roles, name = '우리집') {
+function ledgerData(ownerUid, roles, name = '우리 가계부') {
   return {
     name,
     ownerUid,
@@ -83,8 +87,20 @@ function householdData(ownerUid, roles, name = '우리집') {
   };
 }
 
-function entryRef(db, { type = 'extras', id = 'entry-1', month = MONTH, household = HOUSEHOLD } = {}) {
-  return doc(db, 'households', household, 'months', month, type, id);
+function newLedger(ownerUid, fields = {}) {
+  return {
+    name: '새 가계부',
+    ownerUid,
+    roles: {},
+    memberUids: [ownerUid],
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+    ...fields,
+  };
+}
+
+function entryRef(db, { type = 'extras', id = 'entry-1', month = MONTH, ledger = LEDGER } = {}) {
+  return doc(db, 'ledgers', ledger, 'months', month, type, id);
 }
 
 function newEntry(uid, fields = {}) {
@@ -101,10 +117,10 @@ function newEntry(uid, fields = {}) {
   };
 }
 
-function seedEntry(fields = {}) {
+function seedEntry({ ledger = LEDGER, ...fields } = {}) {
   return seed((db) =>
-    setDoc(entryRef(db), {
-      ...newEntry(EDITOR),
+    setDoc(entryRef(db, { ledger }), {
+      ...newEntry(OWNER),
       createdAt: Timestamp.fromMillis(1000),
       updatedAt: Timestamp.fromMillis(1000),
       ...fields,
@@ -116,12 +132,13 @@ function inviteRef(db, code) {
   return doc(db, 'invites', code);
 }
 
+// 참여 테스트용 초대. 기본은 자리가 남은 OTHER_LEDGER.
 function seedInvite(code, fields = {}) {
   return seed((db) =>
     setDoc(inviteRef(db, code), {
-      householdId: HOUSEHOLD,
+      ledgerId: OTHER_LEDGER,
       role: 'editor',
-      createdBy: OWNER,
+      createdBy: OUTSIDER,
       createdAt: Timestamp.now(),
       expiresAt: Timestamp.fromMillis(Date.now() + 3 * DAY),
       ...fields,
@@ -138,68 +155,42 @@ function joinUpdate(uid, role, code) {
   };
 }
 
-describe('가구 만들기와 읽기', () => {
-  test('로그인하면 자기를 관리자로 하는 가구를 만들 수 있다', async () => {
-    const db = firestoreAs(NEWCOMER);
-    await assertSucceeds(
-      setDoc(householdRef(db, 'new-household'), {
-        name: '새 가구',
-        ownerUid: NEWCOMER,
-        roles: {},
-        memberUids: [NEWCOMER],
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      }),
-    );
+describe('가계부 만들기와 읽기', () => {
+  test('로그인하면 자기를 관리자로 하는 가계부를 만들 수 있다', async () => {
+    await assertSucceeds(setDoc(ledgerRef(firestoreAs(NEWCOMER), 'new-ledger'), newLedger(NEWCOMER)));
   });
 
   test('다른 사람을 관리자로 하거나 구성원을 미리 넣어서 만들 수 없다', async () => {
     const db = firestoreAs(NEWCOMER);
-    const base = {
-      name: '새 가구',
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-    };
     await assertFails(
-      setDoc(householdRef(db, 'h-a'), { ...base, ownerUid: OUTSIDER, roles: {}, memberUids: [OUTSIDER] }),
+      setDoc(ledgerRef(db, 'l-a'), newLedger(NEWCOMER, { ownerUid: OUTSIDER, memberUids: [OUTSIDER] })),
     );
     await assertFails(
-      setDoc(householdRef(db, 'h-b'), {
-        ...base,
-        ownerUid: NEWCOMER,
-        roles: { [OUTSIDER]: 'editor' },
-        memberUids: [NEWCOMER, OUTSIDER],
-      }),
+      setDoc(
+        ledgerRef(db, 'l-b'),
+        newLedger(NEWCOMER, { roles: { [OUTSIDER]: 'editor' }, memberUids: [NEWCOMER, OUTSIDER] }),
+      ),
     );
   });
 
-  test('로그인하지 않으면 가구를 만들 수 없다', async () => {
-    await assertFails(
-      setDoc(householdRef(firestoreAs(null), 'h-anon'), {
-        name: '새 가구',
-        ownerUid: 'anon',
-        roles: {},
-        memberUids: ['anon'],
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      }),
-    );
+  test('로그인하지 않으면 가계부를 만들 수 없다', async () => {
+    await assertFails(setDoc(ledgerRef(firestoreAs(null), 'l-anon'), newLedger('anon')));
   });
 
-  test('구성원은 가구를 읽을 수 있고, 구성원이 아니면 읽을 수 없다', async () => {
-    for (const uid of [OWNER, EDITOR, VIEWER]) {
-      await assertSucceeds(getDoc(householdRef(firestoreAs(uid))));
+  test('구성원은 가계부를 읽을 수 있고, 구성원이 아니면 읽을 수 없다', async () => {
+    for (const uid of [OWNER, EDITOR]) {
+      await assertSucceeds(getDoc(ledgerRef(firestoreAs(uid))));
     }
-    await assertFails(getDoc(householdRef(firestoreAs(OUTSIDER))));
+    await assertFails(getDoc(ledgerRef(firestoreAs(OUTSIDER))));
   });
 
-  test('내가 속한 가구만 목록으로 조회할 수 있다', async () => {
+  test('내가 속한 가계부만 목록으로 조회할 수 있다', async () => {
     const db = firestoreAs(EDITOR);
     const mine = await assertSucceeds(
-      getDocs(query(collection(db, 'households'), where('memberUids', 'array-contains', EDITOR))),
+      getDocs(query(collection(db, 'ledgers'), where('memberUids', 'array-contains', EDITOR))),
     );
-    if (mine.size !== 1) throw new Error(`가구 1개를 기대했지만 ${mine.size}개`);
-    await assertFails(getDocs(collection(db, 'households')));
+    if (mine.size !== 1) throw new Error(`가계부 1개를 기대했지만 ${mine.size}개`);
+    await assertFails(getDocs(collection(db, 'ledgers')));
   });
 });
 
@@ -207,24 +198,24 @@ describe('구성원 관리', () => {
   test('관리자는 이름과 역할을 바꾸고 구성원을 내보낼 수 있다', async () => {
     const db = firestoreAs(OWNER);
     await assertSucceeds(
-      updateDoc(householdRef(db), {
+      updateDoc(ledgerRef(db), {
         name: '새 이름',
-        [`roles.${VIEWER}`]: 'editor',
+        [`roles.${EDITOR}`]: 'viewer',
         updatedAt: serverTimestamp(),
       }),
     );
     await assertSucceeds(
-      updateDoc(householdRef(db), {
-        [`roles.${VIEWER}`]: deleteField(),
-        memberUids: arrayRemove(VIEWER),
+      updateDoc(ledgerRef(db), {
+        [`roles.${EDITOR}`]: deleteField(),
+        memberUids: arrayRemove(EDITOR),
         updatedAt: serverTimestamp(),
       }),
     );
   });
 
-  test('관리자도 구성원을 직접 추가할 수 없다 (초대로만)', async () => {
+  test('관리자도 자리가 남은 가계부에 구성원을 직접 추가할 수 없다 (초대로만)', async () => {
     await assertFails(
-      updateDoc(householdRef(firestoreAs(OWNER)), {
+      updateDoc(ledgerRef(firestoreAs(OWNER), SOLO_LEDGER), {
         [`roles.${NEWCOMER}`]: 'editor',
         memberUids: arrayUnion(NEWCOMER),
         updatedAt: serverTimestamp(),
@@ -235,30 +226,30 @@ describe('구성원 관리', () => {
   test('관리자를 늘리거나 관리자를 바꿀 수 없다', async () => {
     const db = firestoreAs(OWNER);
     await assertFails(
-      updateDoc(householdRef(db), { [`roles.${EDITOR}`]: 'owner', updatedAt: serverTimestamp() }),
+      updateDoc(ledgerRef(db), { [`roles.${EDITOR}`]: 'owner', updatedAt: serverTimestamp() }),
     );
-    await assertFails(updateDoc(householdRef(db), { ownerUid: EDITOR, updatedAt: serverTimestamp() }));
+    await assertFails(updateDoc(ledgerRef(db), { ownerUid: EDITOR, updatedAt: serverTimestamp() }));
   });
 
-  test('편집자는 이름·역할을 바꾸거나 다른 구성원을 내보낼 수 없다', async () => {
-    const db = firestoreAs(EDITOR);
-    await assertFails(updateDoc(householdRef(db), { name: '바꾼 이름', updatedAt: serverTimestamp() }));
+  test('편집자는 이름을, 보기 전용은 자기 역할을 바꿀 수 없다', async () => {
     await assertFails(
-      updateDoc(householdRef(db), { [`roles.${VIEWER}`]: 'editor', updatedAt: serverTimestamp() }),
+      updateDoc(ledgerRef(firestoreAs(EDITOR)), { name: '바꾼 이름', updatedAt: serverTimestamp() }),
     );
     await assertFails(
-      updateDoc(householdRef(db), {
-        [`roles.${VIEWER}`]: deleteField(),
-        memberUids: arrayRemove(VIEWER),
+      updateDoc(ledgerRef(firestoreAs(VIEWER), VIEWER_LEDGER), {
+        [`roles.${VIEWER}`]: 'editor',
         updatedAt: serverTimestamp(),
       }),
     );
   });
 
-  test('편집자와 보기 전용은 스스로 가구에서 나갈 수 있다', async () => {
-    for (const uid of [VIEWER, EDITOR]) {
+  test('편집자와 보기 전용은 스스로 가계부에서 나갈 수 있다', async () => {
+    for (const [uid, ledger] of [
+      [EDITOR, LEDGER],
+      [VIEWER, VIEWER_LEDGER],
+    ]) {
       await assertSucceeds(
-        updateDoc(householdRef(firestoreAs(uid)), {
+        updateDoc(ledgerRef(firestoreAs(uid), ledger), {
           [`roles.${uid}`]: deleteField(),
           memberUids: arrayRemove(uid),
           updatedAt: serverTimestamp(),
@@ -267,16 +258,16 @@ describe('구성원 관리', () => {
     }
   });
 
-  test('관리자만 가구를 삭제할 수 있다', async () => {
-    await assertFails(deleteDoc(householdRef(firestoreAs(EDITOR))));
-    await assertSucceeds(deleteDoc(householdRef(firestoreAs(OWNER))));
+  test('관리자만 가계부를 삭제할 수 있다', async () => {
+    await assertFails(deleteDoc(ledgerRef(firestoreAs(EDITOR))));
+    await assertSucceeds(deleteDoc(ledgerRef(firestoreAs(OWNER))));
   });
 });
 
 describe('초대', () => {
   function newInvite(uid, fields = {}) {
     return {
-      householdId: HOUSEHOLD,
+      ledgerId: SOLO_LEDGER,
       role: 'editor',
       createdBy: uid,
       createdAt: serverTimestamp(),
@@ -290,11 +281,17 @@ describe('초대', () => {
     await assertFails(setDoc(inviteRef(firestoreAs(EDITOR), 'INVITE0002'), newInvite(EDITOR)));
   });
 
+  test('두 명이 다 찬 가계부에는 초대 코드를 만들 수 없다', async () => {
+    await assertFails(
+      setDoc(inviteRef(firestoreAs(OWNER), 'INVITE0003'), newInvite(OWNER, { ledgerId: LEDGER })),
+    );
+  });
+
   test('유효기간은 7일을 넘길 수 없고, 너무 짧은 코드는 쓸 수 없다', async () => {
     const db = firestoreAs(OWNER);
     await assertFails(
       setDoc(
-        inviteRef(db, 'INVITE0003'),
+        inviteRef(db, 'INVITE0004'),
         newInvite(OWNER, { expiresAt: Timestamp.fromMillis(Date.now() + 8 * DAY) }),
       ),
     );
@@ -304,42 +301,50 @@ describe('초대', () => {
   test('초대 코드로 초대에 적힌 역할로 참여할 수 있다', async () => {
     await seedInvite('JOINCODE01', { role: 'viewer' });
     await assertSucceeds(
-      updateDoc(householdRef(firestoreAs(NEWCOMER)), joinUpdate(NEWCOMER, 'viewer', 'JOINCODE01')),
+      updateDoc(ledgerRef(firestoreAs(NEWCOMER), OTHER_LEDGER), joinUpdate(NEWCOMER, 'viewer', 'JOINCODE01')),
     );
   });
 
   test('초대보다 높은 역할로는 참여할 수 없다', async () => {
     await seedInvite('JOINCODE02', { role: 'viewer' });
     await assertFails(
-      updateDoc(householdRef(firestoreAs(NEWCOMER)), joinUpdate(NEWCOMER, 'editor', 'JOINCODE02')),
+      updateDoc(ledgerRef(firestoreAs(NEWCOMER), OTHER_LEDGER), joinUpdate(NEWCOMER, 'editor', 'JOINCODE02')),
     );
   });
 
   test('만료된 초대로는 참여할 수 없다', async () => {
     await seedInvite('JOINCODE03', { expiresAt: Timestamp.fromMillis(Date.now() - DAY) });
     await assertFails(
-      updateDoc(householdRef(firestoreAs(NEWCOMER)), joinUpdate(NEWCOMER, 'editor', 'JOINCODE03')),
+      updateDoc(ledgerRef(firestoreAs(NEWCOMER), OTHER_LEDGER), joinUpdate(NEWCOMER, 'editor', 'JOINCODE03')),
     );
   });
 
-  test('다른 가구의 초대 코드로는 참여할 수 없다', async () => {
-    await seedInvite('JOINCODE04', { householdId: OTHER_HOUSEHOLD, createdBy: OUTSIDER });
+  test('다른 가계부의 초대 코드로는 참여할 수 없다', async () => {
+    await seedInvite('JOINCODE04', { ledgerId: SOLO_LEDGER, createdBy: OWNER });
     await assertFails(
-      updateDoc(householdRef(firestoreAs(NEWCOMER)), joinUpdate(NEWCOMER, 'editor', 'JOINCODE04')),
+      updateDoc(ledgerRef(firestoreAs(NEWCOMER), OTHER_LEDGER), joinUpdate(NEWCOMER, 'editor', 'JOINCODE04')),
+    );
+  });
+
+  test('두 명이 다 찬 가계부에는 초대 코드가 있어도 참여할 수 없다', async () => {
+    // 자리가 있을 때 만든 초대가 남아 있는 경우.
+    await seedInvite('JOINCODE05', { ledgerId: LEDGER, createdBy: OWNER });
+    await assertFails(
+      updateDoc(ledgerRef(firestoreAs(NEWCOMER), LEDGER), joinUpdate(NEWCOMER, 'editor', 'JOINCODE05')),
     );
   });
 
   test('초대 코드는 한 건씩만 읽을 수 있고 목록 조회는 막힌다', async () => {
-    await seedInvite('JOINCODE05');
+    await seedInvite('JOINCODE06');
     const db = firestoreAs(NEWCOMER);
-    await assertSucceeds(getDoc(inviteRef(db, 'JOINCODE05')));
+    await assertSucceeds(getDoc(inviteRef(db, 'JOINCODE06')));
     await assertFails(getDocs(collection(db, 'invites')));
   });
 
   test('관리자는 초대를 지울 수 있고, 다른 사람은 지울 수 없다', async () => {
-    await seedInvite('JOINCODE06');
-    await assertFails(deleteDoc(inviteRef(firestoreAs(EDITOR), 'JOINCODE06')));
-    await assertSucceeds(deleteDoc(inviteRef(firestoreAs(OWNER), 'JOINCODE06')));
+    await seedInvite('JOINCODE07', { ledgerId: SOLO_LEDGER, createdBy: OWNER });
+    await assertFails(deleteDoc(inviteRef(firestoreAs(EDITOR), 'JOINCODE07')));
+    await assertSucceeds(deleteDoc(inviteRef(firestoreAs(OWNER), 'JOINCODE07')));
   });
 });
 
@@ -356,20 +361,24 @@ describe('가계부 항목', () => {
   });
 
   test('보기 전용은 항목을 읽을 수 있지만 쓸 수 없다', async () => {
-    await seedEntry();
+    await seedEntry({ ledger: VIEWER_LEDGER });
     const db = firestoreAs(VIEWER);
-    await assertSucceeds(getDoc(entryRef(db)));
-    await assertFails(setDoc(entryRef(db, { id: 'entry-2' }), newEntry(VIEWER)));
+    await assertSucceeds(getDoc(entryRef(db, { ledger: VIEWER_LEDGER })));
+    await assertFails(setDoc(entryRef(db, { ledger: VIEWER_LEDGER, id: 'entry-2' }), newEntry(VIEWER)));
     await assertFails(
-      updateDoc(entryRef(db), { amount: 1, updatedBy: VIEWER, updatedAt: serverTimestamp() }),
+      updateDoc(entryRef(db, { ledger: VIEWER_LEDGER }), {
+        amount: 1,
+        updatedBy: VIEWER,
+        updatedAt: serverTimestamp(),
+      }),
     );
   });
 
-  test('다른 가구 사람은 항목을 읽을 수도 쓸 수도 없다', async () => {
+  test('다른 가계부 사람은 항목을 읽을 수도 쓸 수도 없다', async () => {
     await seedEntry();
     const db = firestoreAs(OUTSIDER);
     await assertFails(getDoc(entryRef(db)));
-    await assertFails(getDocs(collection(db, 'households', HOUSEHOLD, 'months', MONTH, 'extras')));
+    await assertFails(getDocs(collection(db, 'ledgers', LEDGER, 'months', MONTH, 'extras')));
     await assertFails(setDoc(entryRef(db, { id: 'entry-2' }), newEntry(OUTSIDER)));
   });
 
@@ -380,7 +389,7 @@ describe('가계부 항목', () => {
   });
 
   test('고칠 때 처음 작성 기록을 바꾸거나 수정자를 남의 이름으로 둘 수 없다', async () => {
-    await seedEntry();
+    await seedEntry({ createdBy: EDITOR, updatedBy: EDITOR });
     const db = firestoreAs(OWNER);
     await assertFails(
       updateDoc(entryRef(db), { createdBy: OWNER, updatedBy: OWNER, updatedAt: serverTimestamp() }),
@@ -420,34 +429,43 @@ describe('가계부 항목', () => {
   });
 });
 
-describe('가구 설정과 변경 기록', () => {
-  test('편집자는 분류를 만들 수 있고, 보기 전용은 만들 수 없다', async () => {
-    const category = (uid) => ({
+describe('가계부 설정과 변경 기록', () => {
+  function category(uid) {
+    return {
       name: '소비',
       countsAsSaving: false,
       createdBy: uid,
       updatedBy: uid,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
-    });
+    };
+  }
+
+  test('편집자와 관리자는 분류를 만들 수 있다', async () => {
     await assertSucceeds(
-      setDoc(doc(firestoreAs(EDITOR), 'households', HOUSEHOLD, 'categories', 'living'), category(EDITOR)),
+      setDoc(doc(firestoreAs(EDITOR), 'ledgers', LEDGER, 'categories', 'living'), category(EDITOR)),
     );
+    await assertSucceeds(
+      setDoc(doc(firestoreAs(OWNER), 'ledgers', VIEWER_LEDGER, 'categories', 'living'), category(OWNER)),
+    );
+  });
+
+  test('보기 전용은 분류를 만들 수 없다', async () => {
     await assertFails(
-      setDoc(doc(firestoreAs(VIEWER), 'households', HOUSEHOLD, 'categories', 'saving'), category(VIEWER)),
+      setDoc(doc(firestoreAs(VIEWER), 'ledgers', VIEWER_LEDGER, 'categories', 'saving'), category(VIEWER)),
     );
   });
 
   test('변경 기록은 자기 이름으로 추가만 할 수 있다', async () => {
     const db = firestoreAs(EDITOR);
-    const ref = doc(db, 'households', HOUSEHOLD, 'activity', 'log-1');
+    const ref = doc(db, 'ledgers', LEDGER, 'activity', 'log-1');
     const log = (actorUid) => ({
       actorUid,
       at: serverTimestamp(),
       action: 'entry.create',
       summary: '추가지출 장보기 10,000원',
     });
-    await assertFails(setDoc(doc(db, 'households', HOUSEHOLD, 'activity', 'log-0'), log(OWNER)));
+    await assertFails(setDoc(doc(db, 'ledgers', LEDGER, 'activity', 'log-0'), log(OWNER)));
     await assertSucceeds(setDoc(ref, log(EDITOR)));
     await assertFails(updateDoc(ref, { summary: '고친 기록' }));
     await assertFails(deleteDoc(ref));

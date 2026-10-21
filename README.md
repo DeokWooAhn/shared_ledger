@@ -15,13 +15,13 @@
 ### 지금 되는 것
 
 - Google 로그인(Android·iOS), Apple 로그인(iOS)
-- 함께 쓸 가계부 만들기
+- 함께 쓸 가계부 만들기, 초대 코드로 상대 초대·참여 (한 가계부에 두 명까지)
 - 월 요약 계산 규칙: 현금 유입·유출, 이번 달 지출, 저축, 남는 현금, 카드 이번 달 사용분과 다음 달 청구 예정액
   (시트 수식을 그대로 옮겼고, 화면은 만드는 중)
 
 ### 만들 것
 
-- 상대방 초대, 월 요약·항목 입력 화면, 고정 지출 템플릿
+- 월 요약·항목 입력 화면, 고정 지출 템플릿, 설정
 - 변경 기록과 휴지통, 두 기기 실시간 반영
 - Android Apple 로그인, 카카오 로그인, 계정 탈퇴
 
@@ -40,10 +40,12 @@ lib/
     budget/             월 요약 계산 규칙 (순수 Dart)
     model/              가계부 항목·분류·결제수단·구성원 역할 모델 (순수 Dart)
     data/               로그인·가계부 저장소 인터페이스, Firebase 구현, Riverpod 공급자
+    theme/              디자인 토큰(design/app.pen)으로 만든 앱 테마
     widget/             공용 위젯
   feature/<기능>/        기능별 화면
 firestore.rules         보안 규칙
 firestore-tests/        보안 규칙 테스트 (Firestore 에뮬레이터)
+design/                 화면 디자인(Pencil)과 내보낸 이미지
 ```
 
 폴더 간 의존 규칙은 [AGENTS.md](AGENTS.md)의 '구조', 컬렉션 구조와 역할별 권한은 [docs/firestore.md](docs/firestore.md)에 있습니다.

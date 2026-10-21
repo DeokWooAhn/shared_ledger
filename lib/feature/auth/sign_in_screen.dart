@@ -1,10 +1,14 @@
+import 'dart:math';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/data/providers.dart';
+import '../../core/widget/keep_all.dart';
 
-/// 로그인 화면. Apple 로그인은 iOS에서만 보여준다.
+/// 로그인 화면(design/app.pen의 01). Apple 로그인은 iOS에서만 보여준다.
+/// 카카오 로그인은 출시 준비 단계에서 붙인다.
 class SignInScreen extends ConsumerStatefulWidget {
   const SignInScreen({super.key});
 
@@ -13,6 +17,8 @@ class SignInScreen extends ConsumerStatefulWidget {
 }
 
 class _SignInScreenState extends ConsumerState<SignInScreen> {
+  static const _padding = EdgeInsets.fromLTRB(24, 8, 24, 28);
+
   bool _busy = false;
 
   Future<void> _signIn(Future<bool> Function() signIn) async {
@@ -23,7 +29,7 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('로그인하지 못했어요. 잠시 후 다시 시도해 주세요.')),
+        SnackBar(content: Text(keepAll('로그인하지 못했어요. 잠시 후 다시 시도해 주세요.'))),
       );
       debugPrint('로그인 실패: $e');
     } finally {
@@ -36,48 +42,150 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
     final auth = ref.read(authRepositoryProvider);
     final showApple = defaultTargetPlatform == TargetPlatform.iOS;
     return Scaffold(
+      // 디자인에서 로그인 화면만 카드색(흰색) 바탕이다.
+      backgroundColor: Theme.of(context).colorScheme.surfaceContainerLowest,
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const Spacer(),
-              Text(
-                '심플 공유 가계부',
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.headlineMedium,
-              ),
-              const SizedBox(height: 8),
-              const Text('가족과 함께 쓰는 가계부', textAlign: TextAlign.center),
-              const Spacer(),
-              if (showApple) ...[
-                FilledButton.icon(
-                  key: const Key('sign-in-apple'),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: Colors.black,
-                    foregroundColor: Colors.white,
-                    minimumSize: const Size.fromHeight(48),
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 440),
+            child: LayoutBuilder(
+              builder: (context, constraints) => SingleChildScrollView(
+                padding: _padding,
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    minHeight: max(
+                      0,
+                      constraints.maxHeight - _padding.vertical,
+                    ),
                   ),
-                  onPressed: _busy ? null : () => _signIn(auth.signInWithApple),
-                  icon: const Icon(Icons.apple),
-                  label: const Text('Apple로 계속하기'),
+                  child: IntrinsicHeight(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        const Expanded(child: _Hero()),
+                        const SizedBox(height: 20),
+                        if (showApple) ...[
+                          FilledButton.icon(
+                            key: const Key('sign-in-apple'),
+                            style: FilledButton.styleFrom(
+                              backgroundColor: Colors.black,
+                              foregroundColor: Colors.white,
+                            ),
+                            onPressed: _busy
+                                ? null
+                                : () => _signIn(auth.signInWithApple),
+                            icon: const Icon(Icons.apple),
+                            label: const Text('Apple로 계속하기'),
+                          ),
+                          const SizedBox(height: 10),
+                        ],
+                        OutlinedButton(
+                          key: const Key('sign-in-google'),
+                          onPressed: _busy
+                              ? null
+                              : () => _signIn(auth.signInWithGoogle),
+                          child: const Text('Google로 계속하기'),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
-                const SizedBox(height: 12),
-              ],
-              OutlinedButton(
-                key: const Key('sign-in-google'),
-                style: OutlinedButton.styleFrom(
-                  minimumSize: const Size.fromHeight(48),
-                ),
-                onPressed: _busy ? null : () => _signIn(auth.signInWithGoogle),
-                child: const Text('Google로 계속하기'),
               ),
-              const SizedBox(height: 32),
-            ],
+            ),
           ),
         ),
       ),
+    );
+  }
+}
+
+class _Hero extends StatelessWidget {
+  const _Hero();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        DecoratedBox(
+          decoration: BoxDecoration(
+            color: scheme.primary,
+            borderRadius: BorderRadius.circular(26),
+            boxShadow: [
+              BoxShadow(
+                color: scheme.onPrimaryContainer.withValues(alpha: 0.2),
+                offset: const Offset(0, 10),
+                blurRadius: 24,
+              ),
+            ],
+          ),
+          child: SizedBox.square(
+            dimension: 84,
+            child: Icon(
+              Icons.account_balance_wallet_outlined,
+              size: 40,
+              color: scheme.onPrimary,
+            ),
+          ),
+        ),
+        const SizedBox(height: 14),
+        Text(
+          keepAll('심플 공유 가계부'),
+          textAlign: TextAlign.center,
+          style: theme.textTheme.headlineMedium,
+        ),
+        const SizedBox(height: 14),
+        Text(
+          keepAll('둘이 같이 쓰는 가계부'),
+          style: theme.textTheme.bodyLarge?.copyWith(
+            color: scheme.onSurfaceVariant,
+          ),
+        ),
+        const SizedBox(height: 46),
+        const Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _ValuePoint(
+              icon: Icons.people_outline,
+              text: '한 사람이 적으면 바로 같이 보여요',
+            ),
+            SizedBox(height: 14),
+            _ValuePoint(icon: Icons.repeat, text: '고정 지출은 매달 알아서 채워져요'),
+            SizedBox(height: 14),
+            _ValuePoint(
+              icon: Icons.credit_card_outlined,
+              text: '카드값은 다음 달 청구 예정까지 보여요',
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _ValuePoint extends StatelessWidget {
+  const _ValuePoint({required this.icon, required this.text});
+
+  final IconData icon;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        CircleAvatar(
+          radius: 18,
+          backgroundColor: scheme.primaryContainer,
+          child: Icon(icon, size: 18, color: scheme.primary),
+        ),
+        const SizedBox(width: 12),
+        Flexible(child: Text(keepAll(text))),
+      ],
     );
   }
 }
