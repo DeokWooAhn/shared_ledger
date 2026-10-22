@@ -18,6 +18,8 @@ MVVM의 ViewModel 역할은 Riverpod `Notifier`를 상속한 컨트롤러가 맡
 | `<이름>_screen.dart` | View 위젯, enum → 화면 문구 함수, 화면에서만 쓰는 상태(입력란 컨트롤러·폼 키) | `lib/feature/ledger/ledger_start_screen.dart` |
 
 - 더 작은 예: 로그인(`lib/feature/auth/sign_in_*`), 시트(`lib/feature/settings/invite_*`)
+- 무엇을 열지 인자를 받는 화면(새 항목·고칠 항목)은 `NotifierProvider.autoDispose.family`로, 컨트롤러가 생성자로 인자를 받는다.
+  인자 클래스는 `==`를 구현한다: `lib/feature/entries/entry_form_controller.dart`(`EntryFormArgs`)
 - 저장소를 부르는 동작이 없는 화면은 컨트롤러 없이 공급자만 읽는다: `lib/feature/settings/settings_screen.dart`, `lib/feature/summary/summary_screen.dart`(계산한 요약 `monthSummaryProvider`를 그린다)
 - 같은 기능 안에서 함께 쓰는 문구·위젯은 그 기능 폴더에 둔다(`member_role_label.dart`). 기능을 넘어 쓰면 `lib/core`로 올린다.
 
@@ -129,6 +131,9 @@ Widget build(BuildContext context) {
 - 입력란 오류: 그 칸에서 끝나는 검사는 `Form` + `TextFormField.validator`, 서버 결과도 보여야 하는 칸은 `TextField` + `errorText`를 컨트롤러 상태로.
   둘을 한 칸에 섞지 않는다(`forceErrorText`와 `validate()`를 섞으면 실패 뒤 첫 누름이 무시된다).
 - 입력란은 `LabeledField`로 이름표와 묶는다. 본문은 `ConstrainedBox(maxWidth: 440~560)`로 가운데 둔다.
+  - `LabeledField`(MergeSemantics) 안의 입력란에 `InputDecoration.suffix`·`suffixText`를 쓰지 않는다. 초점에 따라 나타났다 사라지면서
+    semantics 단언(`node.isMergedIntoParent`)이 깨진다(Flutter 3.47, PR ③에서 겪음). 늘 보이는 `suffixIcon`이나 입력란 밖 글자로 둔다(`_AmountField`).
+  - 안에 따로 누를 단추가 있는 칸(날짜 칸의 '지우기')은 `LabeledField`로 합치지 않고 `Semantics(button:, label:, value:)`로 직접 알린다(`_DateField`).
 
 ## 레이어 배선 순서
 
@@ -143,6 +148,8 @@ Widget build(BuildContext context) {
 5. **경로** — `lib/router.dart`의 `Routes`에 경로를 더하고 `GoRoute`를 등록한다. 탭이면 위 '탭 화면'을 따른다.
    로그인·가계부 상태에 따라 반드시 거쳐야 하는 화면이면 `AppGate`·`redirectFor`를 고치고 `test/router_test.dart`에 경우를 더한다.
    그 밖의 화면은 `context.push`/`context.go`로 이동한다.
+   feature 화면이 다른 경로를 열어야 하면 `router.dart`를 import하지 않고, router.dart가 여는 함수를 넘겨준다
+   (`EntriesScreen(openForm:)`, `HomeShell(onAddEntry:)`). 결과가 필요하면 `context.push<T>`의 결과로 받는다.
 6. **가짜** — 새 저장소 인터페이스에는 `test/support/fakes.dart`에 가짜를 만든다. 작성 기준은 testing 스킬.
 7. **테스트** — 변환 함수 단위 테스트, 컨트롤러 테스트, 화면 흐름 위젯 테스트. testing 스킬.
 

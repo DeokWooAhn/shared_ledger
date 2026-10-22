@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'core/theme/app_theme.dart';
@@ -16,6 +17,10 @@ class SharedLedgerApp extends ConsumerWidget {
       // 기기 설정(라이트·다크)을 따른다.
       theme: buildAppTheme(),
       darkTheme: buildAppTheme(Brightness.dark),
+      // 앱은 한국어만 쓴다. 달력·입력란 메뉴 같은 Material 위젯 문구도 한국어로 보여준다.
+      locale: const Locale('ko'),
+      supportedLocales: const [Locale('ko')],
+      localizationsDelegates: GlobalMaterialLocalizations.delegates,
       // 시스템 바 스타일은 화면 위·아래 끝의 AnnotatedRegion으로 정해진다. 앱 바가 없는
       // 화면과 내비게이션 바에도 같은 값이 가도록 앱 전체를 감싼다.
       builder: (context, child) => AnnotatedRegion<SystemUiOverlayStyle>(

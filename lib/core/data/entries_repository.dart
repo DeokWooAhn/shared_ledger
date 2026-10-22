@@ -6,12 +6,71 @@ import '../model/ledger_entries.dart';
 import '../model/month_ledger.dart';
 import '../model/year_month.dart';
 
-/// 가계부 항목(수입·기본 월 지출·추가지출·카드대금)을 읽는다. 쓰기는 항목 입력 화면을 만들 때 넣는다.
+/// 항목을 고치거나 휴지통에 넣거나 꺼내지 못한 이유.
+enum EntryWriteFailure {
+  /// 연결이 없거나 서버가 답하지 않는다. 고치기·휴지통은 두 사람의 기록이 엇갈리지 않게 온라인에서만 한다.
+  offline,
+
+  /// 그사이 상대가 휴지통에 넣었거나(꺼낼 때는 꺼냈거나) 완전히 지웠다.
+  notFound,
+}
+
+class EntryWriteException implements Exception {
+  const EntryWriteException(this.reason);
+
+  final EntryWriteFailure reason;
+
+  @override
+  String toString() => 'EntryWriteException($reason)';
+}
+
+/// 가계부 항목(수입·기본 월 지출·추가지출·카드대금)을 읽고 쓴다.
+///
+/// 오프라인에서는 보기와 새 항목 추가만 된다(docs/plan.md). 고치기·휴지통은 서버에 바로 닿아야 해서,
+/// 연결이 없으면 [EntryWriteException]([EntryWriteFailure.offline])으로 실패한다.
 abstract interface class EntriesRepository {
   /// [month] 한 달의 항목. 휴지통에 넣은 항목은 뺀다.
   ///
   /// 그달의 하위 컬렉션 네 개만 구독한다. 다른 달의 항목은 읽지 않는다.
   Stream<MonthLedger> watchMonth(String ledgerId, YearMonth month);
+
+  /// [month]에 새 항목을 더하고 id를 돌려준다. 작성자는 [uid]다.
+  ///
+  /// 오프라인에서도 더할 수 있게 서버에 닿기를 기다리지 않는다. 기기 캐시에 바로 들어가 [watchMonth]에 보이고,
+  /// 연결되면 서버로 올라간다.
+  Future<String> add({
+    required String ledgerId,
+    required YearMonth month,
+    required EntryDraft draft,
+    required String uid,
+  });
+
+  /// [month]의 [id] 항목을 [draft]로 고친다. 종류([EntryDraft.kind])는 바꿀 수 없다. 온라인에서만 된다.
+  Future<void> update({
+    required String ledgerId,
+    required YearMonth month,
+    required String id,
+    required EntryDraft draft,
+    required String uid,
+  });
+
+  /// 항목을 휴지통에 넣는다. 목록과 합계에서 빠진다. 온라인에서만 된다.
+  Future<void> trash({
+    required String ledgerId,
+    required YearMonth month,
+    required EntryKind kind,
+    required String id,
+    required String uid,
+  });
+
+  /// 휴지통에 넣은 항목을 꺼낸다. 온라인에서만 된다.
+  Future<void> restore({
+    required String ledgerId,
+    required YearMonth month,
+    required EntryKind kind,
+    required String id,
+    required String uid,
+  });
 }
 
 class FirestoreEntriesRepository implements EntriesRepository {
@@ -19,17 +78,25 @@ class FirestoreEntriesRepository implements EntriesRepository {
 
   final FirebaseFirestore _firestore;
 
+  DocumentReference<Map<String, dynamic>> _month(
+    String ledgerId,
+    YearMonth month,
+  ) => _firestore
+      .collection('ledgers')
+      .doc(ledgerId)
+      .collection('months')
+      .doc(month.id);
+
+  CollectionReference<Map<String, dynamic>> _entries(
+    String ledgerId,
+    YearMonth month,
+    EntryKind kind,
+  ) => _month(ledgerId, month).collection(entryCollection(kind));
+
   @override
   Stream<MonthLedger> watchMonth(String ledgerId, YearMonth month) {
-    final monthDoc = _firestore
-        .collection('ledgers')
-        .doc(ledgerId)
-        .collection('months')
-        .doc(month.id);
-    Stream<List<EntryDoc>> watch(String collection) => monthDoc
-        .collection(collection)
-        .snapshots()
-        .map(
+    Stream<List<EntryDoc>> watch(EntryKind kind) =>
+        _entries(ledgerId, month, kind).snapshots().map(
           (snapshot) => [
             for (final doc in snapshot.docs)
               (
@@ -40,10 +107,10 @@ class FirestoreEntriesRepository implements EntriesRepository {
           ],
         );
     return combineLatest([
-      watch('incomes'),
-      watch('planned'),
-      watch('extras'),
-      watch('cardBills'),
+      watch(EntryKind.income),
+      watch(EntryKind.planned),
+      watch(EntryKind.extra),
+      watch(EntryKind.cardBill),
     ]).map((docs) {
       final [incomes, planned, extras, cardBills] = docs;
       return monthLedgerFromFirestore(
@@ -54,6 +121,158 @@ class FirestoreEntriesRepository implements EntriesRepository {
       );
     });
   }
+
+  @override
+  Future<String> add({
+    required String ledgerId,
+    required YearMonth month,
+    required EntryDraft draft,
+    required String uid,
+  }) async {
+    final doc = _entries(ledgerId, month, draft.kind).doc();
+    // set의 Future는 서버가 받아야 끝나서, 기다리면 오프라인에서는 저장이 끝나지 않는다.
+    // 캐시에는 바로 들어가므로 기다리지 않는다. 서버가 거부하면 그 오류는 앱의 오류 처리로 간다.
+    unawaited(doc.set(newEntryData(draft, uid: uid)));
+    return doc.id;
+  }
+
+  @override
+  Future<void> update({
+    required String ledgerId,
+    required YearMonth month,
+    required String id,
+    required EntryDraft draft,
+    required String uid,
+  }) => _writeOnline(
+    _entries(ledgerId, month, draft.kind).doc(id),
+    entryUpdateData(draft, uid: uid),
+    trashed: false,
+  );
+
+  @override
+  Future<void> trash({
+    required String ledgerId,
+    required YearMonth month,
+    required EntryKind kind,
+    required String id,
+    required String uid,
+  }) => _writeOnline(
+    _entries(ledgerId, month, kind).doc(id),
+    trashEntryUpdate(uid: uid),
+    trashed: false,
+  );
+
+  @override
+  Future<void> restore({
+    required String ledgerId,
+    required YearMonth month,
+    required EntryKind kind,
+    required String id,
+    required String uid,
+  }) => _writeOnline(
+    _entries(ledgerId, month, kind).doc(id),
+    restoreEntryUpdate(uid: uid),
+    trashed: true,
+  );
+
+  // 트랜잭션은 서버에서 문서를 읽어야 해서 오프라인이면 실패한다. 그래서 온라인에서만 고치는 데 쓴다.
+  // 읽은 문서가 없거나 휴지통 상태가 [trashed]와 다르면(그사이 상대가 바꿈) 고치지 않는다.
+  Future<void> _writeOnline(
+    DocumentReference<Map<String, dynamic>> doc,
+    Map<Object, Object> data, {
+    required bool trashed,
+  }) async {
+    try {
+      await _firestore.runTransaction(timeout: _onlineTimeout, (
+        transaction,
+      ) async {
+        final current = (await transaction.get(doc)).data();
+        if (current == null ||
+            entryIsTrashed(current, hasPendingWrites: false) != trashed) {
+          throw const EntryWriteException(EntryWriteFailure.notFound);
+        }
+        transaction.update(doc, data);
+      });
+    } on FirebaseException catch (e) {
+      if (e.code == 'unavailable' || e.code == 'deadline-exceeded') {
+        throw const EntryWriteException(EntryWriteFailure.offline);
+      }
+      rethrow;
+    }
+  }
+
+  // 연결이 끊긴 채로 오래 기다리지 않게 한다. 기본값은 30초다.
+  static const _onlineTimeout = Duration(seconds: 10);
+}
+
+/// [kind] 항목의 Firestore 컬렉션 이름.
+String entryCollection(EntryKind kind) => switch (kind) {
+  EntryKind.income => 'incomes',
+  EntryKind.planned => 'planned',
+  EntryKind.extra => 'extras',
+  EntryKind.cardBill => 'cardBills',
+};
+
+/// [kind] 항목의 날짜 필드 이름.
+String entryDateField(EntryKind kind) => switch (kind) {
+  EntryKind.income => 'receivedOn',
+  EntryKind.planned || EntryKind.cardBill => 'paidOn',
+  EntryKind.extra => 'spentOn',
+};
+
+/// 새 항목 문서. `firestore.rules`의 항목 create 규칙(validEntry, createdNow)과 필드가 같아야 한다.
+///
+/// 그 종류가 쓰는 칸만 넣고, 비어 있는 선택 칸(금액 미정, 날짜, 메모)은 넣지 않는다.
+Map<String, Object> newEntryData(EntryDraft draft, {required String uid}) => {
+  for (final MapEntry(:key, :value) in _entryFields(draft).entries)
+    if (value != null) key: value,
+  'createdBy': uid,
+  'updatedBy': uid,
+  'createdAt': FieldValue.serverTimestamp(),
+  'updatedAt': FieldValue.serverTimestamp(),
+};
+
+/// 항목을 고칠 때 쓰는 값. 그 종류가 쓰는 칸을 모두 다시 쓰고, 비운 선택 칸은 필드를 지운다.
+/// 만든 사람·시간은 그대로 두고 고친 사람·시간만 바꾼다(규칙의 updatedNow).
+Map<Object, Object> entryUpdateData(EntryDraft draft, {required String uid}) =>
+    {
+      for (final MapEntry(:key, :value) in _entryFields(draft).entries)
+        key: value ?? FieldValue.delete(),
+      'updatedBy': uid,
+      'updatedAt': FieldValue.serverTimestamp(),
+    };
+
+/// 휴지통에 넣을 때 쓰는 값. 넣을 때만 서버 시간으로 쓴다.
+Map<Object, Object> trashEntryUpdate({required String uid}) => {
+  'deletedAt': FieldValue.serverTimestamp(),
+  'updatedBy': uid,
+  'updatedAt': FieldValue.serverTimestamp(),
+};
+
+/// 휴지통에서 꺼낼 때 쓰는 값. `deletedAt`을 null로 쓰지 않고 필드를 지운다.
+Map<Object, Object> restoreEntryUpdate({required String uid}) => {
+  'deletedAt': FieldValue.delete(),
+  'updatedBy': uid,
+  'updatedAt': FieldValue.serverTimestamp(),
+};
+
+// 종류마다 쓰는 칸(docs/firestore.md의 항목 표). 값이 null이면 비어 있는 칸이다.
+Map<String, Object?> _entryFields(EntryDraft draft) {
+  final memo = draft.memo?.trim() ?? '';
+  final date = draft.date;
+  return {
+    'memberId': draft.memberId,
+    'amount': draft.amount,
+    if (draft.kind != EntryKind.cardBill) 'title': draft.title.trim(),
+    if (draft.kind == EntryKind.planned) 'categoryId': draft.categoryId,
+    if (draft.kind case EntryKind.planned || EntryKind.extra)
+      'paymentMethodId': draft.paymentMethodId,
+    if (draft.kind == EntryKind.cardBill) 'cardId': draft.cardId,
+    entryDateField(draft.kind): date == null
+        ? null
+        : entryDateToFirestore(date),
+    'memo': memo.isEmpty ? null : memo,
+  };
 }
 
 /// 항목 문서 하나. [hasPendingWrites]는 내가 고친 내용이 아직 서버에 닿지 않았는지다.

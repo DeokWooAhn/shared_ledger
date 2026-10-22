@@ -32,6 +32,8 @@ class AppPalette {
     required this.memberLine,
     required this.danger,
     required this.onDanger,
+    required this.track,
+    required this.segmentOn,
   });
 
   final Color bgApp;
@@ -63,6 +65,12 @@ class AppPalette {
   /// 디자인에는 오류 색으로 채운 버튼이 없다. [ColorScheme.onError]를 채우려고 둔다.
   final Color onDanger;
 
+  /// 세그먼트(항목 종류 고르기)의 바탕.
+  final Color track;
+
+  /// 세그먼트에서 고른 칸의 바탕.
+  final Color segmentOn;
+
   static const light = AppPalette._(
     bgApp: Color(0xFFF5F5F4),
     card: Color(0xFFFFFFFF),
@@ -88,6 +96,8 @@ class AppPalette {
     memberLine: Color(0xFFD6D6D4),
     danger: Color(0xFFC93C3C),
     onDanger: Color(0xFFFFFFFF),
+    track: Color(0xFFEBEBE9),
+    segmentOn: Color(0xFFFFFFFF),
   );
 
   static const dark = AppPalette._(
@@ -115,6 +125,8 @@ class AppPalette {
     memberLine: Color(0xFF4A4A4A),
     danger: Color(0xFFFF6B6B),
     onDanger: Color(0xFF121212),
+    track: Color(0xFF262626),
+    segmentOn: Color(0xFF3A3A3A),
   );
 
   static AppPalette of(Brightness brightness) => switch (brightness) {
@@ -131,6 +143,7 @@ class AppPalette {
 /// - 남는 현금 카드는 [hero] 바탕에 금액 [accentOnDark], 현금 유입·유출 금액 [onHero], 보조 글자 [heroSub].
 ///   라이트·다크 모두 어두운 카드다.
 /// - 막대그래프에서 강조하지 않는 막대는 [barMuted].
+/// - 세그먼트(항목 종류 고르기)는 [track] 바탕에 고른 칸만 [segmentOn].
 @immutable
 class AppColors extends ThemeExtension<AppColors> {
   const AppColors({
@@ -145,6 +158,8 @@ class AppColors extends ThemeExtension<AppColors> {
     required this.sea,
     required this.seaSoft,
     required this.memberLine,
+    required this.track,
+    required this.segmentOn,
   });
 
   AppColors.from(AppPalette p)
@@ -160,6 +175,8 @@ class AppColors extends ThemeExtension<AppColors> {
         sea: p.sea,
         seaSoft: p.seaSoft,
         memberLine: p.memberLine,
+        track: p.track,
+        segmentOn: p.segmentOn,
       );
 
   final Color textMuted;
@@ -173,6 +190,8 @@ class AppColors extends ThemeExtension<AppColors> {
   final Color sea;
   final Color seaSoft;
   final Color memberLine;
+  final Color track;
+  final Color segmentOn;
 
   static final light = AppColors.from(AppPalette.light);
   static final dark = AppColors.from(AppPalette.dark);
@@ -195,6 +214,8 @@ class AppColors extends ThemeExtension<AppColors> {
     Color? sea,
     Color? seaSoft,
     Color? memberLine,
+    Color? track,
+    Color? segmentOn,
   }) => AppColors(
     textMuted: textMuted ?? this.textMuted,
     hero: hero ?? this.hero,
@@ -207,6 +228,8 @@ class AppColors extends ThemeExtension<AppColors> {
     sea: sea ?? this.sea,
     seaSoft: seaSoft ?? this.seaSoft,
     memberLine: memberLine ?? this.memberLine,
+    track: track ?? this.track,
+    segmentOn: segmentOn ?? this.segmentOn,
   );
 
   @override
@@ -225,6 +248,8 @@ class AppColors extends ThemeExtension<AppColors> {
       sea: mix(sea, other.sea),
       seaSoft: mix(seaSoft, other.seaSoft),
       memberLine: mix(memberLine, other.memberLine),
+      track: mix(track, other.track),
+      segmentOn: mix(segmentOn, other.segmentOn),
     );
   }
 
@@ -241,7 +266,9 @@ class AppColors extends ThemeExtension<AppColors> {
       other.skySoft == skySoft &&
       other.sea == sea &&
       other.seaSoft == seaSoft &&
-      other.memberLine == memberLine;
+      other.memberLine == memberLine &&
+      other.track == track &&
+      other.segmentOn == segmentOn;
 
   @override
   int get hashCode => Object.hash(
@@ -256,6 +283,8 @@ class AppColors extends ThemeExtension<AppColors> {
     sea,
     seaSoft,
     memberLine,
+    track,
+    segmentOn,
   );
 }
 

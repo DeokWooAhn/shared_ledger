@@ -104,18 +104,28 @@ function entryRef(db, { type = 'extras', id = 'entry-1', month = MONTH, ledger =
   return doc(db, 'ledgers', ledger, 'months', month, type, id);
 }
 
-function newEntry(uid, fields = {}) {
+// 종류마다 앱이 쓰는 필드(docs/firestore.md의 항목 표). 날짜·메모는 선택이라 뺐다.
+const ENTRY_FIELDS = {
+  incomes: { memberId: 'owner', title: '월급', amount: 3000000 },
+  planned: { memberId: 'owner', title: '관리비', categoryId: 'c1', paymentMethodId: 'p1', amount: 200000 },
+  extras: { memberId: 'owner', title: '장보기', paymentMethodId: 'card', amount: 10000 },
+  cardBills: { memberId: 'owner', cardId: 'card', amount: 500000 },
+};
+
+function newEntryOf(type, uid, fields = {}) {
   return {
-    memberId: 'owner',
-    title: '장보기',
-    paymentMethodId: 'card',
-    amount: 10000,
+    ...ENTRY_FIELDS[type],
     createdBy: uid,
     updatedBy: uid,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
     ...fields,
   };
+}
+
+// 추가지출 한 건.
+function newEntry(uid, fields = {}) {
+  return newEntryOf('extras', uid, fields);
 }
 
 function seedEntry({ ledger = LEDGER, ...fields } = {}) {
@@ -405,7 +415,7 @@ describe('가계부 항목', () => {
     await assertFails(setDoc(entryRef(db, { id: 'c' }), newEntry(EDITOR, { amount: 10.5 })));
     await assertFails(setDoc(entryRef(db, { id: 'd' }), newEntry(EDITOR, { amount: null })));
     await assertSucceeds(
-      setDoc(entryRef(db, { type: 'planned', id: 'template-1' }), newEntry(EDITOR, { amount: null })),
+      setDoc(entryRef(db, { type: 'planned', id: 'template-1' }), newEntryOf('planned', EDITOR, { amount: null })),
     );
   });
 
@@ -427,6 +437,93 @@ describe('가계부 항목', () => {
     const db = firestoreAs(EDITOR);
     await assertFails(setDoc(entryRef(db, { month: '2026-13' }), newEntry(EDITOR)));
     await assertFails(setDoc(entryRef(db, { month: '202610' }), newEntry(EDITOR)));
+  });
+
+  test('휴지통에서 꺼낼 때는 deletedAt 필드를 지운다', async () => {
+    await seedEntry({ deletedAt: Timestamp.fromMillis(2000) });
+    await assertSucceeds(
+      updateDoc(entryRef(firestoreAs(EDITOR)), {
+        deletedAt: deleteField(),
+        updatedBy: EDITOR,
+        updatedAt: serverTimestamp(),
+      }),
+    );
+  });
+
+  describe('종류별 필드', () => {
+    test('네 종류 모두 앱이 쓰는 필드로 날짜·메모까지 넣어 만들 수 있다', async () => {
+      const db = firestoreAs(EDITOR);
+      const dates = { incomes: 'receivedOn', planned: 'paidOn', extras: 'spentOn', cardBills: 'paidOn' };
+      for (const [type, dateField] of Object.entries(dates)) {
+        await assertSucceeds(
+          setDoc(entryRef(db, { type }), newEntryOf(type, EDITOR, { [dateField]: '2026-10-25', memo: '메모' })),
+        );
+      }
+    });
+
+    test('그 종류가 받지 않는 필드가 있으면 만들 수 없다', async () => {
+      const db = firestoreAs(EDITOR);
+      await assertFails(setDoc(entryRef(db), newEntry(EDITOR, { categoryId: 'c1' })));
+      await assertFails(setDoc(entryRef(db), newEntry(EDITOR, { receivedOn: '2026-10-25' })));
+      await assertFails(setDoc(entryRef(db), newEntry(EDITOR, { note: '모르는 필드' })));
+      await assertFails(setDoc(entryRef(db, { type: 'cardBills' }), newEntryOf('cardBills', EDITOR, { title: '카드값' })));
+    });
+
+    test('누가는 owner·partner 이름표 자리만 받는다', async () => {
+      const db = firestoreAs(EDITOR);
+      await assertSucceeds(setDoc(entryRef(db, { id: 'a' }), newEntry(EDITOR, { memberId: 'partner' })));
+      await assertFails(setDoc(entryRef(db, { id: 'b' }), newEntry(EDITOR, { memberId: EDITOR })));
+      await assertFails(setDoc(entryRef(db, { id: 'c' }), newEntry(EDITOR, { memberId: null })));
+    });
+
+    test('종류마다 꼭 필요한 분류·결제수단·카드 칸이 있어야 한다', async () => {
+      const db = firestoreAs(EDITOR);
+      for (const [type, field] of [
+        ['planned', 'categoryId'],
+        ['planned', 'paymentMethodId'],
+        ['extras', 'paymentMethodId'],
+        ['cardBills', 'cardId'],
+      ]) {
+        await assertFails(setDoc(entryRef(db, { type, id: field }), newEntryOf(type, EDITOR, { [field]: null })));
+        await assertFails(setDoc(entryRef(db, { type, id: field }), newEntryOf(type, EDITOR, { [field]: '' })));
+      }
+    });
+
+    test('제목은 1~40자여야 한다', async () => {
+      const db = firestoreAs(EDITOR);
+      await assertSucceeds(setDoc(entryRef(db, { id: 'a' }), newEntry(EDITOR, { title: '가'.repeat(40) })));
+      // 규칙의 size()는 UTF-16 단위로 센다. 이모지는 한 개가 두 칸이라 20개까지다(앱도 String.length로 센다).
+      await assertSucceeds(setDoc(entryRef(db, { id: 'b' }), newEntry(EDITOR, { title: '🍚'.repeat(20) })));
+      await assertFails(setDoc(entryRef(db, { id: 'f' }), newEntry(EDITOR, { title: '🍚'.repeat(21) })));
+      await assertFails(setDoc(entryRef(db, { id: 'c' }), newEntry(EDITOR, { title: '가'.repeat(41) })));
+      await assertFails(setDoc(entryRef(db, { id: 'd' }), newEntry(EDITOR, { title: '' })));
+      await assertFails(setDoc(entryRef(db, { type: 'incomes', id: 'e' }), newEntryOf('incomes', EDITOR, { title: null })));
+    });
+
+    test('메모는 200자까지 받는다', async () => {
+      const db = firestoreAs(EDITOR);
+      await assertSucceeds(setDoc(entryRef(db, { id: 'a' }), newEntry(EDITOR, { memo: '가'.repeat(200) })));
+      await assertFails(setDoc(entryRef(db, { id: 'b' }), newEntry(EDITOR, { memo: '가'.repeat(201) })));
+      await assertFails(setDoc(entryRef(db, { id: 'c' }), newEntry(EDITOR, { memo: 3 })));
+    });
+
+    test('날짜는 yyyy-MM-dd 문자열이어야 한다', async () => {
+      const db = firestoreAs(EDITOR);
+      await assertSucceeds(setDoc(entryRef(db, { id: 'a' }), newEntry(EDITOR, { spentOn: '2026-10-18' })));
+      await assertFails(setDoc(entryRef(db, { id: 'b' }), newEntry(EDITOR, { spentOn: '2026/10/18' })));
+      await assertFails(setDoc(entryRef(db, { id: 'c' }), newEntry(EDITOR, { spentOn: Timestamp.now() })));
+    });
+
+    test('고칠 때도 고친 뒤의 문서를 같은 기준으로 본다', async () => {
+      await seedEntry();
+      const db = firestoreAs(EDITOR);
+      const edit = (fields) => updateDoc(entryRef(db), { ...fields, updatedBy: EDITOR, updatedAt: serverTimestamp() });
+      await assertSucceeds(edit({ title: '마트', memo: '우유', spentOn: '2026-10-18' }));
+      await assertSucceeds(edit({ memo: deleteField(), spentOn: deleteField() }));
+      await assertFails(edit({ memberId: 'someone' }));
+      await assertFails(edit({ title: deleteField() }));
+      await assertFails(edit({ cardId: 'card' }));
+    });
   });
 });
 

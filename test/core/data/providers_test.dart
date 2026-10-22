@@ -65,6 +65,55 @@ void main() {
     expect(settings.watched, isEmpty);
   });
 
+  group('내 역할과 항목 탭의 종류', () {
+    const shared = Ledger(
+      id: 'l1',
+      name: '우리 가계부',
+      ownerUid: 'partner',
+      roles: {'me': MemberRole.viewer},
+    );
+
+    Future<ProviderContainer> signedInWith(List<Ledger> ledgers) async {
+      final container = createContainer(
+        auth: FakeAuthRepository(signedIn: me),
+        ledgers: FakeLedgerRepository(ledgers),
+      );
+      await loadSignedInUser(container);
+      container.listen(myRoleProvider, (_, _) {});
+      await container.read(myLedgersProvider.future);
+      return container;
+    }
+
+    test('내 역할은 지금 가계부에서의 역할이다', () async {
+      final owner = await signedInWith([
+        const Ledger(id: 'l1', name: '우리 가계부', ownerUid: 'me'),
+      ]);
+      final viewer = await signedInWith([shared]);
+
+      expect(owner.read(myRoleProvider), MemberRole.owner);
+      expect(viewer.read(myRoleProvider), MemberRole.viewer);
+    });
+
+    test('가계부가 없거나 로그아웃 상태면 역할이 없다', () async {
+      final noLedger = await signedInWith(const []);
+      final signedOut = createContainer();
+      signedOut.listen(myRoleProvider, (_, _) {});
+
+      expect(noLedger.read(myRoleProvider), isNull);
+      expect(signedOut.read(myRoleProvider), isNull);
+    });
+
+    test('항목 탭은 기본 월 지출에서 시작하고 고른 종류를 기억한다', () {
+      final container = createContainer();
+
+      expect(container.read(selectedEntryKindProvider), EntryKind.planned);
+      container
+          .read(selectedEntryKindProvider.notifier)
+          .select(EntryKind.extra);
+      expect(container.read(selectedEntryKindProvider), EntryKind.extra);
+    });
+  });
+
   group('보는 달의 항목과 요약', () {
     const ledger = Ledger(id: 'l1', name: '우리 가계부', ownerUid: 'me');
     const october = YearMonth(2026, 10);

@@ -182,18 +182,60 @@ service cloud.firestore {
           return deletedAt == null || deletedAt is timestamp;
         }
 
+        // 종류마다 받는 필드. 앱의 newEntryData(lib/core/data/entries_repository.dart)와 같다.
+        function entryFields() {
+          let common = ['memberId', 'amount', 'memo', 'deletedAt', 'createdBy', 'createdAt', 'updatedBy', 'updatedAt'];
+          return entryType == 'incomes' ? common.concat(['title', 'receivedOn'])
+            : entryType == 'planned' ? common.concat(['title', 'categoryId', 'paymentMethodId', 'paidOn'])
+            : entryType == 'extras' ? common.concat(['title', 'paymentMethodId', 'spentOn'])
+            : common.concat(['cardId', 'paidOn']);
+        }
+
+        function textUpTo(field, max) {
+          let value = request.resource.data.get(field, null);
+          return value is string && value.size() >= 1 && value.size() <= max;
+        }
+
+        function optionalTextUpTo(field, max) {
+          let value = request.resource.data.get(field, null);
+          return value == null || (value is string && value.size() <= max);
+        }
+
+        // 날짜는 '2026-10-25' 같은 문자열(선택). 받지 않는 종류의 날짜 칸은 entryFields가 막는다.
+        function validDate(field) {
+          let value = request.resource.data.get(field, null);
+          return value == null || (value is string && value.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$'));
+        }
+
+        // 누가는 이름표 자리(owner·partner). 제목은 카드대금 말고 모두 1~40자, 메모는 200자까지.
+        // 분류·결제수단·카드 칸은 그 종류에 꼭 있어야 한다.
+        function validEntry() {
+          let data = request.resource.data;
+          return data.keys().hasOnly(entryFields())
+            && data.get('memberId', null) in ['owner', 'partner']
+            && (entryType == 'cardBills' || textUpTo('title', 40))
+            && optionalTextUpTo('memo', 200)
+            && (entryType != 'planned' || (textUpTo('categoryId', 100) && textUpTo('paymentMethodId', 100)))
+            && (entryType != 'extras' || textUpTo('paymentMethodId', 100))
+            && (entryType != 'cardBills' || textUpTo('cardId', 100))
+            && validDate('receivedOn')
+            && validDate('paidOn')
+            && validDate('spentOn')
+            && validAmount()
+            && validTrash();
+        }
+
         allow read: if isEntryType() && isMemberOf(ledgerData(ledgerId));
         allow create: if isEntryType()
           && validMonth()
           && canWriteIn(ledgerData(ledgerId))
           && createdNow()
-          && validAmount()
-          && validTrash();
+          && validEntry();
+        // 고칠 때도 고친 뒤의 문서 전체를 같은 기준으로 본다.
         allow update: if isEntryType()
           && canWriteIn(ledgerData(ledgerId))
           && updatedNow()
-          && validAmount()
-          && validTrash();
+          && validEntry();
         // 휴지통(deletedAt)에 있는 항목만 완전히 지울 수 있다.
         allow delete: if isEntryType()
           && canWriteIn(ledgerData(ledgerId))
