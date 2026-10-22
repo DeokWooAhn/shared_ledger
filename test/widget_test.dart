@@ -75,6 +75,7 @@ void main() {
         ledgers: FakeLedgerRepository(),
       );
 
+      expect(find.byKey(const Key('app-logo')), findsOneWidget);
       expect(findSentence('심플 공유 가계부'), findsOneWidget);
       expect(findSentence('둘이 같이 쓰는 가계부'), findsOneWidget);
       expect(find.byKey(const Key('sign-in-google')), findsOneWidget);
