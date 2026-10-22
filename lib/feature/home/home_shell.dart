@@ -6,6 +6,7 @@ import '../../core/data/providers.dart';
 import '../../core/model/ledger_entries.dart';
 import '../../core/model/year_month.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/widget/keep_all.dart';
 
 /// 이 폭부터 아래 탭 막대 대신 옆 탭 막대를 쓴다. 아이패드·Mac, 가로로 눕힌 휴대폰이 해당한다.
 const wideLayoutMinWidth = 600.0;
@@ -71,6 +72,18 @@ class HomeShell extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // 기다리지 않고 더한 항목을 서버가 거부하면 목록에서 조용히 빠지므로, 어느 탭에 있든 알린다.
+    ref.listen(rejectedEntriesProvider, (_, rejected) {
+      if (rejected is! AsyncData) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          key: const Key('entry-rejected'),
+          content: Text(
+            keepAll('저장한 항목을 서버가 받지 않아 목록에서 빠졌어요. 쓰기 권한이 있는지 확인해 주세요.'),
+          ),
+        ),
+      );
+    });
     final onAdd = _addEntry(context, ref);
     if (MediaQuery.sizeOf(context).width >= wideLayoutMinWidth) {
       return Scaffold(

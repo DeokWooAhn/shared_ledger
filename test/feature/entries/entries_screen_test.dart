@@ -228,6 +228,27 @@ void main() {
       expect(textOf(tester, const Key('cash-out')), '186,000원');
     });
 
+    testWidgets('서버가 새 항목을 받지 않으면 목록에서 빠지고 알린다', (tester) async {
+      final entries = FakeEntriesRepository()..rejectNextAdd = true;
+      await pumpEntries(tester, entries: entries);
+      await tester.tap(inList(find.byKey(const Key('entry-kind-income'))));
+      await settle(tester);
+
+      await openAddForm(tester);
+      await enterInForm(tester, const Key('entry-amount'), '3000000');
+      await enterInForm(tester, const Key('entry-title'), '월급');
+      await tapInForm(tester, const Key('entry-save'));
+      await settleRoute(tester);
+
+      expect(find.byType(EntryFormScreen), findsNothing);
+      expect(find.byKey(const Key('entries-empty')), findsOneWidget);
+      expect(find.byKey(const Key('entry-rejected')), findsOneWidget);
+      expect(
+        findSentence('저장한 항목을 서버가 받지 않아 목록에서 빠졌어요. 쓰기 권한이 있는지 확인해 주세요.'),
+        findsOneWidget,
+      );
+    });
+
     testWidgets('요약 탭의 + 버튼은 추가지출로 열고 보고 있는 달에 넣는다', (tester) async {
       final entries = FakeEntriesRepository();
       await pumpEntries(tester, entries: entries);
@@ -348,10 +369,6 @@ void main() {
       ]) {
         await showInForm(tester, key);
         final node = tester.getSemantics(inForm(find.byKey(key)));
-        // ignore: avoid_print
-        print(
-          'DEBUG $key ${node.label} ${node.flagsCollection} merged=${node.isMergedIntoParent}',
-        );
         expect(node.label, contains(label));
         expect(node.flagsCollection.isTextField, isTrue);
       }

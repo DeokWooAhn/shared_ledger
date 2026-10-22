@@ -86,6 +86,7 @@ test('…', () async {
 - 항목은 휴지통 항목이 이미 빠진 `MonthLedger`를 달마다 넣는다(`FakeEntriesRepository.put`으로 바꾸면 구독 중인 곳에 다시 알린다).
   쓰기도 실제 약속을 지킨다: 추가는 `offline`이어도 되고, 고치기·휴지통·꺼내기는 `offline`이면 `EntryWriteFailure.offline`,
   없는 항목(휴지통에 든 항목을 고칠 때 포함)이면 `notFound`로 실패한다. 기록은 `added`·`updated`·`trashed`·`restored`, 지금 항목은 `monthOf(달)`.
+  서버가 새 항목을 나중에 거부하는 경우는 `rejectNextAdd`: 추가는 성공하고 목록에 들어갔다가 조금 뒤 빠지며 `rejectedAdds`로 알린다.
 - 실패 스위치는 다음 한 번만 실패하고 스스로 꺼진다: 도메인 실패(`nextJoinFailure`), 예상 못 한 오류(`failNextCreate`, `failNextInvite`, `failNextJoin`, `failNextSignIn`, `failNextSignOut`, `failNextWatch`, `failNextWrite`).
   연결 상태처럼 계속되는 조건은 스위치가 아니라 상태로 둔다(`FakeEntriesRepository.offline`).
 

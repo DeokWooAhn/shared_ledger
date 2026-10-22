@@ -121,6 +121,11 @@ class SelectedEntryKind extends Notifier<EntryKind> {
   void select(EntryKind kind) => state = kind;
 }
 
+/// 서버가 받지 않은 새 항목. 오프라인 추가는 기다리지 않아서 거부는 나중에 여기로 온다. 홈 틀이 듣고 알린다.
+final rejectedEntriesProvider = StreamProvider<RejectedEntry>(
+  (ref) => ref.watch(entriesRepositoryProvider).rejectedAdds,
+);
+
 /// 보고 있는 달의 항목(휴지통 제외). 가계부가 없으면 빈 달이다.
 ///
 /// 요약·항목 탭이 이 공급자 하나를 같이 읽어서 그달 구독은 한 벌뿐이다. 달을 옮기면 이전 달 구독을 끊는다.

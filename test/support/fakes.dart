@@ -269,6 +269,14 @@ class FakeEntriesRepository implements EntriesRepository {
   /// true면 다음 쓰기가 [EntryWriteException]이 아닌 오류(권한 등)로 실패한다.
   bool failNextWrite = false;
 
+  /// true면 다음 추가를 서버가 거부한 것처럼 한다. 실제 저장소처럼 [add]는 성공하고 목록에 들어갔다가,
+  /// 서버 응답이 온 뒤처럼 조금 뒤에 빠지며 [rejectedAdds]로 알린다.
+  bool rejectNextAdd = false;
+  final _rejected = StreamController<RejectedEntry>.broadcast();
+
+  @override
+  Stream<RejectedEntry> get rejectedAdds => _rejected.stream;
+
   /// [month]의 항목을 바꾼다. 어느 가계부를 물어도 같은 달이면 같은 항목이다.
   void put(YearMonth month, MonthLedger ledger) {
     _months[month] = ledger;
@@ -302,6 +310,17 @@ class FakeEntriesRepository implements EntriesRepository {
     added.add((ledgerId: ledgerId, month: month, draft: draft, uid: uid));
     final id = 'entry-${added.length}';
     _edit(month, draft.kind, (entries) => [...entries, _entryOf(id, draft)]);
+    if (rejectNextAdd) {
+      rejectNextAdd = false;
+      scheduleMicrotask(() {
+        _edit(
+          month,
+          draft.kind,
+          (entries) => [...entries.where((e) => e.id != id)],
+        );
+        _rejected.add((id: id, month: month, kind: draft.kind));
+      });
+    }
     return id;
   }
 

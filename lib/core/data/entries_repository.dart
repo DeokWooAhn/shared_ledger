@@ -24,6 +24,9 @@ class EntryWriteException implements Exception {
   String toString() => 'EntryWriteException($reason)';
 }
 
+/// 서버가 받지 않은 새 항목. 기다리지 않고 기기 캐시에 넣었던 것이라 목록에서 다시 빠진다.
+typedef RejectedEntry = ({String id, YearMonth month, EntryKind kind});
+
 /// 가계부 항목(수입·기본 월 지출·추가지출·카드대금)을 읽고 쓴다.
 ///
 /// 오프라인에서는 보기와 새 항목 추가만 된다(docs/plan.md). 고치기·휴지통은 서버에 바로 닿아야 해서,
@@ -37,13 +40,17 @@ abstract interface class EntriesRepository {
   /// [month]에 새 항목을 더하고 id를 돌려준다. 작성자는 [uid]다.
   ///
   /// 오프라인에서도 더할 수 있게 서버에 닿기를 기다리지 않는다. 기기 캐시에 바로 들어가 [watchMonth]에 보이고,
-  /// 연결되면 서버로 올라간다.
+  /// 연결되면 서버로 올라간다. 그래서 서버가 나중에 거부한 것은 이 Future가 아니라 [rejectedAdds]로 알린다.
   Future<String> add({
     required String ledgerId,
     required YearMonth month,
     required EntryDraft draft,
     required String uid,
   });
+
+  /// [add]로 더한 항목을 서버가 받지 않았을 때(그사이 보기 전용이 됐거나 가계부에서 나감) 알린다.
+  /// 그 항목은 [watchMonth]에서 다시 빠진다.
+  Stream<RejectedEntry> get rejectedAdds;
 
   /// [month]의 [id] 항목을 [draft]로 고친다. 종류([EntryDraft.kind])는 바꿀 수 없다. 온라인에서만 된다.
   Future<void> update({
@@ -77,6 +84,10 @@ class FirestoreEntriesRepository implements EntriesRepository {
   FirestoreEntriesRepository(this._firestore);
 
   final FirebaseFirestore _firestore;
+  final _rejectedAdds = StreamController<RejectedEntry>.broadcast();
+
+  @override
+  Stream<RejectedEntry> get rejectedAdds => _rejectedAdds.stream;
 
   DocumentReference<Map<String, dynamic>> _month(
     String ledgerId,
@@ -131,8 +142,20 @@ class FirestoreEntriesRepository implements EntriesRepository {
   }) async {
     final doc = _entries(ledgerId, month, draft.kind).doc();
     // set의 Future는 서버가 받아야 끝나서, 기다리면 오프라인에서는 저장이 끝나지 않는다.
-    // 캐시에는 바로 들어가므로 기다리지 않는다. 서버가 거부하면 그 오류는 앱의 오류 처리로 간다.
-    unawaited(doc.set(newEntryData(draft, uid: uid)));
+    // 캐시에는 바로 들어가므로 기다리지 않는다. 서버가 규칙으로 거부하면 rejectedAdds로 알리고,
+    // 예상 못 한 오류는 삼키지 않고 다시 던져 앱의 오류 처리로 보낸다.
+    unawaited(
+      doc.set(newEntryData(draft, uid: uid)).catchError((
+        Object error,
+        StackTrace stackTrace,
+      ) {
+        if (error is FirebaseException && error.code == 'permission-denied') {
+          _rejectedAdds.add((id: doc.id, month: month, kind: draft.kind));
+          return;
+        }
+        Error.throwWithStackTrace(error, stackTrace);
+      }),
+    );
     return doc.id;
   }
 
