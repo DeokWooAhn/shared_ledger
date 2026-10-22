@@ -1,0 +1,14 @@
+{
+  "extraKnownMarketplaces": {
+    "ahn-cc-kit": {
+      "source": {
+        "source": "github",
+        "repo": "DeokWooAhn/ahn-cc-kit"
+      }
+    }
+  },
+  "enabledPlugins": {
+    "git-guard@ahn-cc-kit": true,
+    "android-guard@ahn-cc-kit": true
+  }
+}

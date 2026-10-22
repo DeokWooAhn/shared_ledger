@@ -62,6 +62,10 @@ reviews:
     - "!firestore-tests/node_modules/**"
     # --- CI ---
     - ".github/workflows/**"
+    # --- 규칙·설정 (에이전트 지침, 스킬, Claude Code 설정) ---
+    - "AGENTS.md"
+    - ".claude/**"
+    - ".gitignore"
 
   path_instructions:
     # ---------------------------------------------------------------
@@ -546,6 +550,35 @@ reviews:
         - 포맷 검사는 `dart format --output=none --set-exit-if-changed lib test`. 대상 폴더를 줄이면 지적
         - iOS 빌드는 아직 CI 에 없다. 넣으면 러너의 Xcode 가 iOS 15 와 Flutter 3.47.7 요구를 만족하는지 확인
         - 실패하는 단계를 `continue-on-error` 로 넘기면 지적
+        - job `name` 을 바꾸면 `main` ruleset("main 보호")의 필수 검사 이름도 같이 바꿔야 한다. 안 그러면 모든 PR 이 막힌다. PR 설명에 그 내용이 있는지 묻는다
+
+    # ---------------------------------------------------------------
+    # 규칙·설정 (에이전트와 사람이 같이 보는 지침)
+    # ---------------------------------------------------------------
+    - path: "AGENTS.md"
+      instructions: |-
+        에이전트 작업 지침이다. Claude Code·Codex·CodeRabbit 이 모두 읽으므로 틀린 규칙은 코드보다 넓게 퍼진다.
+        - 적힌 파일 경로·심볼(`lib/...`, `ledgerFromFirestore` 등)이 이 PR 기준으로 실제로 있는지. 없는 경로를 가리키면 지적
+        - 같은 문서의 다른 절, `.claude/skills/*`, `docs/plan.md` 와 어긋나는 규칙이 생기면 지적. 원본은 AGENTS.md 이고 스킬은 세부 절차다
+        - 날짜가 붙은 결정(예: 2026-10-21 결정)은 `docs/plan.md` 의 '정한 것' 과 맞는지
+        - "잘", "적절히" 처럼 따를 수 없는 문장 대신 할 일·하지 않을 일이 드러나는지
+        - 실제 이메일·금액·이름 등 공개하면 안 되는 값이 들어오면 반드시 지적
+    - path: ".claude/skills/**"
+      instructions: |-
+        Claude Code 스킬(작업별 절차)이다.
+        - frontmatter 의 `description` 이 언제 쓰는 스킬인지(요청 예시 포함) 드러내는지. 다른 스킬과 겹치면 지적
+        - 정석 레퍼런스로 가리킨 파일이 실제로 있는지, 뼈대 코드가 지금 코드의 이름·구조(View + `XxxController`)와 맞는지
+        - AGENTS.md 의 규칙과 어긋나는 절차가 들어오면 지적
+    - path: ".claude/settings.json"
+      instructions: |-
+        이 저장소를 Claude Code 로 여는 모든 세션에 적용되는 설정이다(훅이 명령을 막거나 허용한다).
+        - 새로 켜는 플러그인·마켓플레이스는 출처와 이유가 PR 설명에 있는지. 지금 쓰는 마켓플레이스는 `DeokWooAhn/ahn-cc-kit` 하나다
+        - `permissions.allow` 를 넓히거나 훅을 끄는(`enabledPlugins: false`, 환경 변수로 비활성화) 변경은 이유를 묻는다
+        - 개인 설정은 `.claude/settings.local.json`(git 에 넣지 않음)에 둔다. 개인 경로·계정이 들어오면 지적
+    - path: ".gitignore"
+      instructions: |-
+        - 소스·설정을 실수로 무시하게 되지 않는지(`lib/`, `test/`, `pubspec.lock`, `firebase.json`, Firebase 설정 파일, `.fvmrc`)
+        - 서명·비밀 파일(`key.properties`, `*.jks`, `*.keystore`, `local.properties`, `.claude/settings.local.json`)을 무시하는 줄을 지우면 반드시 지적
 
   tools:
     actionlint:
