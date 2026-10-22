@@ -72,3 +72,5 @@ JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home" firebase
 
 - CI의 Flutter 버전은 `.fvmrc`에서 읽는다. 로컬과 버전이 다르다고 의심되면 `.fvmrc`부터 본다.
 - 원인을 고치지 않고 단계를 건너뛰거나 검사를 끄지 않는다.
+- `main`의 ruleset("main 보호")이 세 job을 job 이름으로 필수 검사로 건다. `ci.yml`에서 job `name`을 바꾸면
+  저장소 Settings → Rules → Rulesets의 필수 검사도 같이 바꾼다(`gh api repos/DeokWooAhn/shared_ledger/rulesets`).

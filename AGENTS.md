@@ -30,6 +30,18 @@ Claude Code는 `CLAUDE.md`를 통해 이 파일을 읽고, Codex 같은 다른 �
 - 커밋·PR에 AI 도구의 공동 작성자 표기(`Co-Authored-By` 등)를 붙이지 않는다.
 - `--force` 푸시, `main` 기록 수정은 하지 않는다.
 
+## 안전장치
+
+- **`main` 보호** (GitHub ruleset "main 보호", 2026-10-22): PR로만, squash로만 합친다. CI 세 job(`Flutter 포맷·분석·테스트`,
+  `Firestore 보안 규칙 테스트`, `Android 디버그 빌드`)이 통과하고 리뷰 대화가 모두 해결돼야 합칠 수 있다. 강제 푸시와 삭제는 막힌다.
+  **CI job 이름을 바꾸면 ruleset의 필수 검사도 같이 고친다.** 안 그러면 그 이름의 검사가 오지 않아 모든 PR이 막힌다.
+- **Claude Code 플러그인** (`.claude/settings.json`, ahn-cc-kit)
+  - git-guard: 보호 브랜치(`main`, `master`, `release/*`)로 직접 푸시, `--force` 푸시, `reset --hard`·`clean -fd` 같은 되돌리기 어려운 명령을 실행 전에 막는다.
+    이 폴더를 여러 세션이 함께 쓸 때 남의 작업을 지우지 않게 한다.
+  - android-guard: Gradle wrapper 변조, Gradle 캐시 삭제, 서명 비밀값(`.jks`, `key.properties` 등) 읽기·쓰기를 막고, AndroidManifest의 노출 변경을 알린다.
+    서명 없는 release 빌드 경고는 `gradlew …Release`만 보고 `flutter build appbundle`은 아직 못 잡는다.
+  - 훅이 막으면 우회하지 말고 무엇이 왜 막혔는지 사용자에게 알린다.
+
 ## 보안·공개 저장소
 
 - **공개 저장소다.** 실제 가계부 금액·이름·개인 이메일·실제 uid를 코드·테스트·문서·커밋에 넣지 않는다. 테스트 데이터는 가상으로 만든다.
