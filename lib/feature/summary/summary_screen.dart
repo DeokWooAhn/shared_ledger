@@ -508,17 +508,6 @@ class _PlannedSection extends StatelessWidget {
   final MonthSummary summary;
   final List<Member> members;
 
-  // 이름표를 아직 못 받았거나 이름표가 생기기 전에 만든 가계부면 역할 이름으로 그린다(설정 탭과 같다).
-  Member _memberOf(MemberSlot slot) =>
-      members.where((m) => m.slot == slot).firstOrNull ??
-      Member(
-        slot: slot,
-        name: switch (slot) {
-          MemberSlot.owner => '관리자',
-          MemberSlot.partner => defaultPartnerName,
-        },
-      );
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -594,7 +583,7 @@ class _PlannedSection extends StatelessWidget {
                   Flexible(
                     child: _MemberTotal(
                       key: Key('member-${slot.name}'),
-                      member: _memberOf(slot),
+                      member: memberIn(members, slot),
                       amount: summary.plannedOf(slot),
                     ),
                   ),

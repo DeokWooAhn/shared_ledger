@@ -8,6 +8,7 @@ import '../budget/month_summary.dart';
 import '../model/auth_user.dart';
 import '../model/category.dart';
 import '../model/ledger.dart';
+import '../model/ledger_entries.dart';
 import '../model/member.dart';
 import '../model/month_ledger.dart';
 import '../model/payment_method.dart';
@@ -59,6 +60,15 @@ final currentLedgerProvider = Provider<Ledger?>((ref) {
   return ledgers == null || ledgers.isEmpty ? null : ledgers.first;
 });
 
+/// 지금 가계부에서 내 역할. 로그아웃했거나 가계부가 없으면 null.
+///
+/// 화면에서 쓰기 버튼을 감출 때 쓴다. 실제로 막는 것은 보안 규칙이다.
+final myRoleProvider = Provider<MemberRole?>((ref) {
+  final uid = ref.watch(authUserProvider.select((user) => user.value?.uid));
+  final ledger = ref.watch(currentLedgerProvider);
+  return uid == null ? null : ledger?.roleOf(uid);
+});
+
 /// 지금 가계부의 이름표 두 장. 가계부가 없으면 빈 목록.
 final membersProvider = StreamProvider<List<Member>>((ref) {
   final ledgerId = ref.watch(currentLedgerProvider.select((l) => l?.id));
@@ -96,6 +106,25 @@ class SelectedMonth extends Notifier<YearMonth> {
   /// 이전 달로 간다.
   void previous() => state = state.previous;
 }
+
+/// 항목 탭에서 보고 있는 종류. 처음에는 기본 월 지출이다.
+///
+/// + 버튼이 항목 탭에서 눌리면 이 종류로 입력 화면을 연다. 탭을 옮겨도 유지된다.
+final selectedEntryKindProvider =
+    NotifierProvider<SelectedEntryKind, EntryKind>(SelectedEntryKind.new);
+
+/// 항목 탭에서 보는 종류를 바꾼다.
+class SelectedEntryKind extends Notifier<EntryKind> {
+  @override
+  EntryKind build() => EntryKind.planned;
+
+  void select(EntryKind kind) => state = kind;
+}
+
+/// 서버가 받지 않은 새 항목. 오프라인 추가는 기다리지 않아서 거부는 나중에 여기로 온다. 홈 틀이 듣고 알린다.
+final rejectedEntriesProvider = StreamProvider<RejectedEntry>(
+  (ref) => ref.watch(entriesRepositoryProvider).rejectedAdds,
+);
 
 /// 보고 있는 달의 항목(휴지통 제외). 가계부가 없으면 빈 달이다.
 ///

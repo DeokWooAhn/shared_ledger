@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_ledger/core/data/entries_repository.dart';
+import 'package:shared_ledger/core/model/ledger_entries.dart';
 
 EntryDoc doc(
   String id,
@@ -141,6 +142,211 @@ void main() {
       expect(income?.title, '');
       expect(income?.memo, isNull);
       expect(income?.receivedOn, isNull);
+    });
+  });
+
+  group('항목 쓰기 데이터', () {
+    final serverTime = FieldValue.serverTimestamp();
+    final delete = FieldValue.delete();
+
+    // 종류마다 다 채운 입력값. docs/firestore.md의 항목 표와 같다.
+    final drafts = {
+      EntryKind.income: EntryDraft(
+        kind: EntryKind.income,
+        memberId: 'owner',
+        amount: 3000000,
+        title: '월급',
+        date: DateTime(2026, 10, 25),
+        memo: '세후',
+      ),
+      EntryKind.planned: EntryDraft(
+        kind: EntryKind.planned,
+        memberId: 'partner',
+        amount: 200000,
+        title: '관리비',
+        categoryId: 'c1',
+        paymentMethodId: 'p1',
+        date: DateTime(2026, 10, 31),
+        memo: '10월분',
+      ),
+      EntryKind.extra: EntryDraft(
+        kind: EntryKind.extra,
+        memberId: 'owner',
+        amount: 186000,
+        title: '마트 장보기',
+        paymentMethodId: 'card-1',
+        date: DateTime(2026, 10, 18),
+        memo: '주말',
+      ),
+      EntryKind.cardBill: EntryDraft(
+        kind: EntryKind.cardBill,
+        memberId: 'partner',
+        amount: 500000,
+        cardId: 'card-1',
+        date: DateTime(2026, 10, 14),
+        memo: '9월 사용분',
+      ),
+    };
+
+    test('새 항목 문서는 종류마다 보안 규칙(entryFields)이 받는 필드만 담는다', () {
+      const audit = {'createdBy', 'updatedBy', 'createdAt', 'updatedAt'};
+      final expected = {
+        EntryKind.income: {'memberId', 'amount', 'title', 'receivedOn', 'memo'},
+        EntryKind.planned: {
+          'memberId',
+          'amount',
+          'title',
+          'categoryId',
+          'paymentMethodId',
+          'paidOn',
+          'memo',
+        },
+        EntryKind.extra: {
+          'memberId',
+          'amount',
+          'title',
+          'paymentMethodId',
+          'spentOn',
+          'memo',
+        },
+        EntryKind.cardBill: {'memberId', 'amount', 'cardId', 'paidOn', 'memo'},
+      };
+      for (final MapEntry(key: kind, value: draft) in drafts.entries) {
+        final data = newEntryData(draft, uid: 'me');
+        expect(data.keys.toSet(), {
+          ...?expected[kind],
+          ...audit,
+        }, reason: '$kind');
+        expect(data['createdBy'], 'me');
+        expect(data['updatedBy'], 'me');
+        expect(data['createdAt'], serverTime);
+        expect(data['updatedAt'], serverTime);
+      }
+    });
+
+    test('새 기본 월 지출 문서에 값을 그대로 담고, 날짜는 yyyy-MM-dd로 적는다', () {
+      final data = newEntryData(drafts[EntryKind.planned]!, uid: 'me');
+
+      expect(data['memberId'], 'partner');
+      expect(data['amount'], 200000);
+      expect(data['title'], '관리비');
+      expect(data['categoryId'], 'c1');
+      expect(data['paymentMethodId'], 'p1');
+      expect(data['paidOn'], '2026-10-31');
+      expect(data['memo'], '10월분');
+    });
+
+    test('비어 있는 선택 칸(금액 미정·날짜·메모)은 새 문서에 넣지 않는다', () {
+      const draft = EntryDraft(
+        kind: EntryKind.planned,
+        memberId: 'owner',
+        title: '관리비',
+        categoryId: 'c1',
+        paymentMethodId: 'p1',
+        memo: '   ',
+      );
+
+      final data = newEntryData(draft, uid: 'me');
+
+      expect(data.keys, isNot(contains('amount')));
+      expect(data.keys, isNot(contains('paidOn')));
+      expect(data.keys, isNot(contains('memo')));
+    });
+
+    test('제목·메모는 앞뒤 공백을 뺀다', () {
+      const draft = EntryDraft(
+        kind: EntryKind.extra,
+        memberId: 'owner',
+        amount: 1000,
+        title: '  간식 ',
+        paymentMethodId: 'p1',
+        memo: ' 편의점 ',
+      );
+
+      final data = newEntryData(draft, uid: 'me');
+
+      expect(data['title'], '간식');
+      expect(data['memo'], '편의점');
+    });
+
+    test('고칠 때는 그 종류의 칸을 모두 다시 쓰고, 비운 칸은 필드를 지운다', () {
+      const draft = EntryDraft(
+        kind: EntryKind.planned,
+        memberId: 'owner',
+        title: '관리비',
+        categoryId: 'c1',
+        paymentMethodId: 'p1',
+      );
+
+      final data = entryUpdateData(draft, uid: 'partner-uid');
+
+      // 만든 사람·시간은 건드리지 않는다(규칙의 updatedNow).
+      expect(data.keys.toSet(), {
+        'memberId',
+        'amount',
+        'title',
+        'categoryId',
+        'paymentMethodId',
+        'paidOn',
+        'memo',
+        'updatedBy',
+        'updatedAt',
+      });
+      expect(data['amount'], delete);
+      expect(data['paidOn'], delete);
+      expect(data['memo'], delete);
+      expect(data['updatedBy'], 'partner-uid');
+      expect(data['updatedAt'], serverTime);
+    });
+
+    test('카드대금을 고칠 때는 제목·결제수단 칸을 쓰지 않는다', () {
+      final data = entryUpdateData(drafts[EntryKind.cardBill]!, uid: 'me');
+
+      expect(data.keys, containsAll(['cardId', 'paidOn']));
+      expect(data.keys, isNot(contains('title')));
+      expect(data.keys, isNot(contains('paymentMethodId')));
+    });
+
+    test('휴지통에 넣을 때는 deletedAt을 서버 시간으로, 꺼낼 때는 필드를 지운다', () {
+      expect(trashEntryUpdate(uid: 'me'), {
+        'deletedAt': serverTime,
+        'updatedBy': 'me',
+        'updatedAt': serverTime,
+      });
+      expect(restoreEntryUpdate(uid: 'me'), {
+        'deletedAt': delete,
+        'updatedBy': 'me',
+        'updatedAt': serverTime,
+      });
+    });
+
+    test('종류마다 컬렉션 이름이 정해져 있다', () {
+      expect(EntryKind.values.map(entryCollection), [
+        'incomes',
+        'planned',
+        'extras',
+        'cardBills',
+      ]);
+    });
+
+    test('쓴 문서를 다시 읽으면 같은 값이다', () {
+      for (final draft in drafts.values) {
+        final data = {
+          for (final MapEntry(:key, :value) in newEntryData(
+            draft,
+            uid: 'me',
+          ).entries)
+            if (value is! FieldValue) key: value,
+        };
+        final entry = switch (draft.kind) {
+          EntryKind.income => incomeFromFirestore('id', data),
+          EntryKind.planned => plannedExpenseFromFirestore('id', data),
+          EntryKind.extra => extraExpenseFromFirestore('id', data),
+          EntryKind.cardBill => cardBillFromFirestore('id', data),
+        };
+        expect(entry, isNotNull, reason: '${draft.kind}');
+        expect(EntryDraft.of(entry!), draft, reason: '${draft.kind}');
+      }
     });
   });
 

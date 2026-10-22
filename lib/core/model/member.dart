@@ -23,6 +23,19 @@ enum MemberSlot {
   partner,
 }
 
+/// [members]에서 [slot] 자리의 이름표.
+///
+/// 이름표를 아직 못 받았거나 이름표가 생기기 전(2026-10-22 이전)에 만든 가계부면 역할 이름('관리자', '상대')으로 만든다.
+Member memberIn(List<Member> members, MemberSlot slot) =>
+    members.where((m) => m.slot == slot).firstOrNull ??
+    Member(
+      slot: slot,
+      name: switch (slot) {
+        MemberSlot.owner => '관리자',
+        MemberSlot.partner => defaultPartnerName,
+      },
+    );
+
 /// 두 사람의 이름표(하늘·바다처럼 화면에 보일 이름).
 class Member {
   const Member({required this.slot, required this.name});

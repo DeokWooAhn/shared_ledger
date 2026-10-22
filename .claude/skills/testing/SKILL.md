@@ -13,7 +13,7 @@ description: 심플 공유 가계부(shared_ledger)의 테스트를 쓰거나 �
 | --- | --- | --- |
 | 계산 규칙, 모델 | 실제 객체로 단위 테스트 | `test/core/budget/budget_calculator_test.dart`, `test/core/model/ledger_test.dart` |
 | Firestore 변환·쓰기 데이터 | 순수 함수 단위 테스트 | `test/core/data/ledger_repository_test.dart` |
-| 컨트롤러 | `ProviderContainer` + 가짜 저장소 | `test/feature/ledger/ledger_start_controller_test.dart` |
+| 컨트롤러 | `ProviderContainer` + 가짜 저장소 | `test/feature/ledger/ledger_start_controller_test.dart`, 인자를 받는(family) 컨트롤러는 `test/feature/entries/entry_form_controller_test.dart` |
 | 화면 흐름, 화면 이동 | 위젯 테스트 | `test/widget_test.dart`, `test/router_test.dart` |
 | 보안 규칙 | Firestore 에뮬레이터 | `firestore-tests/rules.test.js` |
 
@@ -59,10 +59,15 @@ test('…', () async {
 ## 위젯 테스트
 
 - `pumpApp`이 `ProviderScope(overrides:)`로 가짜 저장소를 끼운 앱 전체를 띄운다. 실제 사용 순서대로 누른다.
+  도우미(`pumpApp`, `openTab`, `settle`, `scrollTo`, `findSentence` 등)는 `test/support/app.dart`에 있다. 기능별 흐름은 `test/feature/<기능>/`에 둔다(`entries_screen_test.dart`).
 - `pumpApp`은 디자인과 같은 휴대폰 크기(390×844)로 띄운다. 테스트 기본 크기(800×600)는 넓은 화면 배치가 된다. 넓은 화면은 `size: tabletSize`.
 - 탭은 `openTab(tester, HomeTab.settings)`로 옮긴다. 탭 막대 배치와 상관없이 `HomeTab.key`로 찾는다.
 - 불러오는 중 화면의 진행 표시가 계속 돌아서 `pumpAndSettle`은 끝나지 않는다. `settle()`처럼 정해진 횟수만 그린다.
   화면 전환(300ms)이 끝날 만큼 그려야 한다. 짧으면 이전 화면의 Scaffold가 남아 스낵바가 두 개 보인다.
+- 탭 위로 여는 전체 화면(항목 입력, `fullscreenDialog`)은 Android 전환이 400ms보다 길다. 열고 닫을 때는 더 길게 그린다(`settleRoute`).
+  전환 중에는 아래 탭 화면도 찾아지니 같은 키가 둘이면 `find.descendant(of: find.byType(EntryFormScreen), …)`로 좁힌다.
+- `scrollUntilVisible`은 끌어서 스크롤하므로 끝난 뒤에도 관성 스크롤이 돌고, 그동안 목록은 누름을 받지 않는다(탭이 빗나감).
+  화면 아래 끝에 걸친 위젯은 `ensureVisible` 후 `settle`하고 누른다(`entries_screen_test.dart`의 `showInForm`).
 - 위젯은 화면 문구가 아니라 `Key`로 찾는다. `keepAll()`로 그린 문장은 `findSentence('…')`(`find.text(keepAll(…))`)로 찾는다.
 - 스크롤되는 화면은 `scrollTo`·`tapVisible`·`enterVisible`로 위젯이 나올 때까지 스크롤한 뒤 다룬다. 화면 밖 항목은 아직 만들어지지 않았을 수 있다.
 - 플랫폼 분기(Apple 버튼)는 `variant: TargetPlatformVariant.only(TargetPlatform.iOS)`로 본다.
@@ -79,12 +84,17 @@ test('…', () async {
   - 같은 id의 문서를 다시 쓰면 바꾸고, 새로 더하지 않는다
 - 호출 기록을 남긴다(`created`, `invites`, `joins`, `googleCalls`, 설정을 구독한 가계부 `watched`, 항목을 구독한 가계부·달 `watched`).
 - 항목은 휴지통 항목이 이미 빠진 `MonthLedger`를 달마다 넣는다(`FakeEntriesRepository.put`으로 바꾸면 구독 중인 곳에 다시 알린다).
-- 실패 스위치는 다음 한 번만 실패하고 스스로 꺼진다: 도메인 실패(`nextJoinFailure`), 예상 못 한 오류(`failNextCreate`, `failNextInvite`, `failNextJoin`, `failNextSignIn`, `failNextSignOut`, `failNextWatch`).
+  쓰기도 실제 약속을 지킨다: 추가는 `offline`이어도 되고, 고치기·휴지통·꺼내기는 `offline`이면 `EntryWriteFailure.offline`,
+  없는 항목(휴지통에 든 항목을 고칠 때 포함)이면 `notFound`로 실패한다. 기록은 `added`·`updated`·`trashed`·`restored`, 지금 항목은 `monthOf(달)`.
+  서버가 새 항목을 나중에 거부하는 경우는 `rejectNextAdd`: 추가는 성공하고 목록에 들어갔다가 조금 뒤 빠지며 `rejectedAdds`로 알린다.
+- 실패 스위치는 다음 한 번만 실패하고 스스로 꺼진다: 도메인 실패(`nextJoinFailure`), 예상 못 한 오류(`failNextCreate`, `failNextInvite`, `failNextJoin`, `failNextSignIn`, `failNextSignOut`, `failNextWatch`, `failNextWrite`).
+  연결 상태처럼 계속되는 조건은 스위치가 아니라 상태로 둔다(`FakeEntriesRepository.offline`).
 
 ## Firestore 변환 테스트
 
 - 쓰기 데이터는 필드 목록 전체를 단언한다. 보안 규칙이 받는 필드와 맞는지 확인하는 장치다.
-- 서버 시간은 `isA<FieldValue>()`, 필드 경로는 `FieldPath(['roles', uid])`로 비교한다.
+- 서버 시간은 `isA<FieldValue>()`, 필드 경로는 `FieldPath(['roles', uid])`로 비교한다. `FieldValue`는 종류로 비교되므로
+  지우기와 서버 시간을 구분할 때는 `FieldValue.delete()`·`FieldValue.serverTimestamp()`와 같은지 본다(`entries_repository_test.dart`).
 - 읽기 변환은 모르는 값·빠진 필드·타입이 다른 값이 와도 죽지 않는지 본다.
 
 ## 보안 규칙 테스트 (`firestore-tests/rules.test.js`)

@@ -118,9 +118,17 @@ invites/{code}
 - 휴지통 항목은 합계에서 뺀다. 앱은 그달 네 컬렉션을 구독해 휴지통 항목을 앱에서 거른다
   (`where('deletedAt', isNull)`은 필드가 없는 문서를 빼 버린다). 휴지통 항목도 읽기 횟수에 들어간다.
 
-규칙은 금액·휴지통·달 id와 공통 기록 필드만 확인한다. 나머지 필드는 앱의 모델([`ledger_entries.dart`](../lib/core/model/ledger_entries.dart))과
-변환 함수([`entries_repository.dart`](../lib/core/data/entries_repository.dart))를 따른다. 계산에 쓰는 값(누가·금액·분류·결제수단·카드)이
-없거나 잘못된 문서는 앱이 건너뛰고, 제목·메모·날짜는 잘못돼도 비워 두고 항목을 살린다.
+규칙(`validEntry`)은 아래 표의 필드만 받고(종류마다 `keys().hasOnly`), 만들 때와 고칠 때 모두 고친 뒤의 문서 전체를 본다.
+
+- `memberId`는 `owner`·`partner`만, 표에서 ✓인 id 칸(`categoryId`·`paymentMethodId`·`cardId`)은 비지 않은 문자열이어야 한다.
+- `title`은 카드대금 말고 꼭 있어야 하고 1~40자, `memo`는 200자까지, 날짜는 `yyyy-MM-dd` 형식 문자열이다.
+  규칙의 문자열 길이는 UTF-16 단위로 세서 이모지는 한 개가 두 글자다. 앱도 `String.length`로 센다(`entryTitleMaxLength`).
+- 앱의 쓰기 데이터는 `newEntryData`·`entryUpdateData`(고칠 때 비운 칸은 `FieldValue.delete()`)·`trashEntryUpdate`·`restoreEntryUpdate`다.
+- 그래도 앱은 읽을 때 계산에 쓰는 값(누가·금액·분류·결제수단·카드)이 없거나 잘못된 문서는 건너뛰고, 제목·메모·날짜는 잘못돼도 비워 두고 항목을 살린다.
+
+오프라인에서는 새 항목만 더할 수 있다(`docs/plan.md`). 앱은 새 항목을 서버 응답을 기다리지 않고 기기 캐시에 넣고,
+서버가 나중에 거부하면(`permission-denied`) 저장소의 `rejectedAdds`로 알려 홈 화면이 스낵바로 알린다(항목은 목록에서 빠진다).
+고치기·휴지통·꺼내기는 트랜잭션으로 해서 연결이 없으면 실패하게 하고, 그사이 상대가 휴지통에 넣은(꺼낸) 항목은 고치지 않는다.
 
 | 필드 | `incomes` | `planned` | `extras` | `cardBills` | 설명 |
 |---|---|---|---|---|---|

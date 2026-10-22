@@ -107,17 +107,6 @@ class _MembersSection extends StatelessWidget {
   final String uid;
   final List<Member> members;
 
-  // 이름표를 아직 못 받았거나 이름표가 생기기 전에 만든 가계부면 역할 이름으로 그린다.
-  Member _memberOf(MemberSlot slot) =>
-      members.where((m) => m.slot == slot).firstOrNull ??
-      Member(
-        slot: slot,
-        name: switch (slot) {
-          MemberSlot.owner => memberRoleLabel(MemberRole.owner),
-          MemberSlot.partner => defaultPartnerName,
-        },
-      );
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -128,7 +117,7 @@ class _MembersSection extends StatelessWidget {
           if (slot != MemberSlot.values.first)
             Divider(height: 1, color: theme.colorScheme.outline),
           _MemberRow(
-            member: _memberOf(slot),
+            member: memberIn(members, slot),
             isMe: ledger.uidOf(slot) == uid,
             role: switch (ledger.uidOf(slot)) {
               final memberUid? => ledger.roleOf(memberUid),

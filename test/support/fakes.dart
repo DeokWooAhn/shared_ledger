@@ -8,6 +8,7 @@ import 'package:shared_ledger/core/model/auth_user.dart';
 import 'package:shared_ledger/core/model/category.dart';
 import 'package:shared_ledger/core/model/invite.dart';
 import 'package:shared_ledger/core/model/ledger.dart';
+import 'package:shared_ledger/core/model/ledger_entries.dart';
 import 'package:shared_ledger/core/model/member.dart';
 import 'package:shared_ledger/core/model/month_ledger.dart';
 import 'package:shared_ledger/core/model/payment_method.dart';
@@ -228,24 +229,62 @@ class FakeSettingsRepository implements SettingsRepository {
 /// 화면 테스트용 가짜 항목 저장소. 넣어 둔 달의 항목을 돌려주고, 없는 달은 빈 달이다.
 ///
 /// 실제 저장소처럼 휴지통 항목은 이미 빠진 [MonthLedger]를 넣는다. [put]으로 바꾸면 구독 중인 곳에 다시 알린다.
+/// 쓰기도 실제 약속을 지킨다: 추가는 [offline]이어도 되고, 고치기·휴지통·꺼내기는 [offline]이면
+/// [EntryWriteFailure.offline]으로, 없는 항목(휴지통에 든 항목을 고칠 때 포함)이면 [EntryWriteFailure.notFound]로 실패한다.
 class FakeEntriesRepository implements EntriesRepository {
   FakeEntriesRepository([Map<YearMonth, MonthLedger> months = const {}])
     : _months = {...months};
 
   final Map<YearMonth, MonthLedger> _months;
+  final _trash = <(YearMonth, EntryKind, String), LedgerEntry>{};
   final _changes = StreamController<void>.broadcast();
 
   /// 구독한 가계부와 달. 읽기 비용(그달만 구독하는지)을 확인할 때 쓴다.
   final watched = <({String ledgerId, YearMonth month})>[];
 
+  /// 쓴 기록. 어느 가계부·달에 누가 무엇을 했는지 본다.
+  final added =
+      <({String ledgerId, YearMonth month, EntryDraft draft, String uid})>[];
+  final updated =
+      <
+        ({
+          String ledgerId,
+          YearMonth month,
+          String id,
+          EntryDraft draft,
+          String uid,
+        })
+      >[];
+  final trashed =
+      <({String ledgerId, YearMonth month, EntryKind kind, String id})>[];
+  final restored =
+      <({String ledgerId, YearMonth month, EntryKind kind, String id})>[];
+
   /// true면 다음 구독이 권한 오류처럼 실패한다.
   bool failNextWatch = false;
+
+  /// true면 연결이 없는 것처럼 고치기·휴지통·꺼내기가 실패한다. 추가는 된다.
+  bool offline = false;
+
+  /// true면 다음 쓰기가 [EntryWriteException]이 아닌 오류(권한 등)로 실패한다.
+  bool failNextWrite = false;
+
+  /// true면 다음 추가를 서버가 거부한 것처럼 한다. 실제 저장소처럼 [add]는 성공하고 목록에 들어갔다가,
+  /// 서버 응답이 온 뒤처럼 조금 뒤에 빠지며 [rejectedAdds]로 알린다.
+  bool rejectNextAdd = false;
+  final _rejected = StreamController<RejectedEntry>.broadcast();
+
+  @override
+  Stream<RejectedEntry> get rejectedAdds => _rejected.stream;
 
   /// [month]의 항목을 바꾼다. 어느 가계부를 물어도 같은 달이면 같은 항목이다.
   void put(YearMonth month, MonthLedger ledger) {
     _months[month] = ledger;
     _changes.add(null);
   }
+
+  /// [month]의 지금 항목(휴지통 제외).
+  MonthLedger monthOf(YearMonth month) => _months[month] ?? const MonthLedger();
 
   @override
   Stream<MonthLedger> watchMonth(String ledgerId, YearMonth month) async* {
@@ -254,9 +293,188 @@ class FakeEntriesRepository implements EntriesRepository {
       failNextWatch = false;
       throw StateError('watchMonth failed');
     }
-    yield _months[month] ?? const MonthLedger();
+    yield monthOf(month);
     await for (final _ in _changes.stream) {
-      yield _months[month] ?? const MonthLedger();
+      yield monthOf(month);
     }
+  }
+
+  @override
+  Future<String> add({
+    required String ledgerId,
+    required YearMonth month,
+    required EntryDraft draft,
+    required String uid,
+  }) async {
+    _failIfAsked();
+    added.add((ledgerId: ledgerId, month: month, draft: draft, uid: uid));
+    final id = 'entry-${added.length}';
+    _edit(month, draft.kind, (entries) => [...entries, _entryOf(id, draft)]);
+    if (rejectNextAdd) {
+      rejectNextAdd = false;
+      scheduleMicrotask(() {
+        _edit(
+          month,
+          draft.kind,
+          (entries) => [...entries.where((e) => e.id != id)],
+        );
+        _rejected.add((id: id, month: month, kind: draft.kind));
+      });
+    }
+    return id;
+  }
+
+  @override
+  Future<void> update({
+    required String ledgerId,
+    required YearMonth month,
+    required String id,
+    required EntryDraft draft,
+    required String uid,
+  }) async {
+    _checkOnline();
+    _live(month, draft.kind, id);
+    updated.add((
+      ledgerId: ledgerId,
+      month: month,
+      id: id,
+      draft: draft,
+      uid: uid,
+    ));
+    _edit(
+      month,
+      draft.kind,
+      (entries) => [
+        for (final entry in entries)
+          entry.id == id ? _entryOf(id, draft) : entry,
+      ],
+    );
+  }
+
+  @override
+  Future<void> trash({
+    required String ledgerId,
+    required YearMonth month,
+    required EntryKind kind,
+    required String id,
+    required String uid,
+  }) async {
+    _checkOnline();
+    final entry = _live(month, kind, id);
+    trashed.add((ledgerId: ledgerId, month: month, kind: kind, id: id));
+    _trash[(month, kind, id)] = entry;
+    _edit(month, kind, (entries) => [...entries.where((e) => e.id != id)]);
+  }
+
+  @override
+  Future<void> restore({
+    required String ledgerId,
+    required YearMonth month,
+    required EntryKind kind,
+    required String id,
+    required String uid,
+  }) async {
+    _checkOnline();
+    final entry = _trash.remove((month, kind, id));
+    if (entry == null) {
+      throw const EntryWriteException(EntryWriteFailure.notFound);
+    }
+    restored.add((ledgerId: ledgerId, month: month, kind: kind, id: id));
+    _edit(month, kind, (entries) => [...entries, entry]);
+  }
+
+  void _failIfAsked() {
+    if (failNextWrite) {
+      failNextWrite = false;
+      throw StateError('write failed');
+    }
+  }
+
+  void _checkOnline() {
+    _failIfAsked();
+    if (offline) throw const EntryWriteException(EntryWriteFailure.offline);
+  }
+
+  // 휴지통 밖에 있는 [id] 항목. 없으면 실제 저장소처럼 notFound로 실패한다.
+  LedgerEntry _live(YearMonth month, EntryKind kind, String id) =>
+      _entriesOf(monthOf(month), kind).where((e) => e.id == id).firstOrNull ??
+      (throw const EntryWriteException(EntryWriteFailure.notFound));
+
+  void _edit(
+    YearMonth month,
+    EntryKind kind,
+    List<LedgerEntry> Function(List<LedgerEntry> entries) change,
+  ) {
+    final ledger = monthOf(month);
+    final entries = change(_entriesOf(ledger, kind));
+    put(
+      month,
+      MonthLedger(
+        incomes: kind == EntryKind.income
+            ? entries.whereType<Income>().toList()
+            : ledger.incomes,
+        plannedExpenses: kind == EntryKind.planned
+            ? entries.whereType<PlannedExpense>().toList()
+            : ledger.plannedExpenses,
+        extraExpenses: kind == EntryKind.extra
+            ? entries.whereType<ExtraExpense>().toList()
+            : ledger.extraExpenses,
+        cardBills: kind == EntryKind.cardBill
+            ? entries.whereType<CardBill>().toList()
+            : ledger.cardBills,
+      ),
+    );
+  }
+
+  static List<LedgerEntry> _entriesOf(MonthLedger ledger, EntryKind kind) =>
+      switch (kind) {
+        EntryKind.income => ledger.incomes,
+        EntryKind.planned => ledger.plannedExpenses,
+        EntryKind.extra => ledger.extraExpenses,
+        EntryKind.cardBill => ledger.cardBills,
+      };
+
+  // 저장한 문서를 다시 읽은 것과 같은 항목. 실제 저장소는 메모 앞뒤 공백을 빼고 빈 메모는 저장하지 않는다.
+  static LedgerEntry _entryOf(String id, EntryDraft draft) {
+    final memo = draft.memo?.trim();
+    final note = memo == null || memo.isEmpty ? null : memo;
+    final title = draft.title.trim();
+    return switch (draft.kind) {
+      EntryKind.income => Income(
+        id: id,
+        memberId: draft.memberId,
+        title: title,
+        amount: draft.amount ?? 0,
+        receivedOn: draft.date,
+        memo: note,
+      ),
+      EntryKind.planned => PlannedExpense(
+        id: id,
+        categoryId: draft.categoryId ?? '',
+        memberId: draft.memberId,
+        title: title,
+        paymentMethodId: draft.paymentMethodId ?? '',
+        amount: draft.amount,
+        paidOn: draft.date,
+        memo: note,
+      ),
+      EntryKind.extra => ExtraExpense(
+        id: id,
+        memberId: draft.memberId,
+        title: title,
+        paymentMethodId: draft.paymentMethodId ?? '',
+        amount: draft.amount ?? 0,
+        spentOn: draft.date,
+        memo: note,
+      ),
+      EntryKind.cardBill => CardBill(
+        id: id,
+        memberId: draft.memberId,
+        cardId: draft.cardId ?? '',
+        amount: draft.amount ?? 0,
+        paidOn: draft.date,
+        memo: note,
+      ),
+    };
   }
 }

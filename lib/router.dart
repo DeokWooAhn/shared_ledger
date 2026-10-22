@@ -1,13 +1,19 @@
-import 'package:flutter/widgets.dart';
+import 'dart:async';
+
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'core/data/providers.dart';
 import 'core/model/auth_user.dart';
 import 'core/model/ledger.dart';
+import 'core/model/ledger_entries.dart';
+import 'core/model/year_month.dart';
 import 'core/widget/loading_screen.dart';
 import 'feature/auth/sign_in_screen.dart';
 import 'feature/entries/entries_screen.dart';
+import 'feature/entries/entry_form_controller.dart';
+import 'feature/entries/entry_form_screen.dart';
 import 'feature/home/home_shell.dart';
 import 'feature/ledger/ledger_start_screen.dart';
 import 'feature/settings/settings_screen.dart';
@@ -26,6 +32,9 @@ abstract final class Routes {
   static const settings = '/settings';
   static const home = summary;
 
+  /// 항목 입력·수정. 탭 막대를 가리는 전체 화면이고, 무엇을 열지는 [EntryFormArgs]를 `extra`로 넘긴다.
+  static const entry = '/entry';
+
   /// [tab] 탭의 경로.
   static String of(HomeTab tab) => switch (tab) {
     HomeTab.summary => summary,
@@ -37,10 +46,22 @@ abstract final class Routes {
 
 Widget _tabScreen(HomeTab tab) => switch (tab) {
   HomeTab.summary => const SummaryScreen(),
-  HomeTab.entries => const EntriesScreen(),
+  HomeTab.entries => const EntriesScreen(openForm: _openEntryForm),
   HomeTab.templates => const TemplatesScreen(),
   HomeTab.settings => const SettingsScreen(),
 };
+
+// 항목 입력 화면을 열고, 닫힐 때의 결과(저장·휴지통)를 돌려준다.
+Future<EntryFormOutcome?> _openEntryForm(
+  BuildContext context,
+  EntryFormArgs args,
+) => context.push<EntryFormOutcome>(Routes.entry, extra: args);
+
+// + 버튼. 새 항목은 결과를 기다릴 일이 없다.
+void _addEntry(BuildContext context, EntryKind kind, YearMonth month) =>
+    unawaited(
+      _openEntryForm(context, EntryFormArgs.add(kind: kind, month: month)),
+    );
 
 /// 로그인·가계부 상태에 따라 보여 줄 화면 단계.
 enum AppGate { loading, failed, signedOut, noLedger, ready }
@@ -97,7 +118,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       // 탭마다 화면 상태를 지키는 홈. branch 순서가 HomeTab 순서와 같아야 한다.
       StatefulShellRoute.indexedStack(
         builder: (_, _, navigationShell) =>
-            HomeShell(navigationShell: navigationShell),
+            HomeShell(navigationShell: navigationShell, onAddEntry: _addEntry),
         branches: [
           for (final tab in HomeTab.values)
             StatefulShellBranch(
@@ -109,6 +130,20 @@ final routerProvider = Provider<GoRouter>((ref) {
               ],
             ),
         ],
+      ),
+      // 탭 밖(루트)에 둬서 탭 막대를 가린다. 열 항목 없이 들어오면 항목 탭으로 보낸다.
+      GoRoute(
+        path: Routes.entry,
+        redirect: (_, state) =>
+            state.extra is EntryFormArgs ? null : Routes.entries,
+        pageBuilder: (_, state) => MaterialPage(
+          key: state.pageKey,
+          fullscreenDialog: true,
+          child: switch (state.extra) {
+            final EntryFormArgs args => EntryFormScreen(args: args),
+            _ => const SizedBox.shrink(),
+          },
+        ),
       ),
     ],
   );

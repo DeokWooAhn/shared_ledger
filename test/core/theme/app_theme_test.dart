@@ -56,6 +56,9 @@ void main() {
           ('현금 유입·유출 금액 / 남는 현금 카드', colors.onHero, colors.hero),
           ('관리자 동그라미 글자 / 그 바탕', scheme.onPrimary, colors.skySoft),
           ('상대 동그라미 글자 / 그 바탕', colors.sea, colors.seaSoft),
+          ('상대를 고른 칩 글자 / 그 바탕', scheme.onPrimary, colors.sea),
+          ('세그먼트 글자 / 세그먼트 바탕', scheme.onSurfaceVariant, colors.track),
+          ('세그먼트에서 고른 칸 글자 / 그 바탕', scheme.onSurface, colors.segmentOn),
         ];
         for (final (name, foreground, background) in pairs) {
           test(name, () {
