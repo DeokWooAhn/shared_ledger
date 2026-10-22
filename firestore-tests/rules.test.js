@@ -524,6 +524,173 @@ describe('가계부 항목', () => {
       await assertFails(edit({ title: deleteField() }));
       await assertFails(edit({ cardId: 'card' }));
     });
+
+    test('기본 월 지출은 고정 지출에서 옮긴 예정일(dueOn)을 받는다', async () => {
+      const db = firestoreAs(EDITOR);
+      await assertSucceeds(
+        setDoc(entryRef(db, { type: 'planned', id: 'a' }), newEntryOf('planned', EDITOR, { dueOn: '2026-10-31' })),
+      );
+      await assertFails(
+        setDoc(entryRef(db, { type: 'planned', id: 'b' }), newEntryOf('planned', EDITOR, { dueOn: '2026/10/31' })),
+      );
+      await assertFails(
+        setDoc(entryRef(db, { type: 'planned', id: 'c' }), newEntryOf('planned', EDITOR, { dueOn: 31 })),
+      );
+    });
+
+    test('예정일은 기본 월 지출만 받는다', async () => {
+      await assertFails(setDoc(entryRef(firestoreAs(EDITOR)), newEntry(EDITOR, { dueOn: '2026-10-31' })));
+    });
+  });
+
+  describe('고정 지출로 만든 그달 기본 지출', () => {
+    // 문서 id가 고정 지출(템플릿) id다. 두 사람이 동시에 그달을 처음 열어도 같은 문서라 하나만 생긴다.
+    const plannedRef = (db, id = 'template-1', ledger = LEDGER) => entryRef(db, { type: 'planned', id, ledger });
+    const fromTemplate = (uid) => newEntryOf('planned', uid, { dueOn: '2026-10-25' });
+
+    test('편집자는 없는 기본 지출을 템플릿 id로 만들 수 있다', async () => {
+      await assertSucceeds(setDoc(plannedRef(firestoreAs(EDITOR)), fromTemplate(EDITOR)));
+    });
+
+    test('이미 있는 기본 지출을 새로 만드는 값으로 덮어쓸 수 없다', async () => {
+      // 상대가 먼저 만들고 금액까지 고친 문서. 같은 id로 다시 만들려는 쓰기는 고치기로 검사돼 작성 기록이 달라 막힌다.
+      await seed((db) =>
+        setDoc(plannedRef(db), {
+          ...fromTemplate(OWNER),
+          amount: 210000,
+          createdAt: Timestamp.fromMillis(1000),
+          updatedAt: Timestamp.fromMillis(2000),
+        }),
+      );
+      await assertFails(setDoc(plannedRef(firestoreAs(EDITOR)), fromTemplate(EDITOR)));
+    });
+
+    test('보기 전용은 그달 기본 지출을 만들 수 없다', async () => {
+      await assertFails(setDoc(plannedRef(firestoreAs(VIEWER), 'template-1', VIEWER_LEDGER), fromTemplate(VIEWER)));
+    });
+  });
+});
+
+describe('고정 지출 템플릿', () => {
+  function templateRef(db, { ledger = LEDGER, id = 'template-1' } = {}) {
+    return doc(db, 'ledgers', ledger, 'templates', id);
+  }
+
+  // 앱이 쓰는 필드(lib/core/data/templates_repository.dart의 newTemplateData). 금액은 비우면 금액 미정이다.
+  function newTemplate(uid, fields = {}) {
+    return {
+      title: '관리비',
+      amount: 200000,
+      categoryId: 'c1',
+      paymentMethodId: 'p1',
+      memberId: 'owner',
+      dueDay: 25,
+      createdBy: uid,
+      updatedBy: uid,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+      ...fields,
+    };
+  }
+
+  function seedTemplate(fields = {}) {
+    return seed((db) =>
+      setDoc(templateRef(db), {
+        ...newTemplate(OWNER),
+        createdAt: Timestamp.fromMillis(1000),
+        updatedAt: Timestamp.fromMillis(1000),
+        ...fields,
+      }),
+    );
+  }
+
+  test('편집자와 관리자는 앱이 쓰는 필드로 고정 지출을 만들 수 있다', async () => {
+    await assertSucceeds(setDoc(templateRef(firestoreAs(EDITOR)), newTemplate(EDITOR)));
+    await assertSucceeds(
+      setDoc(templateRef(firestoreAs(OWNER), { ledger: VIEWER_LEDGER }), newTemplate(OWNER, { memberId: 'partner' })),
+    );
+  });
+
+  test('금액을 비우면 금액 미정 고정 지출이 된다', async () => {
+    const { amount, ...unpriced } = newTemplate(EDITOR);
+    await assertSucceeds(setDoc(templateRef(firestoreAs(EDITOR)), unpriced));
+  });
+
+  test('보기 전용과 다른 가계부 사람은 고정 지출을 만들 수 없다', async () => {
+    await assertFails(setDoc(templateRef(firestoreAs(VIEWER), { ledger: VIEWER_LEDGER }), newTemplate(VIEWER)));
+    await assertFails(setDoc(templateRef(firestoreAs(OUTSIDER)), newTemplate(OUTSIDER)));
+  });
+
+  test('받지 않는 필드가 있으면 만들 수 없다', async () => {
+    const db = firestoreAs(EDITOR);
+    await assertFails(setDoc(templateRef(db), newTemplate(EDITOR, { memo: '메모' })));
+    await assertFails(setDoc(templateRef(db), newTemplate(EDITOR, { paidOn: '2026-10-25' })));
+  });
+
+  test('예정일은 1~31 정수만 받는다 (31은 말일)', async () => {
+    const db = firestoreAs(EDITOR);
+    await assertSucceeds(setDoc(templateRef(db, { id: 'a' }), newTemplate(EDITOR, { dueDay: 1 })));
+    await assertSucceeds(setDoc(templateRef(db, { id: 'b' }), newTemplate(EDITOR, { dueDay: 31 })));
+    for (const [id, dueDay] of [
+      ['c', 0],
+      ['d', 32],
+      ['e', '25'],
+      ['f', 10.5],
+      ['g', null],
+    ]) {
+      await assertFails(setDoc(templateRef(db, { id }), newTemplate(EDITOR, { dueDay })));
+    }
+  });
+
+  test('금액은 0 이상의 정수다', async () => {
+    const db = firestoreAs(EDITOR);
+    await assertSucceeds(setDoc(templateRef(db, { id: 'a' }), newTemplate(EDITOR, { amount: 0 })));
+    await assertFails(setDoc(templateRef(db, { id: 'b' }), newTemplate(EDITOR, { amount: -1 })));
+    await assertFails(setDoc(templateRef(db, { id: 'c' }), newTemplate(EDITOR, { amount: '1000' })));
+  });
+
+  test('누가는 owner·partner 이름표 자리만 받는다', async () => {
+    const db = firestoreAs(EDITOR);
+    await assertFails(setDoc(templateRef(db, { id: 'a' }), newTemplate(EDITOR, { memberId: EDITOR })));
+    await assertFails(setDoc(templateRef(db, { id: 'b' }), newTemplate(EDITOR, { memberId: null })));
+  });
+
+  test('제목은 1~40자, 분류·결제수단은 비지 않은 문자열이어야 한다', async () => {
+    const db = firestoreAs(EDITOR);
+    await assertSucceeds(setDoc(templateRef(db, { id: 'a' }), newTemplate(EDITOR, { title: '가'.repeat(40) })));
+    for (const [id, field, value] of [
+      ['b', 'title', '가'.repeat(41)],
+      ['c', 'title', ''],
+      ['d', 'categoryId', ''],
+      ['e', 'categoryId', null],
+      ['f', 'paymentMethodId', ''],
+      ['g', 'paymentMethodId', 7],
+    ]) {
+      await assertFails(setDoc(templateRef(db, { id }), newTemplate(EDITOR, { [field]: value })));
+    }
+  });
+
+  test('고칠 때도 고친 뒤의 문서를 같은 기준으로 본다', async () => {
+    await seedTemplate();
+    const db = firestoreAs(EDITOR);
+    const edit = (fields) => updateDoc(templateRef(db), { ...fields, updatedBy: EDITOR, updatedAt: serverTimestamp() });
+    await assertSucceeds(edit({ amount: 210000, dueDay: 31 }));
+    await assertSucceeds(edit({ amount: deleteField() }));
+    await assertFails(edit({ dueDay: 0 }));
+    await assertFails(edit({ title: deleteField() }));
+  });
+
+  test('편집자는 고정 지출을 지울 수 있고, 보기 전용은 지울 수 없다', async () => {
+    await seed((db) =>
+      setDoc(templateRef(db, { ledger: VIEWER_LEDGER }), {
+        ...newTemplate(OWNER),
+        createdAt: Timestamp.fromMillis(1000),
+        updatedAt: Timestamp.fromMillis(1000),
+      }),
+    );
+    await seedTemplate();
+    await assertFails(deleteDoc(templateRef(firestoreAs(VIEWER), { ledger: VIEWER_LEDGER })));
+    await assertSucceeds(deleteDoc(templateRef(firestoreAs(EDITOR))));
   });
 });
 

@@ -4,8 +4,10 @@ import 'package:shared_ledger/core/data/auth_repository.dart';
 import 'package:shared_ledger/core/data/entries_repository.dart';
 import 'package:shared_ledger/core/data/ledger_repository.dart';
 import 'package:shared_ledger/core/data/settings_repository.dart';
+import 'package:shared_ledger/core/data/templates_repository.dart';
 import 'package:shared_ledger/core/model/auth_user.dart';
 import 'package:shared_ledger/core/model/category.dart';
+import 'package:shared_ledger/core/model/expense_template.dart';
 import 'package:shared_ledger/core/model/invite.dart';
 import 'package:shared_ledger/core/model/ledger.dart';
 import 'package:shared_ledger/core/model/ledger_entries.dart';
@@ -229,8 +231,10 @@ class FakeSettingsRepository implements SettingsRepository {
 /// 화면 테스트용 가짜 항목 저장소. 넣어 둔 달의 항목을 돌려주고, 없는 달은 빈 달이다.
 ///
 /// 실제 저장소처럼 휴지통 항목은 이미 빠진 [MonthLedger]를 넣는다. [put]으로 바꾸면 구독 중인 곳에 다시 알린다.
-/// 쓰기도 실제 약속을 지킨다: 추가는 [offline]이어도 되고, 고치기·휴지통·꺼내기는 [offline]이면
+/// [MonthLedger.plannedIds]에는 실제 저장소처럼 휴지통에 넣은 기본 월 지출의 id까지 들어간다.
+/// 쓰기도 실제 약속을 지킨다: 추가는 [offline]이어도 되고, 고치기·휴지통·꺼내기·고정 지출로 채우기는 [offline]이면
 /// [EntryWriteFailure.offline]으로, 없는 항목(휴지통에 든 항목을 고칠 때 포함)이면 [EntryWriteFailure.notFound]로 실패한다.
+/// 고정 지출로 채울 때는 그 id의 기본 월 지출이 있으면(휴지통 포함) 건너뛴다.
 class FakeEntriesRepository implements EntriesRepository {
   FakeEntriesRepository([Map<YearMonth, MonthLedger> months = const {}])
     : _months = {...months};
@@ -260,6 +264,18 @@ class FakeEntriesRepository implements EntriesRepository {
   final restored =
       <({String ledgerId, YearMonth month, EntryKind kind, String id})>[];
 
+  /// 고정 지출로 채운 기록. 넘겨받은 고정 지출 id와 실제로 만든 개수를 남긴다.
+  final filled =
+      <
+        ({
+          String ledgerId,
+          YearMonth month,
+          List<String> templateIds,
+          int created,
+          String uid,
+        })
+      >[];
+
   /// true면 다음 구독이 권한 오류처럼 실패한다.
   bool failNextWatch = false;
 
@@ -283,8 +299,22 @@ class FakeEntriesRepository implements EntriesRepository {
     _changes.add(null);
   }
 
-  /// [month]의 지금 항목(휴지통 제외).
-  MonthLedger monthOf(YearMonth month) => _months[month] ?? const MonthLedger();
+  /// [month]의 지금 항목(휴지통 제외). [MonthLedger.plannedIds]에는 휴지통에 넣은 기본 월 지출까지 들어간다.
+  MonthLedger monthOf(YearMonth month) {
+    final ledger = _months[month] ?? const MonthLedger();
+    final trashedPlanned = {
+      for (final (trashedMonth, kind, id) in _trash.keys)
+        if (trashedMonth == month && kind == EntryKind.planned) id,
+    };
+    if (trashedPlanned.isEmpty) return ledger;
+    return MonthLedger(
+      incomes: ledger.incomes,
+      plannedExpenses: ledger.plannedExpenses,
+      extraExpenses: ledger.extraExpenses,
+      cardBills: ledger.cardBills,
+      plannedIds: {...ledger.plannedIds, ...trashedPlanned},
+    );
+  }
 
   @override
   Stream<MonthLedger> watchMonth(String ledgerId, YearMonth month) async* {
@@ -383,6 +413,40 @@ class FakeEntriesRepository implements EntriesRepository {
     _edit(month, kind, (entries) => [...entries, entry]);
   }
 
+  @override
+  Future<int> fillPlanned({
+    required String ledgerId,
+    required YearMonth month,
+    required List<ExpenseTemplate> templates,
+    required String uid,
+  }) async {
+    _checkOnline();
+    final existing = monthOf(month).plannedIds;
+    final missing = [
+      for (final template in templates)
+        if (!existing.contains(template.id)) template,
+    ];
+    filled.add((
+      ledgerId: ledgerId,
+      month: month,
+      templateIds: [for (final template in templates) template.id],
+      created: missing.length,
+      uid: uid,
+    ));
+    if (missing.isNotEmpty) {
+      _edit(
+        month,
+        EntryKind.planned,
+        (entries) => [
+          ...entries,
+          for (final template in missing)
+            _entryOf(template.id, template.draftFor(month)),
+        ],
+      );
+    }
+    return missing.length;
+  }
+
   void _failIfAsked() {
     if (failNextWrite) {
       failNextWrite = false;
@@ -422,6 +486,7 @@ class FakeEntriesRepository implements EntriesRepository {
         cardBills: kind == EntryKind.cardBill
             ? entries.whereType<CardBill>().toList()
             : ledger.cardBills,
+        plannedIds: ledger.plannedIds,
       ),
     );
   }
@@ -456,6 +521,7 @@ class FakeEntriesRepository implements EntriesRepository {
         paymentMethodId: draft.paymentMethodId ?? '',
         amount: draft.amount,
         paidOn: draft.date,
+        dueOn: draft.dueOn,
         memo: note,
       ),
       EntryKind.extra => ExtraExpense(
@@ -477,4 +543,129 @@ class FakeEntriesRepository implements EntriesRepository {
       ),
     };
   }
+}
+
+/// 화면 테스트용 가짜 고정 지출 저장소. 어느 가계부를 물어도 같은 목록을 돌려준다.
+///
+/// 실제 저장소처럼 쓰기는 모두 [offline]이면 [TemplateWriteFailure.offline]으로 실패하고,
+/// 없는 고정 지출을 고치거나 지우면 [TemplateWriteFailure.notFound]로 실패한다. 되돌리기는 같은 id가 있으면 그대로 둔다.
+class FakeTemplatesRepository implements TemplatesRepository {
+  FakeTemplatesRepository([List<ExpenseTemplate> initial = const []])
+    : _templates = [...initial];
+
+  final List<ExpenseTemplate> _templates;
+  final _changes = StreamController<void>.broadcast();
+
+  /// 쓴 기록.
+  final added = <({String ledgerId, TemplateDraft draft, String uid})>[];
+  final updated =
+      <({String ledgerId, String id, TemplateDraft draft, String uid})>[];
+  final deleted = <({String ledgerId, String id})>[];
+  final restored = <({String ledgerId, String id, String uid})>[];
+
+  /// 구독한 가계부 id.
+  final watched = <String>[];
+
+  /// true면 연결이 없는 것처럼 모든 쓰기가 실패한다.
+  bool offline = false;
+
+  /// true면 다음 쓰기가 [TemplateWriteException]이 아닌 오류(권한 등)로 실패한다.
+  bool failNextWrite = false;
+
+  /// 지금 고정 지출 목록.
+  List<ExpenseTemplate> get templates => List.unmodifiable(_templates);
+
+  /// 그사이 상대가 고친 것처럼 목록을 바꾼다. 구독 중인 곳에 다시 알린다.
+  void put(List<ExpenseTemplate> templates) {
+    _templates
+      ..clear()
+      ..addAll(templates);
+    _changes.add(null);
+  }
+
+  // 구독을 시작하자마자 바뀜을 듣는다. 실제 구독처럼 첫 값을 낸 직후에 바뀐 목록도 놓치지 않는다.
+  @override
+  Stream<List<ExpenseTemplate>> watchTemplates(String ledgerId) {
+    watched.add(ledgerId);
+    return Stream.multi((controller) {
+      controller.add(templates);
+      final changes = _changes.stream.listen((_) => controller.add(templates));
+      controller.onCancel = changes.cancel;
+    });
+  }
+
+  @override
+  Future<String> add({
+    required String ledgerId,
+    required TemplateDraft draft,
+    required String uid,
+  }) async {
+    _checkOnline();
+    added.add((ledgerId: ledgerId, draft: draft, uid: uid));
+    final id = 'template-new-${added.length}';
+    put([..._templates, _templateOf(id, draft)]);
+    return id;
+  }
+
+  @override
+  Future<void> update({
+    required String ledgerId,
+    required String id,
+    required TemplateDraft draft,
+    required String uid,
+  }) async {
+    _checkOnline();
+    _existing(id);
+    updated.add((ledgerId: ledgerId, id: id, draft: draft, uid: uid));
+    put([
+      for (final template in _templates)
+        template.id == id ? _templateOf(id, draft) : template,
+    ]);
+  }
+
+  @override
+  Future<void> delete({required String ledgerId, required String id}) async {
+    _checkOnline();
+    _existing(id);
+    deleted.add((ledgerId: ledgerId, id: id));
+    put([..._templates.where((t) => t.id != id)]);
+  }
+
+  @override
+  Future<void> restore({
+    required String ledgerId,
+    required ExpenseTemplate template,
+    required String uid,
+  }) async {
+    _checkOnline();
+    restored.add((ledgerId: ledgerId, id: template.id, uid: uid));
+    if (_templates.any((t) => t.id == template.id)) return;
+    put([..._templates, template]);
+  }
+
+  void _checkOnline() {
+    if (failNextWrite) {
+      failNextWrite = false;
+      throw StateError('write failed');
+    }
+    if (offline) {
+      throw const TemplateWriteException(TemplateWriteFailure.offline);
+    }
+  }
+
+  ExpenseTemplate _existing(String id) =>
+      _templates.where((t) => t.id == id).firstOrNull ??
+      (throw const TemplateWriteException(TemplateWriteFailure.notFound));
+
+  // 저장한 문서를 다시 읽은 것과 같은 고정 지출. 실제 저장소는 제목 앞뒤 공백을 뺀다.
+  static ExpenseTemplate _templateOf(String id, TemplateDraft draft) =>
+      ExpenseTemplate(
+        id: id,
+        title: draft.title.trim(),
+        amount: draft.amount,
+        categoryId: draft.categoryId ?? '',
+        paymentMethodId: draft.paymentMethodId ?? '',
+        memberId: draft.memberId,
+        dueDay: draft.dueDay ?? lastDueDay,
+      );
 }

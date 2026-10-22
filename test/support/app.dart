@@ -22,6 +22,7 @@ Future<void> pumpApp(
   required FakeLedgerRepository ledgers,
   FakeSettingsRepository? settings,
   FakeEntriesRepository? entries,
+  FakeTemplatesRepository? templates,
   Size size = phoneSize,
 }) async {
   tester.view.physicalSize = size * tester.view.devicePixelRatio;
@@ -36,6 +37,9 @@ Future<void> pumpApp(
         ),
         entriesRepositoryProvider.overrideWithValue(
           entries ?? FakeEntriesRepository(),
+        ),
+        templatesRepositoryProvider.overrideWithValue(
+          templates ?? FakeTemplatesRepository(),
         ),
         clockProvider.overrideWithValue(() => testNow),
       ],
@@ -55,6 +59,13 @@ Future<void> openTab(WidgetTester tester, HomeTab tab) async {
 Future<void> settle(WidgetTester tester) async {
   for (var i = 0; i < 8; i++) {
     await tester.pump(const Duration(milliseconds: 50));
+  }
+}
+
+// 탭 위로 여는 전체 화면(항목·고정 지출 입력)이 열리고 닫히는 전환은 settle(400ms)보다 길다. 끝날 때까지 그린다.
+Future<void> settleRoute(WidgetTester tester) async {
+  for (var i = 0; i < 3; i++) {
+    await settle(tester);
   }
 }
 

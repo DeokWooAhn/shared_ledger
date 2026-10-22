@@ -1,0 +1,312 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_ledger/core/data/providers.dart';
+import 'package:shared_ledger/core/model/auth_user.dart';
+import 'package:shared_ledger/core/model/expense_template.dart';
+import 'package:shared_ledger/core/model/ledger.dart';
+import 'package:shared_ledger/core/model/ledger_entries.dart';
+import 'package:shared_ledger/core/model/month_ledger.dart';
+import 'package:shared_ledger/core/model/year_month.dart';
+import 'package:shared_ledger/feature/home/month_fill_controller.dart';
+
+import '../../support/fakes.dart';
+import '../../support/provider_container.dart';
+
+const me = AuthUser(uid: 'me');
+const mine = Ledger(id: 'l1', name: '우리 가계부', ownerUid: 'me');
+const october = YearMonth(2026, 10);
+
+const rent = ExpenseTemplate(
+  id: 'rent',
+  title: '관리비',
+  categoryId: 'c-spending',
+  paymentMethodId: 'p-account',
+  memberId: 'partner',
+  dueDay: lastDueDay,
+);
+const insurance = ExpenseTemplate(
+  id: 'insurance',
+  title: '보험',
+  amount: 154000,
+  categoryId: 'c-spending',
+  paymentMethodId: 'p-account',
+  memberId: 'owner',
+  dueDay: 15,
+);
+
+/// 로그인하고 가계부 목록·그달 항목·고정 지출까지 받은 컨테이너. [plannedFillProvider]를 듣고 있다.
+Future<ProviderContainer> ready({
+  FakeEntriesRepository? entries,
+  List<ExpenseTemplate> templates = const [rent, insurance],
+  Ledger ledger = mine,
+}) async {
+  final container = createContainer(
+    auth: FakeAuthRepository(signedIn: me),
+    ledgers: FakeLedgerRepository([ledger]),
+    entries: entries,
+    templates: FakeTemplatesRepository(templates),
+  );
+  await loadSignedInUser(container);
+  container.listen(myLedgersProvider, (_, _) {});
+  await container.read(myLedgersProvider.future);
+  listenAll(container);
+  await loaded(container);
+  return container;
+}
+
+/// 탭 화면처럼 그달 항목과 고정 지출을 듣고, 홈 틀처럼 채울 것을 듣는다.
+/// 채울 것이 일찍 null로 끝나는 경우(보기 전용, 지난 달)에도 항목 구독이 멈추지 않게 한다.
+void listenAll(ProviderContainer container) {
+  container
+    ..listen(monthLedgerProvider, (_, _) {})
+    ..listen(templatesProvider, (_, _) {})
+    ..listen(plannedFillProvider, (_, _) {});
+}
+
+/// 보는 달의 항목과 고정 지출을 받을 때까지 기다린다.
+Future<void> loaded(ProviderContainer container) async {
+  await container.read(monthLedgerProvider.future);
+  await container.read(templatesProvider.future);
+}
+
+void main() {
+  group('채울 것(plannedFillProvider)', () {
+    test('이번 달에 아직 없는 고정 지출을 채울 것으로 낸다', () async {
+      final container = await ready();
+
+      expect(
+        container.read(plannedFillProvider),
+        const PlannedFill(
+          ledgerId: 'l1',
+          month: october,
+          templates: [rent, insurance],
+        ),
+      );
+    });
+
+    test('이미 있거나 휴지통에 넣은 기본 월 지출의 고정 지출은 빼고, 다 있으면 null이다', () async {
+      final entries = FakeEntriesRepository({
+        october: const MonthLedger(plannedIds: {'rent'}),
+      });
+      final container = await ready(entries: entries);
+
+      expect(container.read(plannedFillProvider)?.templates, [insurance]);
+
+      entries.put(
+        october,
+        const MonthLedger(plannedIds: {'rent', 'insurance'}),
+      );
+      await container.read(monthLedgerProvider.future);
+      await pumpEventQueue();
+
+      expect(container.read(plannedFillProvider), isNull);
+    });
+
+    test('다음 달도 채우고, 지난 달과 다다음 달은 채우지 않는다', () async {
+      final container = await ready();
+      final month = container.read(selectedMonthProvider.notifier);
+
+      month.next();
+      await loaded(container);
+      expect(
+        container.read(plannedFillProvider)?.month,
+        const YearMonth(2026, 11),
+      );
+
+      month.next();
+      await loaded(container);
+      expect(container.read(plannedFillProvider), isNull);
+
+      month
+        ..previous()
+        ..previous()
+        ..previous();
+      await loaded(container);
+      expect(container.read(selectedMonthProvider), const YearMonth(2026, 9));
+      expect(container.read(plannedFillProvider), isNull);
+    });
+
+    test('보기 전용은 채우지 않는다(규칙이 막는다)', () async {
+      final container = await ready(
+        ledger: const Ledger(
+          id: 'l1',
+          name: '우리 가계부',
+          ownerUid: 'partner-uid',
+          roles: {'me': MemberRole.viewer},
+        ),
+      );
+
+      expect(container.read(plannedFillProvider), isNull);
+    });
+
+    test('고정 지출이 없으면 채울 것이 없다', () async {
+      final container = await ready(templates: const []);
+
+      expect(container.read(plannedFillProvider), isNull);
+    });
+
+    test('고정 지출을 더하면 이번 달에 그것만 채울 것으로 낸다', () async {
+      final entries = FakeEntriesRepository({
+        october: const MonthLedger(plannedIds: {'rent'}),
+      });
+      final templates = FakeTemplatesRepository(const [rent]);
+      final container = createContainer(
+        auth: FakeAuthRepository(signedIn: me),
+        ledgers: FakeLedgerRepository([mine]),
+        entries: entries,
+        templates: templates,
+      );
+      await loadSignedInUser(container);
+      container.listen(myLedgersProvider, (_, _) {});
+      await container.read(myLedgersProvider.future);
+      listenAll(container);
+      await loaded(container);
+      expect(container.read(plannedFillProvider), isNull);
+
+      templates.put(const [rent, insurance]);
+      await pumpEventQueue();
+
+      expect(container.read(plannedFillProvider)?.templates, [insurance]);
+    });
+  });
+
+  group('채우기(MonthFillController)', () {
+    test('빠진 고정 지출로 그달 기본 월 지출을 만들고, 다 채우면 채울 것이 없어진다', () async {
+      final entries = FakeEntriesRepository();
+      final container = await ready(entries: entries);
+      final states = recordStates(container, monthFillControllerProvider);
+      final fill = container.read(plannedFillProvider)!;
+
+      await container.read(monthFillControllerProvider.notifier).fill(fill);
+      await pumpEventQueue();
+
+      expect(states, [true, false]);
+      expect(entries.filled.single.uid, 'me');
+      expect(entries.filled.single.templateIds, ['rent', 'insurance']);
+      final planned = entries.monthOf(october).plannedExpenses;
+      expect(planned.map((e) => e.id), ['rent', 'insurance']);
+      expect(planned.first.dueOn, DateTime(2026, 10, 31));
+      expect(planned.first.isPaid, isFalse);
+      expect(container.read(plannedFillProvider), isNull);
+    });
+
+    test('채우는 중에 같은 요청으로 다시 불러도 한 번만 채운다', () async {
+      final entries = FakeEntriesRepository();
+      final container = await ready(entries: entries);
+      recordStates(container, monthFillControllerProvider);
+      final fill = container.read(plannedFillProvider)!;
+      final controller = container.read(monthFillControllerProvider.notifier);
+
+      await Future.wait([controller.fill(fill), controller.fill(fill)]);
+
+      expect(entries.filled, hasLength(1));
+    });
+
+    test('채우는 중에 다음 달로 옮기면 끝난 뒤 다음 달도 채운다', () async {
+      // 이번 달을 채우는 동안 다음 달 요청이 오고, 그 뒤로 채울 것이 다시 바뀌지 않는 경우.
+      final entries = FakeEntriesRepository();
+      final container = await ready(entries: entries);
+      final states = recordStates(container, monthFillControllerProvider);
+      final thisMonth = container.read(plannedFillProvider)!;
+      const nextMonth = PlannedFill(
+        ledgerId: 'l1',
+        month: YearMonth(2026, 11),
+        templates: [rent, insurance],
+      );
+      final controller = container.read(monthFillControllerProvider.notifier);
+
+      await Future.wait([
+        controller.fill(thisMonth),
+        controller.fill(nextMonth),
+      ]);
+
+      expect(entries.filled.map((f) => f.month), [
+        october,
+        const YearMonth(2026, 11),
+      ]);
+      expect(
+        entries.monthOf(const YearMonth(2026, 11)).plannedExpenses,
+        hasLength(2),
+      );
+      expect(states, [true, false]);
+    });
+
+    test('채우는 중에 여러 요청이 오면 끝난 뒤 가장 최근 것만 채운다', () async {
+      final entries = FakeEntriesRepository();
+      final container = await ready(entries: entries);
+      recordStates(container, monthFillControllerProvider);
+      final thisMonth = container.read(plannedFillProvider)!;
+      PlannedFill fillOf(YearMonth month) =>
+          PlannedFill(ledgerId: 'l1', month: month, templates: const [rent]);
+      final controller = container.read(monthFillControllerProvider.notifier);
+
+      await Future.wait([
+        controller.fill(thisMonth),
+        controller.fill(fillOf(const YearMonth(2026, 11))),
+        controller.fill(fillOf(const YearMonth(2026, 12))),
+      ]);
+
+      expect(entries.filled.map((f) => f.month), [
+        october,
+        const YearMonth(2026, 12),
+      ]);
+    });
+
+    test('오프라인이면 만들지 못해도 알리지 않고 다음에 다시 채울 수 있다', () async {
+      final entries = FakeEntriesRepository()..offline = true;
+      final container = await ready(entries: entries);
+      final states = recordStates(container, monthFillControllerProvider);
+      final fill = container.read(plannedFillProvider)!;
+      final controller = container.read(monthFillControllerProvider.notifier);
+
+      await controller.fill(fill);
+
+      expect(states, [true, false]);
+      expect(entries.monthOf(october).plannedExpenses, isEmpty);
+      expect(container.read(plannedFillProvider), fill);
+
+      entries.offline = false;
+      await controller.fill(fill);
+      expect(entries.monthOf(october).plannedExpenses.map((e) => e.id), [
+        'rent',
+        'insurance',
+      ]);
+    });
+
+    test('예상 못 한 오류도 삼키고 채우는 중 상태를 푼다', () async {
+      final entries = FakeEntriesRepository()..failNextWrite = true;
+      final container = await ready(entries: entries);
+      final states = recordStates(container, monthFillControllerProvider);
+
+      await container
+          .read(monthFillControllerProvider.notifier)
+          .fill(container.read(plannedFillProvider)!);
+
+      expect(states, [true, false]);
+      expect(entries.filled, isEmpty);
+    });
+
+    test('이미 있는 기본 월 지출은 저장소가 건너뛰어 덮어쓰지 않는다', () async {
+      // 그사이 상대가 먼저 만들고 금액을 고친 관리비.
+      const edited = PlannedExpense(
+        id: 'rent',
+        categoryId: 'c-spending',
+        memberId: 'partner',
+        title: '관리비',
+        paymentMethodId: 'p-account',
+        amount: 210000,
+      );
+      final entries = FakeEntriesRepository();
+      final container = await ready(entries: entries);
+      final fill = container.read(plannedFillProvider)!;
+      entries.put(october, const MonthLedger(plannedExpenses: [edited]));
+
+      await container.read(monthFillControllerProvider.notifier).fill(fill);
+
+      expect(entries.filled.single.created, 1);
+      final planned = entries.monthOf(october).plannedExpenses;
+      expect(planned.firstWhere((e) => e.id == 'rent').amount, 210000);
+      expect(planned.map((e) => e.id), ['rent', 'insurance']);
+    });
+  });
+}

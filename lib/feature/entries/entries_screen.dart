@@ -29,6 +29,12 @@ typedef OpenEntryForm =
 /// 목록에 보이는 짧은 날짜. 예: '10/25'
 String entryShortDate(DateTime date) => '${date.month}/${date.day}';
 
+/// 지급 전 기본 월 지출의 예정일. 그달 마지막 날이면 '말일', 아니면 짧은 날짜다. 예: '말일', '10/25'
+String entryDueDate(DateTime dueOn) =>
+    DateTime(dueOn.year, dueOn.month, dueOn.day + 1).month != dueOn.month
+    ? '말일'
+    : entryShortDate(dueOn);
+
 String entriesFailureMessage(EntriesFailure failure) => switch (failure) {
   EntriesFailure.restoreOffline => '연결되지 않아 꺼내지 못했어요. 항목은 휴지통에 남아 있어요.',
   EntriesFailure.restoreGone => '그사이 휴지통에서 꺼냈거나 지운 항목이에요.',
@@ -336,19 +342,21 @@ class _EntryRow extends StatelessWidget {
     CardBill(:final cardId) => methods[cardId]?.name ?? '카드 없음',
   };
 
-  // 제목 아래 한 줄: 결제수단, 날짜, 메모.
+  // 제목 아래 한 줄: 결제수단, 날짜(지급 전이면 고정 지출의 예정일), 메모.
   String get _meta {
     final entry = this.entry;
     final date = entry.date;
     final day = date == null ? null : entryShortDate(date);
     final parts = switch (entry) {
       Income() => [if (day != null) '$day 입금'],
-      PlannedExpense(:final paymentMethodId) => [
+      PlannedExpense(:final paymentMethodId, :final dueOn) => [
         _methodName(paymentMethodId),
         if (day != null)
           methods[paymentMethodId]?.kind == PaymentKind.card
               ? '$day 결제'
-              : '$day 지급',
+              : '$day 지급'
+        else if (dueOn != null)
+          '${entryDueDate(dueOn)} 예정',
       ],
       ExtraExpense(:final paymentMethodId) => [
         _methodName(paymentMethodId),

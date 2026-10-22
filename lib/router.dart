@@ -18,6 +18,8 @@ import 'feature/home/home_shell.dart';
 import 'feature/ledger/ledger_start_screen.dart';
 import 'feature/settings/settings_screen.dart';
 import 'feature/summary/summary_screen.dart';
+import 'feature/templates/template_form_controller.dart';
+import 'feature/templates/template_form_screen.dart';
 import 'feature/templates/templates_screen.dart';
 
 abstract final class Routes {
@@ -35,6 +37,9 @@ abstract final class Routes {
   /// 항목 입력·수정. 탭 막대를 가리는 전체 화면이고, 무엇을 열지는 [EntryFormArgs]를 `extra`로 넘긴다.
   static const entry = '/entry';
 
+  /// 고정 지출 입력·수정. 항목 입력처럼 탭 막대를 가리는 전체 화면이고, [TemplateFormArgs]를 `extra`로 넘긴다.
+  static const template = '/template';
+
   /// [tab] 탭의 경로.
   static String of(HomeTab tab) => switch (tab) {
     HomeTab.summary => summary,
@@ -47,7 +52,7 @@ abstract final class Routes {
 Widget _tabScreen(HomeTab tab) => switch (tab) {
   HomeTab.summary => const SummaryScreen(),
   HomeTab.entries => const EntriesScreen(openForm: _openEntryForm),
-  HomeTab.templates => const TemplatesScreen(),
+  HomeTab.templates => const TemplatesScreen(openForm: _openTemplateForm),
   HomeTab.settings => const SettingsScreen(),
 };
 
@@ -56,6 +61,12 @@ Future<EntryFormOutcome?> _openEntryForm(
   BuildContext context,
   EntryFormArgs args,
 ) => context.push<EntryFormOutcome>(Routes.entry, extra: args);
+
+// 고정 지출 입력 화면을 열고, 닫힐 때의 결과(저장·삭제)를 돌려준다.
+Future<TemplateFormOutcome?> _openTemplateForm(
+  BuildContext context,
+  TemplateFormArgs args,
+) => context.push<TemplateFormOutcome>(Routes.template, extra: args);
 
 // + 버튼. 새 항목은 결과를 기다릴 일이 없다.
 void _addEntry(BuildContext context, EntryKind kind, YearMonth month) =>
@@ -141,6 +152,20 @@ final routerProvider = Provider<GoRouter>((ref) {
           fullscreenDialog: true,
           child: switch (state.extra) {
             final EntryFormArgs args => EntryFormScreen(args: args),
+            _ => const SizedBox.shrink(),
+          },
+        ),
+      ),
+      // 열 고정 지출 없이 들어오면 고정 지출 탭으로 보낸다.
+      GoRoute(
+        path: Routes.template,
+        redirect: (_, state) =>
+            state.extra is TemplateFormArgs ? null : Routes.templates,
+        pageBuilder: (_, state) => MaterialPage(
+          key: state.pageKey,
+          fullscreenDialog: true,
+          child: switch (state.extra) {
+            final TemplateFormArgs args => TemplateFormScreen(args: args),
             _ => const SizedBox.shrink(),
           },
         ),

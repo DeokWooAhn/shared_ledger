@@ -64,7 +64,7 @@ test('…', () async {
 - 탭은 `openTab(tester, HomeTab.settings)`로 옮긴다. 탭 막대 배치와 상관없이 `HomeTab.key`로 찾는다.
 - 불러오는 중 화면의 진행 표시가 계속 돌아서 `pumpAndSettle`은 끝나지 않는다. `settle()`처럼 정해진 횟수만 그린다.
   화면 전환(300ms)이 끝날 만큼 그려야 한다. 짧으면 이전 화면의 Scaffold가 남아 스낵바가 두 개 보인다.
-- 탭 위로 여는 전체 화면(항목 입력, `fullscreenDialog`)은 Android 전환이 400ms보다 길다. 열고 닫을 때는 더 길게 그린다(`settleRoute`).
+- 탭 위로 여는 전체 화면(항목·고정 지출 입력, `fullscreenDialog`)은 Android 전환이 400ms보다 길다. 열고 닫을 때는 더 길게 그린다(`settleRoute`, `test/support/app.dart`).
   전환 중에는 아래 탭 화면도 찾아지니 같은 키가 둘이면 `find.descendant(of: find.byType(EntryFormScreen), …)`로 좁힌다.
 - `scrollUntilVisible`은 끌어서 스크롤하므로 끝난 뒤에도 관성 스크롤이 돌고, 그동안 목록은 누름을 받지 않는다(탭이 빗나감).
   화면 아래 끝에 걸친 위젯은 `ensureVisible` 후 `settle`하고 누른다(`entries_screen_test.dart`의 `showInForm`).
@@ -87,6 +87,11 @@ test('…', () async {
   쓰기도 실제 약속을 지킨다: 추가는 `offline`이어도 되고, 고치기·휴지통·꺼내기는 `offline`이면 `EntryWriteFailure.offline`,
   없는 항목(휴지통에 든 항목을 고칠 때 포함)이면 `notFound`로 실패한다. 기록은 `added`·`updated`·`trashed`·`restored`, 지금 항목은 `monthOf(달)`.
   서버가 새 항목을 나중에 거부하는 경우는 `rejectNextAdd`: 추가는 성공하고 목록에 들어갔다가 조금 뒤 빠지며 `rejectedAdds`로 알린다.
+  고정 지출로 채우기(`fillPlanned`)도 `offline`이면 실패하고, 그 id의 기본 월 지출이 있으면(휴지통 포함, `monthOf(달).plannedIds`) 건너뛴다. 기록은 `filled`.
+- 고정 지출(`FakeTemplatesRepository`)은 쓰기가 모두 `offline`이면 `TemplateWriteFailure.offline`, 없는 것을 고치거나 지우면 `notFound`로 실패한다.
+  `put`으로 상대가 바꾼 것처럼 목록을 바꾼다. 기록은 `added`·`updated`·`deleted`·`restored`·`watched`.
+- 구독은 시작하자마자 바뀜을 들어야 한다. `async*`로 첫 값을 낸 뒤 `await for`로 듣는 가짜는 그 사이에 바꾼 것을 놓친다
+  (`FakeTemplatesRepository.watchTemplates`는 `Stream.multi`로 바로 듣는다).
 - 실패 스위치는 다음 한 번만 실패하고 스스로 꺼진다: 도메인 실패(`nextJoinFailure`), 예상 못 한 오류(`failNextCreate`, `failNextInvite`, `failNextJoin`, `failNextSignIn`, `failNextSignOut`, `failNextWatch`, `failNextWrite`).
   연결 상태처럼 계속되는 조건은 스위치가 아니라 상태로 둔다(`FakeEntriesRepository.offline`).
 

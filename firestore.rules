@@ -153,9 +153,33 @@ service cloud.firestore {
             || (docId in ['owner', 'partner'] && name is string && name.size() >= 1 && name.size() <= 10);
         }
 
+        function settingText(field, max) {
+          let value = request.resource.data.get(field, null);
+          return value is string && value.size() >= 1 && value.size() <= max;
+        }
+
+        // 고정 지출: 앱의 newTemplateData(lib/core/data/templates_repository.dart)와 같은 필드만 받는다.
+        // 금액은 0 이상의 정수이거나 비어 있고(금액 미정), 예정일은 1~31일(31은 말일)이다.
+        function validTemplate() {
+          let data = request.resource.data;
+          let amount = data.get('amount', null);
+          let dueDay = data.get('dueDay', null);
+          return settings != 'templates'
+            || (data.keys().hasOnly(['title', 'amount', 'categoryId', 'paymentMethodId', 'memberId', 'dueDay',
+                  'createdBy', 'createdAt', 'updatedBy', 'updatedAt'])
+              && settingText('title', 40)
+              && (amount == null || (amount is int && amount >= 0))
+              && settingText('categoryId', 100)
+              && settingText('paymentMethodId', 100)
+              && data.get('memberId', null) in ['owner', 'partner']
+              && dueDay is int && dueDay >= 1 && dueDay <= 31);
+        }
+
         allow read: if isSettings() && isMemberOf(ledgerData(ledgerId));
-        allow create: if isSettings() && canWriteIn(ledgerDataAfter(ledgerId)) && createdNow() && validMember();
-        allow update: if isSettings() && canWriteIn(ledgerData(ledgerId)) && updatedNow() && validMember();
+        allow create: if isSettings() && canWriteIn(ledgerDataAfter(ledgerId)) && createdNow()
+          && validMember() && validTemplate();
+        allow update: if isSettings() && canWriteIn(ledgerData(ledgerId)) && updatedNow()
+          && validMember() && validTemplate();
         allow delete: if isSettings() && canWriteIn(ledgerData(ledgerId));
       }
 
@@ -183,10 +207,11 @@ service cloud.firestore {
         }
 
         // 종류마다 받는 필드. 앱의 newEntryData(lib/core/data/entries_repository.dart)와 같다.
+        // 기본 월 지출의 dueOn은 고정 지출에서 옮긴 그달 예정일이다.
         function entryFields() {
           let common = ['memberId', 'amount', 'memo', 'deletedAt', 'createdBy', 'createdAt', 'updatedBy', 'updatedAt'];
           return entryType == 'incomes' ? common.concat(['title', 'receivedOn'])
-            : entryType == 'planned' ? common.concat(['title', 'categoryId', 'paymentMethodId', 'paidOn'])
+            : entryType == 'planned' ? common.concat(['title', 'categoryId', 'paymentMethodId', 'paidOn', 'dueOn'])
             : entryType == 'extras' ? common.concat(['title', 'paymentMethodId', 'spentOn'])
             : common.concat(['cardId', 'paidOn']);
         }
@@ -221,6 +246,7 @@ service cloud.firestore {
             && validDate('receivedOn')
             && validDate('paidOn')
             && validDate('spentOn')
+            && validDate('dueOn')
             && validAmount()
             && validTrash();
         }

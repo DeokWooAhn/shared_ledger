@@ -3,7 +3,9 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_ledger/core/data/entries_repository.dart';
+import 'package:shared_ledger/core/model/expense_template.dart';
 import 'package:shared_ledger/core/model/ledger_entries.dart';
+import 'package:shared_ledger/core/model/year_month.dart';
 
 EntryDoc doc(
   String id,
@@ -60,6 +62,26 @@ void main() {
       expect(expense?.amount, 0);
       expect(expense?.paidOn, DateTime(2026, 10, 5));
       expect(expense?.isPaid, isTrue);
+    });
+
+    test('기본 월 지출은 고정 지출에서 옮긴 예정일을 읽고, 잘못된 예정일은 비운다', () {
+      const data = {
+        'memberId': 'owner',
+        'categoryId': 'c1',
+        'paymentMethodId': 'p1',
+        'title': '관리비',
+      };
+
+      expect(
+        plannedExpenseFromFirestore('t1', {
+          ...data,
+          'dueOn': '2026-10-31',
+        })?.dueOn,
+        DateTime(2026, 10, 31),
+      );
+      final broken = plannedExpenseFromFirestore('t1', {...data, 'dueOn': 31});
+      expect(broken, isNotNull);
+      expect(broken?.dueOn, isNull);
     });
 
     test('추가지출과 카드대금을 읽는다', () {
@@ -253,6 +275,71 @@ void main() {
       expect(data.keys, isNot(contains('memo')));
     });
 
+    test('고정 지출로 만든 기본 월 지출은 그달 예정일을 담고 지급 전·메모 없이 만든다', () {
+      const template = ExpenseTemplate(
+        id: 't-rent',
+        title: '관리비',
+        categoryId: 'c1',
+        paymentMethodId: 'p1',
+        memberId: 'partner',
+        dueDay: lastDueDay,
+      );
+
+      final data = newEntryData(
+        template.draftFor(const YearMonth(2026, 2)),
+        uid: 'me',
+      );
+
+      // 금액 미정이라 amount가 없다. 규칙의 planned 필드(entryFields)에 dueOn이 있다.
+      expect(data.keys.toSet(), {
+        'memberId',
+        'title',
+        'categoryId',
+        'paymentMethodId',
+        'dueOn',
+        'createdBy',
+        'updatedBy',
+        'createdAt',
+        'updatedAt',
+      });
+      expect(data['dueOn'], '2026-02-28');
+      expect(data['memberId'], 'partner');
+    });
+
+    test('고칠 때 예정일이 있으면 그대로 다시 쓴다', () {
+      final data = entryUpdateData(
+        EntryDraft(
+          kind: EntryKind.planned,
+          memberId: 'owner',
+          title: '관리비',
+          categoryId: 'c1',
+          paymentMethodId: 'p1',
+          date: DateTime(2026, 10, 30),
+          dueOn: DateTime(2026, 10, 31),
+        ),
+        uid: 'me',
+      );
+
+      expect(data['dueOn'], '2026-10-31');
+      expect(data['paidOn'], '2026-10-30');
+    });
+
+    test('예정일은 기본 월 지출에만 쓴다', () {
+      final data = newEntryData(
+        EntryDraft(
+          kind: EntryKind.extra,
+          memberId: 'owner',
+          amount: 1000,
+          title: '간식',
+          paymentMethodId: 'p1',
+          dueOn: DateTime(2026, 10, 31),
+        ),
+        uid: 'me',
+      );
+
+      expect(data.keys, isNot(contains('dueOn')));
+    });
+
     test('제목·메모는 앞뒤 공백을 뺀다', () {
       const draft = EntryDraft(
         kind: EntryKind.extra,
@@ -288,12 +375,14 @@ void main() {
         'categoryId',
         'paymentMethodId',
         'paidOn',
+        'dueOn',
         'memo',
         'updatedBy',
         'updatedAt',
       });
       expect(data['amount'], delete);
       expect(data['paidOn'], delete);
+      expect(data['dueOn'], delete);
       expect(data['memo'], delete);
       expect(data['updatedBy'], 'partner-uid');
       expect(data['updatedAt'], serverTime);
@@ -430,6 +519,31 @@ void main() {
       expect(ledger.plannedExpenses.map((e) => e.id), ['t1']);
       expect(ledger.extraExpenses, isEmpty);
       expect(ledger.cardBills.map((e) => e.id), ['b1']);
+    });
+
+    test('기본 월 지출 문서 id는 휴지통 항목과 읽을 수 없는 문서까지 모은다', () {
+      // 고정 지출로 채울 때 이 id의 문서를 다시 만들지 않는다.
+      const planned = {
+        'memberId': 'owner',
+        'categoryId': 'c1',
+        'paymentMethodId': 'p1',
+      };
+      final ledger = monthLedgerFromFirestore(
+        incomes: const [],
+        planned: [
+          doc('t-live', planned),
+          doc('t-trashed', {
+            ...planned,
+            'deletedAt': Timestamp.fromDate(DateTime(2026, 10, 2)),
+          }),
+          doc('t-broken', {...planned, 'amount': -1}),
+        ],
+        extras: const [],
+        cardBills: const [],
+      );
+
+      expect(ledger.plannedExpenses.map((e) => e.id), ['t-live']);
+      expect(ledger.plannedIds, {'t-live', 't-trashed', 't-broken'});
     });
   });
 
