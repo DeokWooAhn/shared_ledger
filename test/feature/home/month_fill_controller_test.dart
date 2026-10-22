@@ -190,7 +190,7 @@ void main() {
       expect(container.read(plannedFillProvider), isNull);
     });
 
-    test('채우는 중에 다시 불러도 한 번만 채운다', () async {
+    test('채우는 중에 같은 요청으로 다시 불러도 한 번만 채운다', () async {
       final entries = FakeEntriesRepository();
       final container = await ready(entries: entries);
       recordStates(container, monthFillControllerProvider);
@@ -200,6 +200,56 @@ void main() {
       await Future.wait([controller.fill(fill), controller.fill(fill)]);
 
       expect(entries.filled, hasLength(1));
+    });
+
+    test('채우는 중에 다음 달로 옮기면 끝난 뒤 다음 달도 채운다', () async {
+      // 이번 달을 채우는 동안 다음 달 요청이 오고, 그 뒤로 채울 것이 다시 바뀌지 않는 경우.
+      final entries = FakeEntriesRepository();
+      final container = await ready(entries: entries);
+      final states = recordStates(container, monthFillControllerProvider);
+      final thisMonth = container.read(plannedFillProvider)!;
+      const nextMonth = PlannedFill(
+        ledgerId: 'l1',
+        month: YearMonth(2026, 11),
+        templates: [rent, insurance],
+      );
+      final controller = container.read(monthFillControllerProvider.notifier);
+
+      await Future.wait([
+        controller.fill(thisMonth),
+        controller.fill(nextMonth),
+      ]);
+
+      expect(entries.filled.map((f) => f.month), [
+        october,
+        const YearMonth(2026, 11),
+      ]);
+      expect(
+        entries.monthOf(const YearMonth(2026, 11)).plannedExpenses,
+        hasLength(2),
+      );
+      expect(states, [true, false]);
+    });
+
+    test('채우는 중에 여러 요청이 오면 끝난 뒤 가장 최근 것만 채운다', () async {
+      final entries = FakeEntriesRepository();
+      final container = await ready(entries: entries);
+      recordStates(container, monthFillControllerProvider);
+      final thisMonth = container.read(plannedFillProvider)!;
+      PlannedFill fillOf(YearMonth month) =>
+          PlannedFill(ledgerId: 'l1', month: month, templates: const [rent]);
+      final controller = container.read(monthFillControllerProvider.notifier);
+
+      await Future.wait([
+        controller.fill(thisMonth),
+        controller.fill(fillOf(const YearMonth(2026, 11))),
+        controller.fill(fillOf(const YearMonth(2026, 12))),
+      ]);
+
+      expect(entries.filled.map((f) => f.month), [
+        october,
+        const YearMonth(2026, 12),
+      ]);
     });
 
     test('오프라인이면 만들지 못해도 알리지 않고 다음에 다시 채울 수 있다', () async {
