@@ -77,8 +77,9 @@ test('…', () async {
   - 로그아웃 상태면 빈 목록, 로그인 창을 닫으면 `false`
   - 두 명이 찬 가계부·이미 구성원이면 참여를 `JoinFailure.unavailable`로 거부
   - 같은 id의 문서를 다시 쓰면 바꾸고, 새로 더하지 않는다
-- 호출 기록을 남긴다(`created`, `invites`, `joins`, `googleCalls`, 설정을 구독한 가계부 `watched`).
-- 실패 스위치는 다음 한 번만 실패하고 스스로 꺼진다: 도메인 실패(`nextJoinFailure`), 예상 못 한 오류(`failNextCreate`, `failNextInvite`, `failNextJoin`, `failNextSignIn`, `failNextSignOut`).
+- 호출 기록을 남긴다(`created`, `invites`, `joins`, `googleCalls`, 설정을 구독한 가계부 `watched`, 항목을 구독한 가계부·달 `watched`).
+- 항목은 휴지통 항목이 이미 빠진 `MonthLedger`를 달마다 넣는다(`FakeEntriesRepository.put`으로 바꾸면 구독 중인 곳에 다시 알린다).
+- 실패 스위치는 다음 한 번만 실패하고 스스로 꺼진다: 도메인 실패(`nextJoinFailure`), 예상 못 한 오류(`failNextCreate`, `failNextInvite`, `failNextJoin`, `failNextSignIn`, `failNextSignOut`, `failNextWatch`).
 
 ## Firestore 변환 테스트
 

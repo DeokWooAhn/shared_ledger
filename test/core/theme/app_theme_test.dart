@@ -53,6 +53,7 @@ void main() {
           ('오류 위 글자 / 오류', scheme.onError, scheme.error),
           ('남는 현금 금액 / 남는 현금 카드', colors.accentOnDark, colors.hero),
           ('남는 현금 보조 글자 / 남는 현금 카드', colors.heroSub, colors.hero),
+          ('현금 유입·유출 금액 / 남는 현금 카드', colors.onHero, colors.hero),
           ('관리자 동그라미 글자 / 그 바탕', scheme.onPrimary, colors.skySoft),
           ('상대 동그라미 글자 / 그 바탕', colors.sea, colors.seaSoft),
         ];

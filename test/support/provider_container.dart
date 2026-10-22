@@ -13,6 +13,7 @@ ProviderContainer createContainer({
   FakeAuthRepository? auth,
   FakeLedgerRepository? ledgers,
   FakeSettingsRepository? settings,
+  FakeEntriesRepository? entries,
   DateTime? now,
 }) {
   final container = ProviderContainer(
@@ -23,6 +24,9 @@ ProviderContainer createContainer({
       ),
       settingsRepositoryProvider.overrideWithValue(
         settings ?? FakeSettingsRepository(),
+      ),
+      entriesRepositoryProvider.overrideWithValue(
+        entries ?? FakeEntriesRepository(),
       ),
       clockProvider.overrideWithValue(() => now ?? testNow),
     ],

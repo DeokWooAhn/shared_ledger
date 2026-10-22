@@ -21,6 +21,7 @@ class AppPalette {
     required this.accent,
     required this.onAccent,
     required this.hero,
+    required this.onHero,
     required this.accentOnDark,
     required this.heroSub,
     required this.barMuted,
@@ -46,6 +47,9 @@ class AppPalette {
   final Color accent;
   final Color onAccent;
   final Color hero;
+
+  /// 남는 현금 카드 위의 흰 글자. 디자인은 `#FFFFFF`를 직접 쓴다.
+  final Color onHero;
   final Color accentOnDark;
   final Color heroSub;
   final Color barMuted;
@@ -73,6 +77,7 @@ class AppPalette {
     accent: Color(0xFF2D5BFF),
     onAccent: Color(0xFFFFFFFF),
     hero: Color(0xFF1A1A1A),
+    onHero: Color(0xFFFFFFFF),
     accentOnDark: Color(0xFF7C9BFF),
     heroSub: Color(0xFFBDBDBD),
     barMuted: Color(0xFFD4D4D2),
@@ -99,6 +104,7 @@ class AppPalette {
     accent: Color(0xFF2D5BFF),
     onAccent: Color(0xFFFFFFFF),
     hero: Color(0xFF262626),
+    onHero: Color(0xFFFFFFFF),
     accentOnDark: Color(0xFF7C9BFF),
     heroSub: Color(0xFFB0B0B0),
     barMuted: Color(0xFF4A4A4A),
@@ -122,13 +128,15 @@ class AppPalette {
 /// - [textMuted]: 흐린 글자. 카드·시트·입력란 바탕 위에서만 쓴다.
 /// - 두 사람 구분은 색이 아니라 채움과 테두리로 한다. 관리자([sky])는 [skySoft]를 채운 동그라미에
 ///   `colorScheme.onPrimary` 글자, 상대([sea])는 [seaSoft] 바탕에 [memberLine] 테두리와 [sea] 글자.
-/// - 남는 현금 카드는 [hero] 바탕에 금액 [accentOnDark], 보조 글자 [heroSub]. 라이트·다크 모두 어두운 카드다.
+/// - 남는 현금 카드는 [hero] 바탕에 금액 [accentOnDark], 현금 유입·유출 금액 [onHero], 보조 글자 [heroSub].
+///   라이트·다크 모두 어두운 카드다.
 /// - 막대그래프에서 강조하지 않는 막대는 [barMuted].
 @immutable
 class AppColors extends ThemeExtension<AppColors> {
   const AppColors({
     required this.textMuted,
     required this.hero,
+    required this.onHero,
     required this.accentOnDark,
     required this.heroSub,
     required this.barMuted,
@@ -143,6 +151,7 @@ class AppColors extends ThemeExtension<AppColors> {
     : this(
         textMuted: p.textMuted,
         hero: p.hero,
+        onHero: p.onHero,
         accentOnDark: p.accentOnDark,
         heroSub: p.heroSub,
         barMuted: p.barMuted,
@@ -155,6 +164,7 @@ class AppColors extends ThemeExtension<AppColors> {
 
   final Color textMuted;
   final Color hero;
+  final Color onHero;
   final Color accentOnDark;
   final Color heroSub;
   final Color barMuted;
@@ -176,6 +186,7 @@ class AppColors extends ThemeExtension<AppColors> {
   AppColors copyWith({
     Color? textMuted,
     Color? hero,
+    Color? onHero,
     Color? accentOnDark,
     Color? heroSub,
     Color? barMuted,
@@ -187,6 +198,7 @@ class AppColors extends ThemeExtension<AppColors> {
   }) => AppColors(
     textMuted: textMuted ?? this.textMuted,
     hero: hero ?? this.hero,
+    onHero: onHero ?? this.onHero,
     accentOnDark: accentOnDark ?? this.accentOnDark,
     heroSub: heroSub ?? this.heroSub,
     barMuted: barMuted ?? this.barMuted,
@@ -204,6 +216,7 @@ class AppColors extends ThemeExtension<AppColors> {
     return AppColors(
       textMuted: mix(textMuted, other.textMuted),
       hero: mix(hero, other.hero),
+      onHero: mix(onHero, other.onHero),
       accentOnDark: mix(accentOnDark, other.accentOnDark),
       heroSub: mix(heroSub, other.heroSub),
       barMuted: mix(barMuted, other.barMuted),
@@ -220,6 +233,7 @@ class AppColors extends ThemeExtension<AppColors> {
       other is AppColors &&
       other.textMuted == textMuted &&
       other.hero == hero &&
+      other.onHero == onHero &&
       other.accentOnDark == accentOnDark &&
       other.heroSub == heroSub &&
       other.barMuted == barMuted &&
@@ -233,6 +247,7 @@ class AppColors extends ThemeExtension<AppColors> {
   int get hashCode => Object.hash(
     textMuted,
     hero,
+    onHero,
     accentOnDark,
     heroSub,
     barMuted,

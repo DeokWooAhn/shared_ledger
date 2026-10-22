@@ -4,13 +4,16 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
 import '../../firebase_options.dart';
+import '../budget/month_summary.dart';
 import '../model/auth_user.dart';
 import '../model/category.dart';
 import '../model/ledger.dart';
 import '../model/member.dart';
+import '../model/month_ledger.dart';
 import '../model/payment_method.dart';
 import '../model/year_month.dart';
 import 'auth_repository.dart';
+import 'entries_repository.dart';
 import 'ledger_repository.dart';
 import 'settings_repository.dart';
 
@@ -29,6 +32,10 @@ final ledgerRepositoryProvider = Provider<LedgerRepository>(
 
 final settingsRepositoryProvider = Provider<SettingsRepository>(
   (ref) => FirestoreSettingsRepository(FirebaseFirestore.instance),
+);
+
+final entriesRepositoryProvider = Provider<EntriesRepository>(
+  (ref) => FirestoreEntriesRepository(FirebaseFirestore.instance),
 );
 
 /// 지금 시각. 테스트에서 날짜를 고정하려고 공급자로 둔다.
@@ -89,3 +96,42 @@ class SelectedMonth extends Notifier<YearMonth> {
   /// 이전 달로 간다.
   void previous() => state = state.previous;
 }
+
+/// 보고 있는 달의 항목(휴지통 제외). 가계부가 없으면 빈 달이다.
+///
+/// 요약·항목 탭이 이 공급자 하나를 같이 읽어서 그달 구독은 한 벌뿐이다. 달을 옮기면 이전 달 구독을 끊는다.
+final monthLedgerProvider = StreamProvider<MonthLedger>((ref) {
+  final ledgerId = ref.watch(currentLedgerProvider.select((l) => l?.id));
+  final month = ref.watch(selectedMonthProvider);
+  if (ledgerId == null) return Stream.value(const MonthLedger());
+  return ref.watch(entriesRepositoryProvider).watchMonth(ledgerId, month);
+});
+
+/// 보고 있는 달의 요약. 항목·분류·결제수단으로 계산한다.
+///
+/// 셋 중 하나라도 실패하면 실패, 아직 받지 못했으면 불러오는 중이다. 달을 옮긴 직후에도 불러오는 중이라
+/// 새 달의 항목이 오기 전에 이전 달 숫자를 보여주지 않는다.
+final monthSummaryProvider = Provider<AsyncValue<MonthSummary>>((ref) {
+  final ledger = ref.watch(monthLedgerProvider);
+  final categories = ref.watch(categoriesProvider);
+  final paymentMethods = ref.watch(paymentMethodsProvider);
+  for (final AsyncValue<Object> value in [ledger, categories, paymentMethods]) {
+    if (value case AsyncError(:final error, :final stackTrace)) {
+      return AsyncError(error, stackTrace);
+    }
+  }
+  if ((ledger, categories, paymentMethods) case (
+    AsyncData(value: final ledger),
+    AsyncData(value: final categories),
+    AsyncData(value: final paymentMethods),
+  )) {
+    return AsyncData(
+      MonthSummary.of(
+        ledger,
+        categories: categories,
+        paymentMethods: paymentMethods,
+      ),
+    );
+  }
+  return const AsyncLoading();
+});

@@ -76,7 +76,7 @@ View(*_screen.dart) ─→ 컨트롤러(*_controller.dart) ─→ core/data(저�
 
 - feature끼리 서로 import하지 않는다. 둘 이상이 쓰게 되면 core로 올린다.
 - `core/budget`, `core/model`에는 Flutter·Firebase import를 넣지 않는다.
-- View와 컨트롤러는 Firebase 패키지를 직접 import하지 않고 `core/data`의 인터페이스(`AuthRepository`, `LedgerRepository`, `SettingsRepository`)와 공급자만 쓴다.
+- View와 컨트롤러는 Firebase 패키지를 직접 import하지 않고 `core/data`의 인터페이스(`AuthRepository`, `LedgerRepository`, `SettingsRepository`, `EntriesRepository`)와 공급자만 쓴다.
 - 어느 화면을 보여줄지는 `router.dart`의 `appGate`·`redirectFor`가 로그인·가계부 상태로 정한다. 화면에서 시작 화면들로 직접 이동하지 않는다.
 - **컨셉은 커플·부부의 가계부다. 한 가계부에는 두 명까지 들어온다.** 이 제한은 보안 규칙(`maxMembers()`)과 앱(`ledgerMaxMembers`) 두 곳에 있어 같이 바꾼다.
 

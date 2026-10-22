@@ -6,11 +6,19 @@ import 'package:shared_ledger/app.dart';
 import 'package:shared_ledger/core/data/ledger_repository.dart';
 import 'package:shared_ledger/core/data/providers.dart';
 import 'package:shared_ledger/core/model/auth_user.dart';
+import 'package:shared_ledger/core/model/category.dart';
 import 'package:shared_ledger/core/model/ledger.dart';
+import 'package:shared_ledger/core/model/ledger_entries.dart';
+import 'package:shared_ledger/core/model/month_ledger.dart';
+import 'package:shared_ledger/core/model/payment_method.dart';
+import 'package:shared_ledger/core/model/year_month.dart';
 import 'package:shared_ledger/core/widget/keep_all.dart';
+import 'package:shared_ledger/core/widget/month_header.dart';
+import 'package:shared_ledger/core/widget/tab_page.dart';
 import 'package:shared_ledger/feature/home/home_shell.dart';
 import 'package:shared_ledger/feature/ledger/ledger_start_screen.dart';
 import 'package:shared_ledger/feature/settings/invite_sheet.dart';
+import 'package:shared_ledger/feature/summary/summary_screen.dart';
 
 import 'support/fakes.dart';
 import 'support/provider_container.dart';
@@ -24,6 +32,7 @@ Future<void> pumpApp(
   required FakeAuthRepository auth,
   required FakeLedgerRepository ledgers,
   FakeSettingsRepository? settings,
+  FakeEntriesRepository? entries,
   Size size = phoneSize,
 }) async {
   tester.view.physicalSize = size * tester.view.devicePixelRatio;
@@ -35,6 +44,9 @@ Future<void> pumpApp(
         ledgerRepositoryProvider.overrideWithValue(ledgers),
         settingsRepositoryProvider.overrideWithValue(
           settings ?? FakeSettingsRepository(),
+        ),
+        entriesRepositoryProvider.overrideWithValue(
+          entries ?? FakeEntriesRepository(),
         ),
         clockProvider.overrideWithValue(() => testNow),
       ],
@@ -79,6 +91,14 @@ Future<void> enterVisible(WidgetTester tester, Key key, String text) async {
 
 // 화면의 문장은 줄바꿈을 막는 글자를 넣어 그리므로(keepAll) 같은 방식으로 찾는다.
 Finder findSentence(String text) => find.text(keepAll(text));
+
+// 이름표 첫 글자는 머리말과 월 요약의 구성원별 소계에 둘 다 나온다. 머리말 것만 찾는다.
+Finder inMonthHeader(Finder finder) =>
+    find.descendant(of: find.byType(MonthHeader), matching: finder);
+
+// 키를 단 금액 글자의 내용.
+String? textOf(WidgetTester tester, Key key) =>
+    tester.widget<Text>(find.byKey(key)).data;
 
 const me = AuthUser(uid: 'me');
 const partnerLedger = Ledger(
@@ -379,8 +399,8 @@ void main() {
       expect(find.byType(HomeShell), findsOneWidget);
       expect(find.byType(NavigationRail), findsNothing);
       expect(find.text('2026년 10월'), findsOneWidget);
-      expect(find.text('하'), findsOneWidget);
-      expect(find.text('바'), findsOneWidget);
+      expect(inMonthHeader(find.text('하')), findsOneWidget);
+      expect(inMonthHeader(find.text('바')), findsOneWidget);
     });
 
     testWidgets('달을 옮기면 항목 탭도 같은 달을 보고, 해를 넘어간다', (tester) async {
@@ -422,7 +442,7 @@ void main() {
         expect(title.didExceedMaxLines, isFalse, reason: '글자 배율 $scale');
         expect(
           tester.getRect(find.byKey(const Key('month-title'))).right,
-          lessThan(tester.getRect(find.text('하')).left),
+          lessThan(tester.getRect(inMonthHeader(find.text('하'))).left),
           reason: '글자 배율 $scale',
         );
       }
@@ -547,6 +567,295 @@ void main() {
 
       expect(find.text('관리자 (나)'), findsOneWidget);
       expect(find.text('상대'), findsOneWidget);
+    });
+  });
+
+  group('월 요약', () {
+    const ledger = Ledger(id: 'l1', name: '우리 가계부', ownerUid: 'me');
+    const october = YearMonth(2026, 10);
+
+    // 디자인(design/app/03-summary.png)과 같은 숫자가 나오는 가상의 10월.
+    final settings = FakeSettingsRepository(
+      categories: const [
+        Category(id: 'c-principal', name: '대출원금', countsAsSaving: true),
+        Category(id: 'c-interest', name: '대출이자'),
+        Category(id: 'c-invest', name: '저축/투자', countsAsSaving: true),
+        Category(id: 'c-living', name: '소비'),
+      ],
+      paymentMethods: const [
+        PaymentMethod(
+          id: 'p-account',
+          name: '공동 통장',
+          kind: PaymentKind.account,
+        ),
+        PaymentMethod(
+          id: 'p-auto',
+          name: '자동이체',
+          kind: PaymentKind.autoTransfer,
+        ),
+        PaymentMethod(id: 'p-shared', name: '공용 카드', kind: PaymentKind.card),
+        PaymentMethod(id: 'p-sky', name: '하늘 카드', kind: PaymentKind.card),
+      ],
+    );
+
+    PlannedExpense planned(
+      String id,
+      String categoryId,
+      String memberId,
+      String paymentMethodId,
+      int? amount, {
+      bool paid = false,
+    }) => PlannedExpense(
+      id: id,
+      categoryId: categoryId,
+      memberId: memberId,
+      title: id,
+      paymentMethodId: paymentMethodId,
+      amount: amount,
+      paidOn: paid ? DateTime(2026, 10, 5) : null,
+    );
+
+    ExtraExpense extra(String id, String memberId, String method, int amount) =>
+        ExtraExpense(
+          id: id,
+          memberId: memberId,
+          title: id,
+          paymentMethodId: method,
+          amount: amount,
+        );
+
+    final designMonth = MonthLedger(
+      incomes: const [
+        Income(id: 'i1', memberId: 'owner', title: '월급', amount: 3500000),
+        Income(id: 'i2', memberId: 'partner', title: '월급', amount: 2300000),
+      ],
+      plannedExpenses: [
+        planned('원금', 'c-principal', 'owner', 'p-auto', 800000, paid: true),
+        planned('이자1', 'c-interest', 'partner', 'p-auto', 120000, paid: true),
+        planned('이자2', 'c-interest', 'partner', 'p-account', 300000),
+        planned('투자', 'c-invest', 'owner', 'p-account', 800000, paid: true),
+        planned('통신', 'c-living', 'owner', 'p-shared', 101000),
+        planned('보험', 'c-living', 'partner', 'p-shared', 178000),
+      ],
+      extraExpenses: [
+        extra('간식', 'owner', 'p-shared', 5000),
+        extra('책', 'partner', 'p-sky', 99000),
+        extra('병원', 'owner', 'p-account', 254000),
+      ],
+      cardBills: const [
+        CardBill(
+          id: 'b1',
+          memberId: 'owner',
+          cardId: 'p-shared',
+          amount: 600000,
+        ),
+        CardBill(id: 'b2', memberId: 'owner', cardId: 'p-sky', amount: 253000),
+      ],
+    );
+
+    Future<void> pumpSummary(
+      WidgetTester tester, {
+      FakeEntriesRepository? entries,
+      FakeSettingsRepository? settings,
+      Size size = phoneSize,
+    }) => pumpApp(
+      tester,
+      auth: FakeAuthRepository(signedIn: me),
+      ledgers: FakeLedgerRepository([ledger]),
+      settings: settings,
+      entries: entries,
+      size: size,
+    );
+
+    testWidgets('그달의 남는 현금·지출·저축·카드·기본 월 지출 소계를 보여준다', (tester) async {
+      await pumpSummary(
+        tester,
+        entries: FakeEntriesRepository({october: designMonth}),
+        settings: settings,
+      );
+
+      expect(textOf(tester, const Key('remaining-cash')), '2,973,000원');
+      expect(textOf(tester, const Key('cash-in')), '5,800,000원');
+      expect(textOf(tester, const Key('cash-out')), '2,827,000원');
+      expect(textOf(tester, const Key('spending')), '2,657,000원');
+      expect(textOf(tester, const Key('saving')), '1,600,000원');
+      expect(textOf(tester, const Key('planned-total')), '2,299,000원');
+
+      final cards = find.byKey(const Key('card-section'));
+      Finder inCards(String text) =>
+          find.descendant(of: cards, matching: find.text(text));
+      expect(inCards('11월'), findsOneWidget);
+      expect(inCards('383,000원'), findsOneWidget);
+      expect(inCards('공용 카드'), findsOneWidget);
+      expect(inCards('284,000원'), findsOneWidget);
+      expect(inCards('하늘 카드'), findsOneWidget);
+      expect(inCards('99,000원'), findsOneWidget);
+      expect(inCards('10월'), findsOneWidget);
+      expect(inCards('853,000원'), findsOneWidget);
+      expect(findSentence('이번 달 출금 · 카드대금 2건'), findsOneWidget);
+      // 결제수단에 있어도 이번 달에 쓰지 않은 카드는 줄을 만들지 않는다.
+      expect(find.byKey(const ValueKey('card-p-account')), findsNothing);
+
+      final planned = find.byKey(const Key('planned-section'));
+      Finder inPlanned(String text) =>
+          find.descendant(of: planned, matching: find.text(text));
+      expect(inPlanned('800,000원'), findsNWidgets(2));
+      expect(inPlanned('420,000원'), findsOneWidget);
+      expect(inPlanned('279,000원'), findsOneWidget);
+      expect(inPlanned('저축'), findsNWidgets(2));
+      expect(
+        find.descendant(
+          of: find.byKey(const Key('member-owner')),
+          matching: find.text('1,701,000원'),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: find.byKey(const Key('member-partner')),
+          matching: find.text('598,000원'),
+        ),
+        findsOneWidget,
+      );
+      expect(find.byKey(const Key('empty-month')), findsNothing);
+      expect(find.byKey(const Key('unpriced-planned')), findsNothing);
+    });
+
+    testWidgets('구성원별 막대는 두 사람의 기본 월 지출 비율로 나눠 그린다', (tester) async {
+      // 막대 조각에 높이를 주지 않아 막대가 보이지 않은 적이 있다.
+      await pumpSummary(
+        tester,
+        entries: FakeEntriesRepository({october: designMonth}),
+        settings: settings,
+      );
+
+      final parts = find.descendant(
+        of: find.byKey(const Key('member-split')),
+        matching: find.byType(DecoratedBox),
+      );
+      expect(parts, findsNWidgets(2));
+      final owner = tester.getSize(parts.first);
+      final partner = tester.getSize(parts.last);
+      expect(owner.height, 10);
+      expect(partner.height, 10);
+      expect(owner.width / partner.width, closeTo(1701000 / 598000, 0.05));
+    });
+
+    testWidgets('항목이 없는 달은 0원으로 보여주고 안내하며, 카드가 없으면 카드 영역을 숨긴다', (tester) async {
+      await pumpSummary(tester);
+
+      expect(textOf(tester, const Key('remaining-cash')), '0원');
+      expect(findSentence('아직 이 달에 적은 항목이 없어요.'), findsOneWidget);
+      expect(find.byKey(const Key('card-section')), findsNothing);
+      expect(textOf(tester, const Key('planned-total')), '0원');
+    });
+
+    testWidgets('금액 미정 기본 지출이 있으면 몇 건이 빠졌는지 알린다', (tester) async {
+      await pumpSummary(
+        tester,
+        entries: FakeEntriesRepository({
+          october: MonthLedger(
+            plannedExpenses: [
+              planned('관리비', 'c-living', 'owner', 'p-account', null),
+              planned('통신', 'c-living', 'owner', 'p-account', 50000),
+            ],
+          ),
+        }),
+        settings: settings,
+      );
+
+      expect(findSentence('금액 미정 1건은 합계에서 빠져 있어요'), findsOneWidget);
+      expect(textOf(tester, const Key('planned-total')), '50,000원');
+      expect(find.byKey(const Key('empty-month')), findsNothing);
+    });
+
+    testWidgets('달을 옮기면 그 달의 요약으로 바뀐다', (tester) async {
+      await pumpSummary(
+        tester,
+        entries: FakeEntriesRepository({
+          october: designMonth,
+          const YearMonth(2026, 11): const MonthLedger(
+            incomes: [
+              Income(id: 'i1', memberId: 'owner', title: '월급', amount: 1000),
+            ],
+          ),
+        }),
+        settings: settings,
+      );
+
+      await tester.tap(find.byKey(const Key('next-month')));
+      await settle(tester);
+
+      expect(find.text('2026년 11월'), findsOneWidget);
+      expect(textOf(tester, const Key('remaining-cash')), '1,000원');
+      expect(findSentence('이번 달 출금 · 카드대금 0건'), findsOneWidget);
+    });
+
+    testWidgets('항목을 불러오지 못하면 안내한다', (tester) async {
+      await pumpSummary(
+        tester,
+        entries: FakeEntriesRepository()..failNextWatch = true,
+      );
+
+      expect(find.byKey(const Key('summary-failed')), findsOneWidget);
+      expect(find.byKey(const Key('remaining-cash')), findsNothing);
+    });
+
+    testWidgets('넓은 화면에서는 기본 월 지출을 오른쪽 칸에 둔다', (tester) async {
+      await pumpSummary(
+        tester,
+        entries: FakeEntriesRepository({october: designMonth}),
+        settings: settings,
+        size: tabletSize,
+      );
+
+      final cash = tester.getRect(find.byKey(const Key('remaining-cash')));
+      final planned = tester.getRect(find.byKey(const Key('planned-section')));
+      expect(planned.left, greaterThan(cash.right));
+      expect(planned.top, lessThan(cash.bottom));
+    });
+
+    testWidgets('아이패드 세로처럼 덜 넓으면 한 칸으로 둔다', (tester) async {
+      await pumpSummary(
+        tester,
+        entries: FakeEntriesRepository({october: designMonth}),
+        settings: settings,
+        size: const Size(768, 1024),
+      );
+
+      final cash = tester.getRect(find.byKey(const Key('card-section')));
+      final planned = tester.getRect(find.byKey(const Key('planned-section')));
+      expect(planned.top, greaterThan(cash.bottom));
+      expect(planned.width, lessThanOrEqualTo(tabPageMaxWidth));
+    });
+
+    testWidgets('본문 폭이 840에 못 미치면 탭 영역이 840을 넘어도 한 칸으로 둔다', (tester) async {
+      // 양옆 여백(20씩)을 빼기 전 폭으로 두 칸을 정해, 본문이 800~839일 때도 두 칸이 된 적이 있다.
+      await pumpSummary(
+        tester,
+        entries: FakeEntriesRepository({october: designMonth}),
+        settings: settings,
+        size: const Size(950, 768),
+      );
+      final page = tester.getSize(find.byType(SummaryScreen)).width;
+      expect(page, inInclusiveRange(840, 879), reason: '옆 탭 막대를 뺀 탭 영역 폭');
+
+      final cards = tester.getRect(find.byKey(const Key('card-section')));
+      final planned = tester.getRect(find.byKey(const Key('planned-section')));
+      expect(planned.top, greaterThan(cards.bottom));
+    });
+
+    testWidgets('글자를 크게 해도 넘치지 않는다', (tester) async {
+      tester.platformDispatcher.textScaleFactorTestValue = 2;
+      addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+      await pumpSummary(
+        tester,
+        entries: FakeEntriesRepository({october: designMonth}),
+        settings: settings,
+      );
+
+      expect(tester.takeException(), isNull);
+      expect(find.byKey(const Key('remaining-cash')), findsOneWidget);
     });
   });
 
