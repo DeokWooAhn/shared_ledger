@@ -3,83 +3,96 @@ import 'package:flutter/services.dart';
 
 /// `design/app.pen`의 색 토큰. 이름은 디자인 변수 이름을 따른다.
 ///
+/// 무채색 바탕에 포인트 색([accent]) 하나를 쓴다. 디자인의 `primary-strong`·`brand`는
+/// [primary]와 같은 값이라 따로 두지 않는다.
 /// 화면에서는 이 값을 직접 쓰지 않고 `Theme.of(context).colorScheme`이나 [AppColors]로 꺼낸다.
 abstract final class AppPalette {
-  static const bgApp = Color(0xFFF4F5F3);
+  static const bgApp = Color(0xFFF5F5F4);
   static const card = Color(0xFFFFFFFF);
-  static const primary = Color(0xFF237A6D);
-  static const primaryStrong = Color(0xFF1F6F63);
-  static const brand = Color(0xFF4AA596);
-  static const primarySoft = Color(0xFFE7F3F0);
-  static const line = Color(0xFFE3E7E4);
-  static const lineSoft = Color(0xFFEEF1EF);
+  static const primary = Color(0xFF1A1A1A);
+  static const primarySoft = Color(0xFFF0F0EE);
+  static const line = Color(0xFFE6E6E4);
+  static const lineSoft = Color(0xFFF0F0EE);
   static const textPrimary = Color(0xFF191F1C);
-  static const textSecondary = Color(0xFF5E6762);
-  static const textMuted = Color(0xFF6F7773);
-  static const sky = Color(0xFF3E63C9);
-  static const skySoft = Color(0xFFEAF0FD);
-  static const sea = Color(0xFFB04A32);
-  static const seaSoft = Color(0xFFFDEDE8);
-  static const warn = Color(0xFF9A5B00);
-  static const warnSoft = Color(0xFFFFF3DC);
+  static const textSecondary = Color(0xFF5F5F5F);
+  static const textMuted = Color(0xFF737373);
+  static const accent = Color(0xFF2D5BFF);
+  static const onAccent = Color(0xFFFFFFFF);
+  static const accentOnDark = Color(0xFF7C9BFF);
+  static const heroSub = Color(0xFFBDBDBD);
+  static const barMuted = Color(0xFFD4D4D2);
+  static const sky = Color(0xFF1A1A1A);
+  static const skySoft = Color(0xFF1A1A1A);
+  static const sea = Color(0xFF6B6B69);
+  static const seaSoft = Color(0xFFFFFFFF);
+  static const memberLine = Color(0xFFD6D6D4);
   static const danger = Color(0xFFC93C3C);
 }
 
 /// [ColorScheme]에 자리가 없는 디자인 토큰.
 ///
-/// 두 사람을 구분하는 색(관리자 [sky], 상대 [sea])과 '지급 전' 같은 주의 표시([warn])에 쓴다.
+/// - [textMuted]: 흐린 글자. 카드·시트·입력란처럼 흰 바탕 위에서만 쓴다.
+/// - 두 사람 구분은 색이 아니라 채움과 테두리로 한다. 관리자([sky])는 [skySoft]를 채운 동그라미에
+///   흰 글자, 상대([sea])는 [seaSoft] 바탕에 [memberLine] 테두리와 [sea] 글자.
+/// - 남는 현금 같은 검정 카드 위에서는 금액에 [accentOnDark], 보조 글자에 [heroSub]를 쓴다.
+/// - 막대그래프에서 강조하지 않는 막대는 [barMuted].
 @immutable
 class AppColors extends ThemeExtension<AppColors> {
   const AppColors({
     required this.textMuted,
-    required this.brand,
+    required this.accentOnDark,
+    required this.heroSub,
+    required this.barMuted,
     required this.sky,
     required this.skySoft,
     required this.sea,
     required this.seaSoft,
-    required this.warn,
-    required this.warnSoft,
+    required this.memberLine,
   });
 
   final Color textMuted;
-  final Color brand;
+  final Color accentOnDark;
+  final Color heroSub;
+  final Color barMuted;
   final Color sky;
   final Color skySoft;
   final Color sea;
   final Color seaSoft;
-  final Color warn;
-  final Color warnSoft;
+  final Color memberLine;
 
   static const light = AppColors(
     textMuted: AppPalette.textMuted,
-    brand: AppPalette.brand,
+    accentOnDark: AppPalette.accentOnDark,
+    heroSub: AppPalette.heroSub,
+    barMuted: AppPalette.barMuted,
     sky: AppPalette.sky,
     skySoft: AppPalette.skySoft,
     sea: AppPalette.sea,
     seaSoft: AppPalette.seaSoft,
-    warn: AppPalette.warn,
-    warnSoft: AppPalette.warnSoft,
+    memberLine: AppPalette.memberLine,
   );
 
   @override
   AppColors copyWith({
     Color? textMuted,
-    Color? brand,
+    Color? accentOnDark,
+    Color? heroSub,
+    Color? barMuted,
     Color? sky,
     Color? skySoft,
     Color? sea,
     Color? seaSoft,
-    Color? warn,
-    Color? warnSoft,
+    Color? memberLine,
   }) => AppColors(
     textMuted: textMuted ?? this.textMuted,
-    brand: brand ?? this.brand,
+    accentOnDark: accentOnDark ?? this.accentOnDark,
+    heroSub: heroSub ?? this.heroSub,
+    barMuted: barMuted ?? this.barMuted,
     sky: sky ?? this.sky,
     skySoft: skySoft ?? this.skySoft,
     sea: sea ?? this.sea,
     seaSoft: seaSoft ?? this.seaSoft,
-    warn: warn ?? this.warn,
-    warnSoft: warnSoft ?? this.warnSoft,
+    memberLine: memberLine ?? this.memberLine,
   );
 
   @override
@@ -88,13 +101,14 @@ class AppColors extends ThemeExtension<AppColors> {
     Color mix(Color a, Color b) => Color.lerp(a, b, t) ?? a;
     return AppColors(
       textMuted: mix(textMuted, other.textMuted),
-      brand: mix(brand, other.brand),
+      accentOnDark: mix(accentOnDark, other.accentOnDark),
+      heroSub: mix(heroSub, other.heroSub),
+      barMuted: mix(barMuted, other.barMuted),
       sky: mix(sky, other.sky),
       skySoft: mix(skySoft, other.skySoft),
       sea: mix(sea, other.sea),
       seaSoft: mix(seaSoft, other.seaSoft),
-      warn: mix(warn, other.warn),
-      warnSoft: mix(warnSoft, other.warnSoft),
+      memberLine: mix(memberLine, other.memberLine),
     );
   }
 }
@@ -122,15 +136,20 @@ const appSystemOverlayStyle = SystemUiOverlayStyle(
 ThemeData buildAppTheme() {
   const scheme = ColorScheme(
     brightness: Brightness.light,
+    // 버튼과 선택된 칩은 검정이다.
     primary: AppPalette.primary,
     onPrimary: Colors.white,
     primaryContainer: AppPalette.primarySoft,
-    onPrimaryContainer: AppPalette.primaryStrong,
-    secondary: AppPalette.brand,
+    onPrimaryContainer: AppPalette.primary,
+    secondary: AppPalette.primary,
     onSecondary: Colors.white,
-    // 선택된 세그먼트·칩·탭 표시는 디자인의 primary-soft 바탕을 쓴다.
+    // 선택 표시는 디자인에서 컴포넌트마다 달라(탭은 포인트 색, 칩은 검정, 세그먼트는 흰 바탕)
+    // 그 화면을 만들 때 컴포넌트 테마로 정한다. 여기서는 중립색만 둔다.
     secondaryContainer: AppPalette.primarySoft,
-    onSecondaryContainer: AppPalette.primaryStrong,
+    onSecondaryContainer: AppPalette.primary,
+    // 포인트 색. 선택된 탭, + 버튼, 지급 전 배지, 입력 중인 칸, 앱 아이콘에만 쓴다.
+    tertiary: AppPalette.accent,
+    onTertiary: AppPalette.onAccent,
     error: AppPalette.danger,
     onError: Colors.white,
     // 화면 바탕은 bg-app, 카드·시트·입력란은 card(흰색).
@@ -246,7 +265,7 @@ ThemeData buildAppTheme() {
       ),
       focusedBorder: const OutlineInputBorder(
         borderRadius: fieldRadius,
-        borderSide: BorderSide(color: AppPalette.primary, width: 1.5),
+        borderSide: BorderSide(color: AppPalette.accent, width: 1.5),
       ),
       errorBorder: const OutlineInputBorder(
         borderRadius: fieldRadius,

@@ -96,11 +96,11 @@ class _Hero extends StatelessWidget {
       children: [
         DecoratedBox(
           decoration: BoxDecoration(
-            color: scheme.primary,
+            color: scheme.tertiary,
             borderRadius: BorderRadius.circular(26),
             boxShadow: [
               BoxShadow(
-                color: scheme.onPrimaryContainer.withValues(alpha: 0.2),
+                color: scheme.tertiary.withValues(alpha: 0.2),
                 offset: const Offset(0, 10),
                 blurRadius: 24,
               ),
@@ -111,7 +111,7 @@ class _Hero extends StatelessWidget {
             child: Icon(
               Icons.account_balance_wallet_outlined,
               size: 40,
-              color: scheme.onPrimary,
+              color: scheme.onTertiary,
             ),
           ),
         ),
