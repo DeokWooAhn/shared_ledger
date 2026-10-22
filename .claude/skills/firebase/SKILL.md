@@ -50,7 +50,7 @@ Firebase 패키지는 4.x 세대에 고정했다(firebase_core 4.15, firebase_au
 
 ## 보안 규칙 배포
 
-저장소의 `firestore.rules`가 실제 프로젝트에 배포돼 있다(2026-10-21).
+저장소의 `firestore.rules`가 실제 프로젝트에 배포돼 있다. 마지막 배포는 2026-10-22, PR #3의 `ledgers`·두 명 제한 규칙이다.
 
 1. 규칙 테스트를 먼저 고치고 통과시킨다(명령은 verification 스킬).
 2. PR이 `main`에 합쳐진 뒤 배포한다. 합쳐지기 전 브랜치의 규칙을 배포하지 않는다.
