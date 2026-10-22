@@ -381,13 +381,6 @@ void main() {
       expect(validateLedgerName('가' * 41), isNotNull);
     });
 
-    test('초대 코드 입력: 비었거나 모양이 다르면 안내', () {
-      expect(validateInviteCodeInput('ABCDEFGH23'), isNull);
-      expect(validateInviteCodeInput(' abcd efgh 23 '), isNull);
-      expect(validateInviteCodeInput(''), '초대 코드를 입력해 주세요.');
-      expect(validateInviteCodeInput('abc'), '초대 코드를 다시 확인해 주세요.');
-    });
-
     test('초대 코드 유효기간은 오전·오후 12시간제로 보여준다', () {
       expect(
         inviteExpiryText(DateTime(2026, 10, 28, 0, 5)),

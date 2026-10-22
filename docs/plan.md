@@ -15,6 +15,7 @@
 | Windows | 출시 후 웹 버전으로 | 데스크톱용 Firebase SDK는 개발용(베타)으로 안내됨 |
 | 오프라인 | 보기 + 새 항목 추가만 | 공동 가계부라 수정 충돌을 피함. 수정·삭제는 온라인에서만 |
 | 폴더 구조 | `lib/core` + `lib/feature/<기능>` | feature끼리는 서로 import하지 않고, 같이 쓰는 건 core로 |
+| 화면 구조 | MVVM: View 위젯 + Riverpod `Notifier` 컨트롤러(불변 State) | 2026-10-21 결정. Bloc은 Riverpod과 상태관리가 겹쳐 쓰지 않음. CalcMoney MVI와 같은 단방향 흐름 |
 | 권한 | 역할 3개: 관리자(owner, 가계부를 만든 사람)·편집자(editor)·보기 전용(viewer) | 기본은 모두 편집자. 승인 방식 대신 변경 기록 + 휴지통으로 신뢰 확보 |
 | 인앱 결제 | 넣지 않음 (수익 모델을 유료 기능으로 정할 때만) | 스토어 수수료·구독 관리 부담 |
 | 작업 방식 | 브랜치 + PR, CI 통과 후 squash merge, 커밋은 한국어 문장 | CalcMoney와 같은 방식. 규칙은 AGENTS.md |
