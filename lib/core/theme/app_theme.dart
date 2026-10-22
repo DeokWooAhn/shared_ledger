@@ -1,85 +1,200 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-/// `design/app.pen`의 색 토큰. 이름은 디자인 변수 이름을 따른다.
+/// `design/app.pen`의 색 토큰. 이름은 디자인 변수 이름을 따르고, 라이트·다크 두 벌이 있다.
 ///
+/// 무채색 바탕에 포인트 색([accent]) 하나를 쓴다. 다크에서는 버튼([primary])이 밝은 색으로 뒤집힌다.
 /// 화면에서는 이 값을 직접 쓰지 않고 `Theme.of(context).colorScheme`이나 [AppColors]로 꺼낸다.
-abstract final class AppPalette {
-  static const bgApp = Color(0xFFF4F5F3);
-  static const card = Color(0xFFFFFFFF);
-  static const primary = Color(0xFF237A6D);
-  static const primaryStrong = Color(0xFF1F6F63);
-  static const brand = Color(0xFF4AA596);
-  static const primarySoft = Color(0xFFE7F3F0);
-  static const line = Color(0xFFE3E7E4);
-  static const lineSoft = Color(0xFFEEF1EF);
-  static const textPrimary = Color(0xFF191F1C);
-  static const textSecondary = Color(0xFF5E6762);
-  static const textMuted = Color(0xFF6F7773);
-  static const sky = Color(0xFF3E63C9);
-  static const skySoft = Color(0xFFEAF0FD);
-  static const sea = Color(0xFFB04A32);
-  static const seaSoft = Color(0xFFFDEDE8);
-  static const warn = Color(0xFF9A5B00);
-  static const warnSoft = Color(0xFFFFF3DC);
-  static const danger = Color(0xFFC93C3C);
-}
-
-/// [ColorScheme]에 자리가 없는 디자인 토큰.
-///
-/// 두 사람을 구분하는 색(관리자 [sky], 상대 [sea])과 '지급 전' 같은 주의 표시([warn])에 쓴다.
 @immutable
-class AppColors extends ThemeExtension<AppColors> {
-  const AppColors({
+class AppPalette {
+  const AppPalette._({
+    required this.bgApp,
+    required this.card,
+    required this.primary,
+    required this.onPrimary,
+    required this.primarySoft,
+    required this.line,
+    required this.lineSoft,
+    required this.textPrimary,
+    required this.textSecondary,
     required this.textMuted,
-    required this.brand,
+    required this.accent,
+    required this.onAccent,
+    required this.hero,
+    required this.accentOnDark,
+    required this.heroSub,
+    required this.barMuted,
     required this.sky,
     required this.skySoft,
     required this.sea,
     required this.seaSoft,
-    required this.warn,
-    required this.warnSoft,
+    required this.memberLine,
+    required this.danger,
+    required this.onDanger,
   });
 
+  final Color bgApp;
+  final Color card;
+  final Color primary;
+  final Color onPrimary;
+  final Color primarySoft;
+  final Color line;
+  final Color lineSoft;
+  final Color textPrimary;
+  final Color textSecondary;
   final Color textMuted;
-  final Color brand;
+  final Color accent;
+  final Color onAccent;
+  final Color hero;
+  final Color accentOnDark;
+  final Color heroSub;
+  final Color barMuted;
   final Color sky;
   final Color skySoft;
   final Color sea;
   final Color seaSoft;
-  final Color warn;
-  final Color warnSoft;
+  final Color memberLine;
+  final Color danger;
 
-  static const light = AppColors(
-    textMuted: AppPalette.textMuted,
-    brand: AppPalette.brand,
-    sky: AppPalette.sky,
-    skySoft: AppPalette.skySoft,
-    sea: AppPalette.sea,
-    seaSoft: AppPalette.seaSoft,
-    warn: AppPalette.warn,
-    warnSoft: AppPalette.warnSoft,
+  /// 디자인에는 오류 색으로 채운 버튼이 없다. [ColorScheme.onError]를 채우려고 둔다.
+  final Color onDanger;
+
+  static const light = AppPalette._(
+    bgApp: Color(0xFFF5F5F4),
+    card: Color(0xFFFFFFFF),
+    primary: Color(0xFF1A1A1A),
+    onPrimary: Color(0xFFFFFFFF),
+    primarySoft: Color(0xFFF0F0EE),
+    line: Color(0xFFE6E6E4),
+    lineSoft: Color(0xFFF0F0EE),
+    textPrimary: Color(0xFF191F1C),
+    textSecondary: Color(0xFF5F5F5F),
+    textMuted: Color(0xFF737373),
+    accent: Color(0xFF2D5BFF),
+    onAccent: Color(0xFFFFFFFF),
+    hero: Color(0xFF1A1A1A),
+    accentOnDark: Color(0xFF7C9BFF),
+    heroSub: Color(0xFFBDBDBD),
+    barMuted: Color(0xFFD4D4D2),
+    sky: Color(0xFF1A1A1A),
+    skySoft: Color(0xFF1A1A1A),
+    sea: Color(0xFF6B6B69),
+    seaSoft: Color(0xFFFFFFFF),
+    memberLine: Color(0xFFD6D6D4),
+    danger: Color(0xFFC93C3C),
+    onDanger: Color(0xFFFFFFFF),
   );
+
+  static const dark = AppPalette._(
+    bgApp: Color(0xFF121212),
+    card: Color(0xFF1E1E1E),
+    primary: Color(0xFFF2F2F2),
+    onPrimary: Color(0xFF121212),
+    primarySoft: Color(0xFF2A2A2A),
+    line: Color(0xFF333333),
+    lineSoft: Color(0xFF2A2A2A),
+    textPrimary: Color(0xFFF2F2F2),
+    textSecondary: Color(0xFFB0B0B0),
+    textMuted: Color(0xFF8E8E8E),
+    accent: Color(0xFF2D5BFF),
+    onAccent: Color(0xFFFFFFFF),
+    hero: Color(0xFF262626),
+    accentOnDark: Color(0xFF7C9BFF),
+    heroSub: Color(0xFFB0B0B0),
+    barMuted: Color(0xFF4A4A4A),
+    sky: Color(0xFFF2F2F2),
+    skySoft: Color(0xFFF2F2F2),
+    sea: Color(0xFFA3A3A1),
+    seaSoft: Color(0xFF1E1E1E),
+    memberLine: Color(0xFF4A4A4A),
+    danger: Color(0xFFFF6B6B),
+    onDanger: Color(0xFF121212),
+  );
+
+  static AppPalette of(Brightness brightness) => switch (brightness) {
+    Brightness.light => light,
+    Brightness.dark => dark,
+  };
+}
+
+/// [ColorScheme]에 자리가 없는 디자인 토큰.
+///
+/// - [textMuted]: 흐린 글자. 카드·시트·입력란 바탕 위에서만 쓴다.
+/// - 두 사람 구분은 색이 아니라 채움과 테두리로 한다. 관리자([sky])는 [skySoft]를 채운 동그라미에
+///   `colorScheme.onPrimary` 글자, 상대([sea])는 [seaSoft] 바탕에 [memberLine] 테두리와 [sea] 글자.
+/// - 남는 현금 카드는 [hero] 바탕에 금액 [accentOnDark], 보조 글자 [heroSub]. 라이트·다크 모두 어두운 카드다.
+/// - 막대그래프에서 강조하지 않는 막대는 [barMuted].
+@immutable
+class AppColors extends ThemeExtension<AppColors> {
+  const AppColors({
+    required this.textMuted,
+    required this.hero,
+    required this.accentOnDark,
+    required this.heroSub,
+    required this.barMuted,
+    required this.sky,
+    required this.skySoft,
+    required this.sea,
+    required this.seaSoft,
+    required this.memberLine,
+  });
+
+  AppColors.from(AppPalette p)
+    : this(
+        textMuted: p.textMuted,
+        hero: p.hero,
+        accentOnDark: p.accentOnDark,
+        heroSub: p.heroSub,
+        barMuted: p.barMuted,
+        sky: p.sky,
+        skySoft: p.skySoft,
+        sea: p.sea,
+        seaSoft: p.seaSoft,
+        memberLine: p.memberLine,
+      );
+
+  final Color textMuted;
+  final Color hero;
+  final Color accentOnDark;
+  final Color heroSub;
+  final Color barMuted;
+  final Color sky;
+  final Color skySoft;
+  final Color sea;
+  final Color seaSoft;
+  final Color memberLine;
+
+  static final light = AppColors.from(AppPalette.light);
+  static final dark = AppColors.from(AppPalette.dark);
+
+  static AppColors of(Brightness brightness) => switch (brightness) {
+    Brightness.light => light,
+    Brightness.dark => dark,
+  };
 
   @override
   AppColors copyWith({
     Color? textMuted,
-    Color? brand,
+    Color? hero,
+    Color? accentOnDark,
+    Color? heroSub,
+    Color? barMuted,
     Color? sky,
     Color? skySoft,
     Color? sea,
     Color? seaSoft,
-    Color? warn,
-    Color? warnSoft,
+    Color? memberLine,
   }) => AppColors(
     textMuted: textMuted ?? this.textMuted,
-    brand: brand ?? this.brand,
+    hero: hero ?? this.hero,
+    accentOnDark: accentOnDark ?? this.accentOnDark,
+    heroSub: heroSub ?? this.heroSub,
+    barMuted: barMuted ?? this.barMuted,
     sky: sky ?? this.sky,
     skySoft: skySoft ?? this.skySoft,
     sea: sea ?? this.sea,
     seaSoft: seaSoft ?? this.seaSoft,
-    warn: warn ?? this.warn,
-    warnSoft: warnSoft ?? this.warnSoft,
+    memberLine: memberLine ?? this.memberLine,
   );
 
   @override
@@ -88,102 +203,138 @@ class AppColors extends ThemeExtension<AppColors> {
     Color mix(Color a, Color b) => Color.lerp(a, b, t) ?? a;
     return AppColors(
       textMuted: mix(textMuted, other.textMuted),
-      brand: mix(brand, other.brand),
+      hero: mix(hero, other.hero),
+      accentOnDark: mix(accentOnDark, other.accentOnDark),
+      heroSub: mix(heroSub, other.heroSub),
+      barMuted: mix(barMuted, other.barMuted),
       sky: mix(sky, other.sky),
       skySoft: mix(skySoft, other.skySoft),
       sea: mix(sea, other.sea),
       seaSoft: mix(seaSoft, other.seaSoft),
-      warn: mix(warn, other.warn),
-      warnSoft: mix(warnSoft, other.warnSoft),
+      memberLine: mix(memberLine, other.memberLine),
     );
   }
+
+  @override
+  bool operator ==(Object other) =>
+      other is AppColors &&
+      other.textMuted == textMuted &&
+      other.hero == hero &&
+      other.accentOnDark == accentOnDark &&
+      other.heroSub == heroSub &&
+      other.barMuted == barMuted &&
+      other.sky == sky &&
+      other.skySoft == skySoft &&
+      other.sea == sea &&
+      other.seaSoft == seaSoft &&
+      other.memberLine == memberLine;
+
+  @override
+  int get hashCode => Object.hash(
+    textMuted,
+    hero,
+    accentOnDark,
+    heroSub,
+    barMuted,
+    sky,
+    skySoft,
+    sea,
+    seaSoft,
+    memberLine,
+  );
 }
 
 extension AppColorsContext on BuildContext {
-  /// [buildAppTheme]이 항상 등록한다. 테마 없이 그린 위젯 테스트에서는 밝은 색을 쓴다.
-  AppColors get appColors =>
-      Theme.of(this).extension<AppColors>() ?? AppColors.light;
+  /// [buildAppTheme]이 항상 등록한다. 테마 없이 그린 위젯 테스트에서는 지금 밝기의 기본값을 쓴다.
+  AppColors get appColors {
+    final theme = Theme.of(this);
+    return theme.extension<AppColors>() ?? AppColors.of(theme.brightness);
+  }
 }
 
-/// 상태 표시줄과 내비게이션 바를 투명하게 해 화면 바탕과 잇고, 아이콘은 어둡게 한다.
+/// 상태 표시줄과 내비게이션 바를 투명하게 해 화면 바탕과 잇고, 아이콘은 바탕과 반대 밝기로 한다.
 /// app.dart에서 앱 전체를 감싸 쓰고, AppBar 테마에서도 같은 값을 쓴다.
-const appSystemOverlayStyle = SystemUiOverlayStyle(
-  statusBarColor: Colors.transparent,
-  statusBarIconBrightness: Brightness.dark,
-  statusBarBrightness: Brightness.light,
-  systemNavigationBarColor: Colors.transparent,
-  systemNavigationBarIconBrightness: Brightness.dark,
-  systemNavigationBarContrastEnforced: false,
-);
+SystemUiOverlayStyle appSystemOverlayStyle(Brightness brightness) {
+  final icons = switch (brightness) {
+    Brightness.light => Brightness.dark,
+    Brightness.dark => Brightness.light,
+  };
+  return SystemUiOverlayStyle(
+    statusBarColor: Colors.transparent,
+    statusBarIconBrightness: icons,
+    // iOS는 아이콘이 아니라 바탕의 밝기를 받는다.
+    statusBarBrightness: brightness,
+    systemNavigationBarColor: Colors.transparent,
+    systemNavigationBarIconBrightness: icons,
+    systemNavigationBarContrastEnforced: false,
+  );
+}
 
-/// 디자인 토큰으로 만든 앱 테마. 다크 모드는 디자인이 생기면 추가한다.
+/// 디자인 토큰으로 만든 앱 테마. app.dart가 라이트·다크 두 벌을 넘겨 기기 설정을 따른다.
 ///
 /// 글꼴은 시스템 글꼴을 쓴다(디자인의 Noto Sans KR은 앱에 넣지 않음).
-ThemeData buildAppTheme() {
-  const scheme = ColorScheme(
-    brightness: Brightness.light,
-    primary: AppPalette.primary,
-    onPrimary: Colors.white,
-    primaryContainer: AppPalette.primarySoft,
-    onPrimaryContainer: AppPalette.primaryStrong,
-    secondary: AppPalette.brand,
-    onSecondary: Colors.white,
-    // 선택된 세그먼트·칩·탭 표시는 디자인의 primary-soft 바탕을 쓴다.
-    secondaryContainer: AppPalette.primarySoft,
-    onSecondaryContainer: AppPalette.primaryStrong,
-    error: AppPalette.danger,
-    onError: Colors.white,
-    // 화면 바탕은 bg-app, 카드·시트·입력란은 card(흰색).
-    surface: AppPalette.bgApp,
-    onSurface: AppPalette.textPrimary,
-    onSurfaceVariant: AppPalette.textSecondary,
-    surfaceContainerLowest: AppPalette.card,
-    surfaceContainerLow: AppPalette.card,
-    surfaceContainer: AppPalette.card,
-    surfaceContainerHigh: AppPalette.card,
-    surfaceContainerHighest: AppPalette.lineSoft,
-    outline: AppPalette.line,
-    outlineVariant: AppPalette.lineSoft,
+ThemeData buildAppTheme([Brightness brightness = Brightness.light]) {
+  final p = AppPalette.of(brightness);
+  final scheme = ColorScheme(
+    brightness: brightness,
+    // 버튼과 선택된 칩. 라이트는 검정, 다크는 밝은 회색이다.
+    primary: p.primary,
+    onPrimary: p.onPrimary,
+    primaryContainer: p.primarySoft,
+    onPrimaryContainer: p.primary,
+    secondary: p.primary,
+    onSecondary: p.onPrimary,
+    // 선택 표시는 디자인에서 컴포넌트마다 달라(탭은 포인트 색, 칩은 primary, 세그먼트는 밝은 바탕)
+    // 그 화면을 만들 때 컴포넌트 테마로 정한다. 여기서는 중립색만 둔다.
+    secondaryContainer: p.primarySoft,
+    onSecondaryContainer: p.primary,
+    // 포인트 색. 선택된 탭, + 버튼, 지급 전 배지, 입력 중인 칸, 앱 아이콘에만 쓴다.
+    tertiary: p.accent,
+    onTertiary: p.onAccent,
+    error: p.danger,
+    onError: p.onDanger,
+    // 화면 바탕은 bg-app, 카드·시트·입력란은 card.
+    surface: p.bgApp,
+    onSurface: p.textPrimary,
+    onSurfaceVariant: p.textSecondary,
+    surfaceContainerLowest: p.card,
+    surfaceContainerLow: p.card,
+    surfaceContainer: p.card,
+    surfaceContainerHigh: p.card,
+    surfaceContainerHighest: p.lineSoft,
+    outline: p.line,
+    outlineVariant: p.lineSoft,
   );
 
   final base = ThemeData(colorScheme: scheme);
   final text = base.textTheme
-      .apply(
-        bodyColor: AppPalette.textPrimary,
-        displayColor: AppPalette.textPrimary,
-      )
+      .apply(bodyColor: p.textPrimary, displayColor: p.textPrimary)
       .copyWith(
-        headlineMedium: const TextStyle(
+        headlineMedium: TextStyle(
           fontSize: 28,
           fontWeight: FontWeight.w700,
-          color: AppPalette.textPrimary,
+          color: p.textPrimary,
         ),
-        headlineSmall: const TextStyle(
+        headlineSmall: TextStyle(
           fontSize: 26,
           fontWeight: FontWeight.w700,
-          color: AppPalette.textPrimary,
+          color: p.textPrimary,
         ),
-        titleMedium: const TextStyle(
+        titleMedium: TextStyle(
           fontSize: 17,
           fontWeight: FontWeight.w700,
-          color: AppPalette.textPrimary,
+          color: p.textPrimary,
         ),
-        bodyLarge: const TextStyle(fontSize: 16, color: AppPalette.textPrimary),
-        bodyMedium: const TextStyle(
-          fontSize: 15,
-          color: AppPalette.textPrimary,
-        ),
-        bodySmall: const TextStyle(
-          fontSize: 13,
-          color: AppPalette.textSecondary,
-        ),
+        bodyLarge: TextStyle(fontSize: 16, color: p.textPrimary),
+        bodyMedium: TextStyle(fontSize: 15, color: p.textPrimary),
+        bodySmall: TextStyle(fontSize: 13, color: p.textSecondary),
         labelLarge: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
-        labelMedium: const TextStyle(
+        labelMedium: TextStyle(
           fontSize: 13,
           fontWeight: FontWeight.w600,
-          color: AppPalette.textSecondary,
+          color: p.textSecondary,
         ),
-        labelSmall: const TextStyle(fontSize: 12, color: AppPalette.textMuted),
+        labelSmall: TextStyle(fontSize: 12, color: p.textMuted),
       );
 
   const buttonShape = RoundedRectangleBorder(
@@ -191,24 +342,29 @@ ThemeData buildAppTheme() {
   );
   const buttonSize = Size(64, 54);
   const fieldRadius = BorderRadius.all(Radius.circular(12));
+  OutlineInputBorder fieldBorder(Color color, [double width = 1]) =>
+      OutlineInputBorder(
+        borderRadius: fieldRadius,
+        borderSide: BorderSide(color: color, width: width),
+      );
 
   return base.copyWith(
-    scaffoldBackgroundColor: AppPalette.bgApp,
+    scaffoldBackgroundColor: p.bgApp,
     textTheme: text,
-    appBarTheme: const AppBarTheme(
-      backgroundColor: AppPalette.bgApp,
-      foregroundColor: AppPalette.textPrimary,
+    appBarTheme: AppBarTheme(
+      backgroundColor: p.bgApp,
+      foregroundColor: p.textPrimary,
       surfaceTintColor: Colors.transparent,
       elevation: 0,
       scrolledUnderElevation: 0,
-      systemOverlayStyle: appSystemOverlayStyle,
+      systemOverlayStyle: appSystemOverlayStyle(brightness),
     ),
-    cardTheme: const CardThemeData(
-      color: AppPalette.card,
+    cardTheme: CardThemeData(
+      color: p.card,
       surfaceTintColor: Colors.transparent,
       elevation: 0,
       margin: EdgeInsets.zero,
-      shape: RoundedRectangleBorder(
+      shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.all(Radius.circular(20)),
       ),
     ),
@@ -223,40 +379,25 @@ ThemeData buildAppTheme() {
       style: OutlinedButton.styleFrom(
         minimumSize: buttonSize,
         shape: buttonShape,
-        backgroundColor: AppPalette.card,
-        foregroundColor: AppPalette.textPrimary,
-        side: const BorderSide(color: AppPalette.line),
+        backgroundColor: p.card,
+        foregroundColor: p.textPrimary,
+        side: BorderSide(color: p.line),
         textStyle: text.labelLarge,
       ),
     ),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
-      fillColor: AppPalette.card,
+      fillColor: p.card,
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
-      hintStyle: text.bodyLarge?.copyWith(color: AppPalette.textMuted),
+      hintStyle: text.bodyLarge?.copyWith(color: p.textMuted),
       // 기본값은 한 줄이라 '초대 코드를 찾을 수 없어요…' 같은 안내가 잘린다.
       errorMaxLines: 3,
-      border: const OutlineInputBorder(
-        borderRadius: fieldRadius,
-        borderSide: BorderSide(color: AppPalette.line),
-      ),
-      enabledBorder: const OutlineInputBorder(
-        borderRadius: fieldRadius,
-        borderSide: BorderSide(color: AppPalette.line),
-      ),
-      focusedBorder: const OutlineInputBorder(
-        borderRadius: fieldRadius,
-        borderSide: BorderSide(color: AppPalette.primary, width: 1.5),
-      ),
-      errorBorder: const OutlineInputBorder(
-        borderRadius: fieldRadius,
-        borderSide: BorderSide(color: AppPalette.danger),
-      ),
-      focusedErrorBorder: const OutlineInputBorder(
-        borderRadius: fieldRadius,
-        borderSide: BorderSide(color: AppPalette.danger, width: 1.5),
-      ),
+      border: fieldBorder(p.line),
+      enabledBorder: fieldBorder(p.line),
+      focusedBorder: fieldBorder(p.accent, 1.5),
+      errorBorder: fieldBorder(p.danger),
+      focusedErrorBorder: fieldBorder(p.danger, 1.5),
     ),
-    extensions: const [AppColors.light],
+    extensions: [AppColors.of(brightness)],
   );
 }

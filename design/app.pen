@@ -77,7 +77,7 @@
       "reusable": true,
       "width": 358,
       "height": 62,
-      "fill": "#FFFFFFF2",
+      "fill": "$tab-bar",
       "cornerRadius": 31,
       "stroke": "$line",
       "strokeWidth": 1,
@@ -251,7 +251,7 @@
           "type": "text",
           "id": "E1BvU3",
           "name": "Label",
-          "fill": "#FFFFFF",
+          "fill": "$on-primary",
           "content": "버튼",
           "fontFamily": "$font",
           "fontSize": 16,
@@ -373,7 +373,7 @@
               "type": "text",
               "id": "jWWtc",
               "name": "Initial",
-              "fill": "#FFFFFF",
+              "fill": "$on-primary",
               "content": "하",
               "fontFamily": "$font",
               "fontSize": 14,
@@ -469,6 +469,9 @@
       "x": 470,
       "y": 200,
       "name": "02 가계부 시작",
+      "theme": {
+        "mode": "light"
+      },
       "clip": true,
       "width": 390,
       "fill": "$bg-app",
@@ -800,6 +803,9 @@
       "x": 940,
       "y": 200,
       "name": "03 월 요약",
+      "theme": {
+        "mode": "light"
+      },
       "clip": true,
       "width": 390,
       "fill": "$bg-app",
@@ -895,7 +901,7 @@
                           "type": "text",
                           "id": "YO7ua",
                           "name": "Initial",
-                          "fill": "#FFFFFF",
+                          "fill": "$on-primary",
                           "content": "하",
                           "fontFamily": "$font",
                           "fontSize": 13,
@@ -938,7 +944,7 @@
               "name": "Hero Card",
               "clip": true,
               "width": "fill_container",
-              "fill": "$primary-strong",
+              "fill": "$hero",
               "cornerRadius": 24,
               "layout": "vertical",
               "gap": 16,
@@ -1593,7 +1599,7 @@
                           "cornerRadius": 4,
                           "id": "bj26E",
                           "name": "Fill",
-                          "fill": "$brand",
+                          "fill": "$primary",
                           "width": 113,
                           "height": 8
                         }
@@ -1756,7 +1762,7 @@
                           "cornerRadius": 4,
                           "id": "Z1L2Da",
                           "name": "Fill",
-                          "fill": "$brand",
+                          "fill": "$primary",
                           "width": 113,
                           "height": 8
                         }
@@ -1913,7 +1919,7 @@
                               "type": "text",
                               "id": "JhbXi",
                               "name": "Initial",
-                              "fill": "#FFFFFF",
+                              "fill": "$on-primary",
                               "content": "하",
                               "fontFamily": "$font",
                               "fontSize": 10,
@@ -2044,7 +2050,7 @@
                   "height": 26,
                   "icon": "plus",
                   "library": "lucide",
-                  "fill": "#FFFFFF"
+                  "fill": "$on-accent"
                 }
               ]
             }
@@ -2058,6 +2064,9 @@
       "x": 0,
       "y": 200,
       "name": "01 로그인",
+      "theme": {
+        "mode": "light"
+      },
       "clip": true,
       "width": 390,
       "height": 844,
@@ -2127,7 +2136,7 @@
                       "height": 40,
                       "icon": "wallet",
                       "library": "lucide",
-                      "fill": "#FFFFFF"
+                      "fill": "$on-accent"
                     }
                   ]
                 },
@@ -2308,10 +2317,11 @@
                   "ref": "ggnyx",
                   "name": "Button Apple로 계속하기",
                   "width": "fill_container",
-                  "fill": "#000000",
+                  "fill": "$apple",
                   "descendants": {
                     "E1BvU3": {
-                      "content": "Apple로 계속하기"
+                      "content": "Apple로 계속하기",
+                      "fill": "$on-apple"
                     }
                   }
                 },
@@ -2367,6 +2377,9 @@
       "x": 1410,
       "y": 200,
       "name": "04 항목 목록",
+      "theme": {
+        "mode": "light"
+      },
       "clip": true,
       "width": 390,
       "fill": "$bg-app",
@@ -2462,7 +2475,7 @@
                           "type": "text",
                           "id": "BQOGE",
                           "name": "Initial",
-                          "fill": "#FFFFFF",
+                          "fill": "$on-primary",
                           "content": "하",
                           "fontFamily": "$font",
                           "fontSize": 13,
@@ -2504,7 +2517,7 @@
               "id": "i5zTN",
               "name": "Segmented",
               "width": "fill_container",
-              "fill": "#E8EBE9",
+              "fill": "$track",
               "cornerRadius": 14,
               "gap": 4,
               "padding": 4,
@@ -2538,7 +2551,7 @@
                   "name": "Seg 기본 지출",
                   "width": "fill_container",
                   "height": 38,
-                  "fill": "$card",
+                  "fill": "$segment-on",
                   "cornerRadius": 10,
                   "effect": {
                     "type": "shadow",
@@ -2777,7 +2790,7 @@
                     },
                     "jWWtc": {
                       "content": "하",
-                      "fill": "#FFFFFF"
+                      "fill": "$on-primary"
                     },
                     "uZRF0": {
                       "content": "주택담보대출 원금"
@@ -2866,7 +2879,7 @@
                     },
                     "jWWtc": {
                       "content": "하",
-                      "fill": "#FFFFFF"
+                      "fill": "$on-primary"
                     },
                     "uZRF0": {
                       "content": "주택담보대출 이자"
@@ -3005,7 +3018,7 @@
                     },
                     "jWWtc": {
                       "content": "하",
-                      "fill": "#FFFFFF"
+                      "fill": "$on-primary"
                     },
                     "uZRF0": {
                       "content": "ISA"
@@ -3161,7 +3174,7 @@
                     },
                     "jWWtc": {
                       "content": "하",
-                      "fill": "#FFFFFF"
+                      "fill": "$on-primary"
                     },
                     "uZRF0": {
                       "content": "보험"
@@ -3187,7 +3200,7 @@
                     },
                     "jWWtc": {
                       "content": "하",
-                      "fill": "#FFFFFF"
+                      "fill": "$on-primary"
                     },
                     "uZRF0": {
                       "content": "구독 서비스"
@@ -3265,7 +3278,7 @@
                   "height": 26,
                   "icon": "plus",
                   "library": "lucide",
-                  "fill": "#FFFFFF"
+                  "fill": "$on-accent"
                 }
               ]
             }
@@ -3279,6 +3292,9 @@
       "x": 1880,
       "y": 200,
       "name": "05 항목 입력",
+      "theme": {
+        "mode": "light"
+      },
       "clip": true,
       "width": 390,
       "fill": "$card",
@@ -3365,7 +3381,7 @@
               "id": "LcZTZ",
               "name": "Segmented",
               "width": "fill_container",
-              "fill": "$bg-app",
+              "fill": "$track",
               "cornerRadius": 14,
               "gap": 4,
               "padding": 4,
@@ -3421,7 +3437,7 @@
                   "name": "Seg 추가지출",
                   "width": "fill_container",
                   "height": 38,
-                  "fill": "$card",
+                  "fill": "$segment-on",
                   "cornerRadius": 10,
                   "effect": {
                     "type": "shadow",
@@ -3636,13 +3652,13 @@
                           "height": 16,
                           "icon": "check",
                           "library": "lucide",
-                          "fill": "#FFFFFF"
+                          "fill": "$on-primary"
                         },
                         {
                           "type": "text",
                           "id": "MIDDf",
                           "name": "Label",
-                          "fill": "#FFFFFF",
+                          "fill": "$on-primary",
                           "content": "바다",
                           "fontFamily": "$font",
                           "fontSize": 14,
@@ -3730,13 +3746,13 @@
                           "height": 16,
                           "icon": "check",
                           "library": "lucide",
-                          "fill": "#FFFFFF"
+                          "fill": "$on-primary"
                         },
                         {
                           "type": "text",
                           "id": "HZi2F",
                           "name": "Label",
-                          "fill": "#FFFFFF",
+                          "fill": "$on-primary",
                           "content": "공용 카드",
                           "fontFamily": "$font",
                           "fontSize": 14,
@@ -3883,6 +3899,9 @@
       "x": 2350,
       "y": 200,
       "name": "06 고정 지출",
+      "theme": {
+        "mode": "light"
+      },
       "clip": true,
       "width": 390,
       "fill": "$bg-app",
@@ -4375,6 +4394,9 @@
       "x": 2820,
       "y": 200,
       "name": "07 설정",
+      "theme": {
+        "mode": "light"
+      },
       "clip": true,
       "width": 390,
       "fill": "$bg-app",
@@ -4461,7 +4483,7 @@
                           "height": 24,
                           "icon": "wallet",
                           "library": "lucide",
-                          "fill": "#FFFFFF"
+                          "fill": "$on-accent"
                         }
                       ]
                     },
@@ -4565,7 +4587,7 @@
                           "type": "text",
                           "id": "vYL71",
                           "name": "Initial",
-                          "fill": "#FFFFFF",
+                          "fill": "$on-primary",
                           "content": "하",
                           "fontFamily": "$font",
                           "fontSize": 17,
@@ -5214,7 +5236,7 @@
                       "name": "Icon Box",
                       "width": 34,
                       "height": 34,
-                      "fill": "#FBEAEA",
+                      "fill": "$danger-soft",
                       "cornerRadius": 10,
                       "justifyContent": "center",
                       "alignItems": "center",
@@ -5296,70 +5318,250 @@
       ]
     }
   ],
+  "themes": {
+    "mode": [
+      "light",
+      "dark"
+    ]
+  },
   "variables": {
     "bg-app": {
       "type": "color",
-      "value": "#F5F5F4"
+      "value": [
+        {
+          "value": "#F5F5F4",
+          "theme": {
+            "mode": "light"
+          }
+        },
+        {
+          "value": "#121212",
+          "theme": {
+            "mode": "dark"
+          }
+        }
+      ]
     },
     "card": {
       "type": "color",
-      "value": "#FFFFFF"
+      "value": [
+        {
+          "value": "#FFFFFF",
+          "theme": {
+            "mode": "light"
+          }
+        },
+        {
+          "value": "#1E1E1E",
+          "theme": {
+            "mode": "dark"
+          }
+        }
+      ]
     },
     "primary": {
       "type": "color",
-      "value": "#1A1A1A"
-    },
-    "primary-strong": {
-      "type": "color",
-      "value": "#1A1A1A"
-    },
-    "brand": {
-      "type": "color",
-      "value": "#1A1A1A"
+      "value": [
+        {
+          "value": "#1A1A1A",
+          "theme": {
+            "mode": "light"
+          }
+        },
+        {
+          "value": "#F2F2F2",
+          "theme": {
+            "mode": "dark"
+          }
+        }
+      ]
     },
     "primary-soft": {
       "type": "color",
-      "value": "#F0F0EE"
+      "value": [
+        {
+          "value": "#F0F0EE",
+          "theme": {
+            "mode": "light"
+          }
+        },
+        {
+          "value": "#2A2A2A",
+          "theme": {
+            "mode": "dark"
+          }
+        }
+      ]
     },
     "line": {
       "type": "color",
-      "value": "#E6E6E4"
+      "value": [
+        {
+          "value": "#E6E6E4",
+          "theme": {
+            "mode": "light"
+          }
+        },
+        {
+          "value": "#333333",
+          "theme": {
+            "mode": "dark"
+          }
+        }
+      ]
     },
     "line-soft": {
       "type": "color",
-      "value": "#F0F0EE"
+      "value": [
+        {
+          "value": "#F0F0EE",
+          "theme": {
+            "mode": "light"
+          }
+        },
+        {
+          "value": "#2A2A2A",
+          "theme": {
+            "mode": "dark"
+          }
+        }
+      ]
     },
     "text-primary": {
       "type": "color",
-      "value": "#191F1C"
+      "value": [
+        {
+          "value": "#191F1C",
+          "theme": {
+            "mode": "light"
+          }
+        },
+        {
+          "value": "#F2F2F2",
+          "theme": {
+            "mode": "dark"
+          }
+        }
+      ]
     },
     "text-secondary": {
       "type": "color",
-      "value": "#5F5F5F"
+      "value": [
+        {
+          "value": "#5F5F5F",
+          "theme": {
+            "mode": "light"
+          }
+        },
+        {
+          "value": "#B0B0B0",
+          "theme": {
+            "mode": "dark"
+          }
+        }
+      ]
     },
     "text-muted": {
       "type": "color",
-      "value": "#737373"
+      "value": [
+        {
+          "value": "#737373",
+          "theme": {
+            "mode": "light"
+          }
+        },
+        {
+          "value": "#8E8E8E",
+          "theme": {
+            "mode": "dark"
+          }
+        }
+      ]
     },
     "sky": {
       "type": "color",
-      "value": "#1A1A1A"
+      "value": [
+        {
+          "value": "#1A1A1A",
+          "theme": {
+            "mode": "light"
+          }
+        },
+        {
+          "value": "#F2F2F2",
+          "theme": {
+            "mode": "dark"
+          }
+        }
+      ]
     },
     "sky-soft": {
       "type": "color",
-      "value": "#1A1A1A"
+      "value": [
+        {
+          "value": "#1A1A1A",
+          "theme": {
+            "mode": "light"
+          }
+        },
+        {
+          "value": "#F2F2F2",
+          "theme": {
+            "mode": "dark"
+          }
+        }
+      ]
     },
     "sea": {
       "type": "color",
-      "value": "#6B6B69"
+      "value": [
+        {
+          "value": "#6B6B69",
+          "theme": {
+            "mode": "light"
+          }
+        },
+        {
+          "value": "#A3A3A1",
+          "theme": {
+            "mode": "dark"
+          }
+        }
+      ]
     },
     "sea-soft": {
       "type": "color",
-      "value": "#FFFFFF"
+      "value": [
+        {
+          "value": "#FFFFFF",
+          "theme": {
+            "mode": "light"
+          }
+        },
+        {
+          "value": "#1E1E1E",
+          "theme": {
+            "mode": "dark"
+          }
+        }
+      ]
     },
     "danger": {
       "type": "color",
-      "value": "#C93C3C"
+      "value": [
+        {
+          "value": "#C93C3C",
+          "theme": {
+            "mode": "light"
+          }
+        },
+        {
+          "value": "#FF6B6B",
+          "theme": {
+            "mode": "dark"
+          }
+        }
+      ]
     },
     "font": {
       "type": "string",
@@ -5367,27 +5569,241 @@
     },
     "member-line": {
       "type": "color",
-      "value": "#D6D6D4"
+      "value": [
+        {
+          "value": "#D6D6D4",
+          "theme": {
+            "mode": "light"
+          }
+        },
+        {
+          "value": "#4A4A4A",
+          "theme": {
+            "mode": "dark"
+          }
+        }
+      ]
     },
     "accent": {
       "type": "color",
-      "value": "#2D5BFF"
+      "value": [
+        {
+          "value": "#2D5BFF",
+          "theme": {
+            "mode": "light"
+          }
+        },
+        {
+          "value": "#2D5BFF",
+          "theme": {
+            "mode": "dark"
+          }
+        }
+      ]
     },
     "on-accent": {
       "type": "color",
-      "value": "#FFFFFF"
+      "value": [
+        {
+          "value": "#FFFFFF",
+          "theme": {
+            "mode": "light"
+          }
+        },
+        {
+          "value": "#FFFFFF",
+          "theme": {
+            "mode": "dark"
+          }
+        }
+      ]
     },
     "accent-on-dark": {
       "type": "color",
-      "value": "#7C9BFF"
+      "value": [
+        {
+          "value": "#7C9BFF",
+          "theme": {
+            "mode": "light"
+          }
+        },
+        {
+          "value": "#7C9BFF",
+          "theme": {
+            "mode": "dark"
+          }
+        }
+      ]
     },
     "hero-sub": {
       "type": "color",
-      "value": "#BDBDBD"
+      "value": [
+        {
+          "value": "#BDBDBD",
+          "theme": {
+            "mode": "light"
+          }
+        },
+        {
+          "value": "#B0B0B0",
+          "theme": {
+            "mode": "dark"
+          }
+        }
+      ]
     },
     "bar-muted": {
       "type": "color",
-      "value": "#D4D4D2"
+      "value": [
+        {
+          "value": "#D4D4D2",
+          "theme": {
+            "mode": "light"
+          }
+        },
+        {
+          "value": "#4A4A4A",
+          "theme": {
+            "mode": "dark"
+          }
+        }
+      ]
+    },
+    "on-primary": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#FFFFFF",
+          "theme": {
+            "mode": "light"
+          }
+        },
+        {
+          "value": "#121212",
+          "theme": {
+            "mode": "dark"
+          }
+        }
+      ]
+    },
+    "hero": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#1A1A1A",
+          "theme": {
+            "mode": "light"
+          }
+        },
+        {
+          "value": "#262626",
+          "theme": {
+            "mode": "dark"
+          }
+        }
+      ]
+    },
+    "danger-soft": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#FBEAEA",
+          "theme": {
+            "mode": "light"
+          }
+        },
+        {
+          "value": "#3A2020",
+          "theme": {
+            "mode": "dark"
+          }
+        }
+      ]
+    },
+    "apple": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#000000",
+          "theme": {
+            "mode": "light"
+          }
+        },
+        {
+          "value": "#FFFFFF",
+          "theme": {
+            "mode": "dark"
+          }
+        }
+      ]
+    },
+    "on-apple": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#FFFFFF",
+          "theme": {
+            "mode": "light"
+          }
+        },
+        {
+          "value": "#000000",
+          "theme": {
+            "mode": "dark"
+          }
+        }
+      ]
+    },
+    "tab-bar": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#FFFFFFF2",
+          "theme": {
+            "mode": "light"
+          }
+        },
+        {
+          "value": "#1E1E1EF2",
+          "theme": {
+            "mode": "dark"
+          }
+        }
+      ]
+    },
+    "track": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#EBEBE9",
+          "theme": {
+            "mode": "light"
+          }
+        },
+        {
+          "value": "#262626",
+          "theme": {
+            "mode": "dark"
+          }
+        }
+      ]
+    },
+    "segment-on": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#FFFFFF",
+          "theme": {
+            "mode": "light"
+          }
+        },
+        {
+          "value": "#3A3A3A",
+          "theme": {
+            "mode": "dark"
+          }
+        }
+      ]
     }
   },
   "fileToken": "1c326fbc-e3bd-4201-a5b1-2eb8fb7772e7"
