@@ -4,42 +4,27 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/data/providers.dart';
 import '../../core/widget/keep_all.dart';
+import 'sign_in_controller.dart';
 
 /// 로그인 화면(design/app.pen의 01). Apple 로그인은 iOS에서만 보여준다.
-/// 카카오 로그인은 출시 준비 단계에서 붙인다.
-class SignInScreen extends ConsumerStatefulWidget {
+/// 카카오 로그인은 출시 준비 단계에서 붙인다. 로직은 [SignInController]에 있다.
+class SignInScreen extends ConsumerWidget {
   const SignInScreen({super.key});
 
-  @override
-  ConsumerState<SignInScreen> createState() => _SignInScreenState();
-}
-
-class _SignInScreenState extends ConsumerState<SignInScreen> {
   static const _padding = EdgeInsets.fromLTRB(24, 8, 24, 28);
 
-  bool _busy = false;
-
-  Future<void> _signIn(Future<bool> Function() signIn) async {
-    setState(() => _busy = true);
-    try {
-      await signIn();
-      // 성공하면 화면 이동 규칙이 다음 화면으로 옮긴다. 취소하면 그대로 둔다.
-    } catch (e) {
-      if (!mounted) return;
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final state = ref.watch(signInControllerProvider);
+    final controller = ref.read(signInControllerProvider.notifier);
+    ref.listen(signInControllerProvider.select((s) => s.failed), (_, failed) {
+      if (!failed) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(keepAll('로그인하지 못했어요. 잠시 후 다시 시도해 주세요.'))),
       );
-      debugPrint('로그인 실패: $e');
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final auth = ref.read(authRepositoryProvider);
+      controller.failureShown();
+    });
     final showApple = defaultTargetPlatform == TargetPlatform.iOS;
     return Scaffold(
       // 디자인에서 로그인 화면만 카드색(흰색) 바탕이다.
@@ -71,9 +56,9 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                               backgroundColor: Colors.black,
                               foregroundColor: Colors.white,
                             ),
-                            onPressed: _busy
+                            onPressed: state.busy
                                 ? null
-                                : () => _signIn(auth.signInWithApple),
+                                : () => controller.signIn(SignInMethod.apple),
                             icon: const Icon(Icons.apple),
                             label: const Text('Apple로 계속하기'),
                           ),
@@ -81,9 +66,9 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                         ],
                         OutlinedButton(
                           key: const Key('sign-in-google'),
-                          onPressed: _busy
+                          onPressed: state.busy
                               ? null
-                              : () => _signIn(auth.signInWithGoogle),
+                              : () => controller.signIn(SignInMethod.google),
                           child: const Text('Google로 계속하기'),
                         ),
                       ],

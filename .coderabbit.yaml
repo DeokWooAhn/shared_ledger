@@ -12,8 +12,8 @@ knowledge_base:
     filePatterns:
       - "AGENTS.md"
       - ".claude/skills/review/SKILL.md"
-      - ".claude/skills/verification/SKILL.md"
-      - ".claude/skills/new-feature/SKILL.md"
+      - ".claude/skills/flutter-screen/SKILL.md"
+      - ".claude/skills/testing/SKILL.md"
 
 reviews:
   path_filters:
@@ -190,6 +190,39 @@ reviews:
           됐는지 PR 설명을 요구 (firebase 스킬)
         - 로그아웃은 Google 세션과 Firebase 세션을 함께 정리한다
         - idToken·이메일을 로그로 남기지 말 것
+    - path: "lib/feature/**/*_controller.dart"
+      instructions: |-
+        컨트롤러 리뷰 기준 (MVVM: Riverpod Notifier). 정석 레퍼런스는 `lib/feature/ledger/ledger_start_controller.dart`.
+
+        구조:
+        - `Notifier<불변 State>` + `NotifierProvider.autoDispose`. 화면을 넘어 살아야 하는 상태만 autoDispose 를 뺀다
+        - `package:flutter/material.dart`·위젯·`BuildContext` 를 쓰면 지적. 컨트롤러 은 화면을 모른다
+        - Firebase 패키지를 직접 import 하면 반드시 지적. `core/data` 의 저장소 인터페이스와 공급자만 쓴다
+        - 사용자 동작은 메서드로 받는다. 공개 메서드에는 무엇을 하는지 한국어 문서 주석
+
+        State:
+        - 불변 클래스(`final` 필드, `const` 생성자)이고 `==`·`hashCode` 가 모든 필드를 비교하는지. 빠진 필드가 있으면 상태 변화가 무시된다
+        - 화면 문구(String)를 담으면 지적. 문제·실패는 enum 으로 두고 문구는 View 가 만든다
+        - 진행 중(`pending`), 화면에 계속 보일 문제, 일회성 실패(`failure` + `failureShown()`)를 구분하는지
+
+        비동기:
+        - 진행 중에 들어온 호출을 무시하는지(`if (state.busy) return;`). 두 번 눌림으로 요청이 두 번 나가면 지적
+        - `await` 뒤에 `ref.mounted` 를 확인하고 상태를 바꾸는지. 화면이 사라진 뒤 상태를 바꾸면 오류가 난다
+        - 처리할 도메인 실패(`JoinLedgerException` 등)만 골라 잡고, 예상 못 한 오류는 일회성 실패로 알리는지. 빈 catch 지적
+        - 사용자 취소를 실패로 알리면 지적
+
+        입력 검사:
+        - 서버 결과도 보여야 하는 입력란은 입력 검사까지 컨트롤러 이 맡는지. 폼 validator 와 나눠 갖으면 지적(PR #3 의 재시도 무시 버그)
+    - path: "lib/feature/**/*_screen.dart"
+      instructions: |-
+        View(화면 위젯) 리뷰 기준. 로직은 같은 폴더의 `*_controller.dart` 에 있어야 한다.
+
+        - 저장소를 직접 부르거나, `try/catch`·진행 상태(`_busy`)·서버 오류를 위젯 `State` 에 두면 컨트롤러 로 옮기라고 지적
+        - 일회성 표시(스낵바)는 `ref.listen(provider.select(...))` 로 띄우고 `failureShown()` 을 부르는지
+        - `ref.watch(provider)` 로 그리고 `ref.read(provider.notifier)` 로 메서드를 부르는지
+        - 버튼은 `state.busy` 동안 막히는지
+        - enum → 문구 함수가 `switch` 식으로 모든 경우를 다루는지(`default`/`_` 없이)
+        - 입력란은 `LabeledField` 로 이름표와 묶였는지. 서버 결과가 보이는 입력란은 `TextField` + `errorText`(컨트롤러 상태), 그 칸에서 끝나는 검사는 `TextFormField` + `validator`. 섞으면 지적
     - path: "lib/feature/**/*.dart"
       instructions: |-
         Flutter 화면 best practices.
@@ -210,8 +243,8 @@ reviews:
         - `build` 는 순수해야 한다. `build` 안에서 저장소 호출, `setState`, 화면 이동, 스낵바 표시 금지
 
         상태:
-        - 화면 안에서만 쓰는 상태(입력 중인 값, 진행 중 표시)만 `State` 에, 공유·서버 상태는 Riverpod 공급자에
-        - 기본은 `ConsumerWidget`, 컨트롤러·진행 상태가 있을 때만 `ConsumerStatefulWidget`
+        - 화면 안에서만 쓰는 상태(입력란 컨트롤러, 폼 키, 복사 표시)만 위젯 `State` 에, 진행 상태·서버 결과는 컨트롤러 에, 공유 데이터는 공급자에
+        - 기본은 `ConsumerWidget`, 입력란 컨트롤러가 있을 때만 `ConsumerStatefulWidget`
         - 그릴 값은 `ref.watch`, 버튼 콜백에서 쓰는 저장소는 `ref.read`. `build` 에서 `ref.read` 로 읽은 값을 그리면 갱신되지 않는다
         - 상태 변화에 따른 스낵바·화면 이동은 `ref.listen` 으로
         - `AsyncValue` 는 `switch` 로 로딩·오류·데이터를 모두 그린다. 오류를 빈 화면으로 삼키면 지적
@@ -219,7 +252,7 @@ reviews:
         생명주기:
         - `TextEditingController`, `FocusNode`, `ScrollController`, `AnimationController`, `StreamSubscription` 은 `dispose` 에서 정리
         - `await` 뒤에 `context`·`setState` 를 쓰기 전에 `mounted` 확인 (State 밖의 BuildContext 는 `context.mounted`)
-        - 비동기 버튼은 진행 중 다시 눌리지 않게 막는다(`_busy`). 실패는 알리고, 사용자 취소는 오류로 보여주지 않는다
+        - 오류가 날 수 있는 `Future`(저장소 호출 등)를 버리면 지적. 컨트롤러 메서드와 `signOutWithFeedback` 은 안에서 오류를 처리하므로 바로 불러도 된다
 
         목록:
         - 긴 목록은 `ListView.builder`/`SliverList` 로 필요한 만큼만 만든다. `Column` + `map` 으로 전부 만들면 지적
@@ -286,6 +319,11 @@ reviews:
         - 초기값과 기대값이 같아 아무것도 검증하지 못하는 단언 지적
         - 새 저장소·계산 함수·`AppGate` 경우가 추가됐는데 테스트가 없으면 지적
 
+        컨트롤러 테스트:
+        - `test/support/provider_container.dart` 의 `createContainer`·`loadSignedInUser`·`recordStates` 로 가짜를 끼운다
+        - 상태가 거쳐 간 순서(진행 중 → 끝)와 일회성 실패가 켜지고 꺼지는 것을 둘 다 보는지
+        - 문구가 아니라 enum 값을 단언하는지
+
         위젯 테스트:
         - Firebase 를 모킹하지 않고 `ProviderScope(overrides:)` 로 `test/support/fakes.dart` 의 가짜 저장소를 끼운다.
           mockito·mocktail 을 들이면 이유를 묻는다
@@ -305,6 +343,8 @@ reviews:
         - 실제 구현과 같은 인터페이스를 `implements` 해야 한다. 인터페이스가 바뀌면 컴파일 에러로 드러나야 한다
         - 실제 구현이 지키는 약속(로그아웃 상태면 빈 목록, 취소면 false)을 가짜도 지키는지. 다르면 테스트가 거짓 통과한다
         - 호출 기록(`created`, `googleCalls`)으로 검증할 수 있게
+        - 같은 id 를 다시 쓰면 바꾸고 새로 더하지 않는지, 두 명이 찬 가계부 참여를 거부하는지(실제 보안 규칙과 같게)
+        - 실패 스위치(`failNextX`, `nextJoinFailure`)는 한 번 쓰면 스스로 꺼지는지
 
     # ---------------------------------------------------------------
     # 패키지·린트·Flutter 버전

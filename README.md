@@ -42,7 +42,7 @@ lib/
     data/               로그인·가계부 저장소 인터페이스, Firebase 구현, Riverpod 공급자
     theme/              디자인 토큰(design/app.pen)으로 만든 앱 테마
     widget/             공용 위젯
-  feature/<기능>/        기능별 화면
+  feature/<기능>/        기능별 화면: View(*_screen.dart) + 컨트롤러(*_controller.dart, Riverpod Notifier)
 firestore.rules         보안 규칙
 firestore-tests/        보안 규칙 테스트 (Firestore 에뮬레이터)
 design/                 화면 디자인(Pencil)과 내보낸 이미지
@@ -55,7 +55,7 @@ design/                 화면 디자인(Pencil)과 내보낸 이미지
 | 영역 | 사용 |
 | --- | --- |
 | 앱 | Flutter 3.47.7 (fvm으로 고정), Dart 3.13 |
-| 상태 관리 / 화면 이동 | Riverpod 3 / go_router |
+| 상태 관리 / 화면 이동 | Riverpod 3(화면은 MVVM: Notifier 컨트롤러) / go_router |
 | 서버 | Firebase Authentication, Cloud Firestore (asia-northeast3) |
 | 로그인 | google_sign_in, Firebase Apple 로그인 |
 | iOS 의존성 | Swift Package Manager |
@@ -98,7 +98,7 @@ PR과 `main` 푸시마다 GitHub Actions가 같은 검사와 보안 규칙 테�
 | [docs/plan.md](docs/plan.md) | 결정 사항, 계산 규칙, 화면, 단계별 계획, 출시 요건과 비용 |
 | [docs/firestore.md](docs/firestore.md) | Firestore 컬렉션·필드·역할별 권한 |
 | [AGENTS.md](AGENTS.md) | 개발 규칙 (AI 에이전트·CodeRabbit·사람이 같이 봄) |
-| [.claude/skills/](.claude/skills) | 작업별 절차: 검증, 새 기능 추가, Firebase, 코드 리뷰 |
+| [.claude/skills/](.claude/skills) | 작업별 절차: 화면 추가(MVVM), 테스트, 검증, Firebase, 코드 리뷰 |
 
 ## 라이선스
 

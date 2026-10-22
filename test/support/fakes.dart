@@ -15,6 +15,9 @@ class FakeAuthRepository implements AuthRepository {
   AuthUser signInAs = const AuthUser(uid: 'me');
   bool cancelNextSignIn = false;
 
+  /// true면 다음 로그인이 오류로 실패한다(취소와 다름).
+  bool failNextSignIn = false;
+
   /// true면 다음 로그아웃이 실패한다.
   bool failNextSignOut = false;
   int googleCalls = 0;
@@ -40,6 +43,10 @@ class FakeAuthRepository implements AuthRepository {
   }
 
   Future<bool> _signIn() async {
+    if (failNextSignIn) {
+      failNextSignIn = false;
+      throw StateError('sign-in failed');
+    }
     if (cancelNextSignIn) return false;
     _set(signInAs);
     return true;
@@ -78,6 +85,13 @@ class FakeLedgerRepository implements LedgerRepository {
   /// 값을 넣으면 다음 참여가 이 이유로 실패한다.
   JoinFailure? nextJoinFailure;
 
+  /// true면 다음 호출이 네트워크 오류처럼 [JoinLedgerException]이 아닌 오류로 실패한다.
+  bool failNextCreate = false;
+  bool failNextInvite = false;
+  bool failNextJoin = false;
+
+  static Never _fail(String what) => throw StateError('$what failed');
+
   List<Ledger> _of(String uid) =>
       _ledgers.where((l) => l.memberUids.contains(uid)).toList();
 
@@ -94,6 +108,10 @@ class FakeLedgerRepository implements LedgerRepository {
     required String name,
     required String ownerUid,
   }) async {
+    if (failNextCreate) {
+      failNextCreate = false;
+      _fail('create');
+    }
     created.add((name: name, ownerUid: ownerUid));
     final id = 'ledger-${created.length}';
     _ledgers.add(Ledger(id: id, name: name, ownerUid: ownerUid));
@@ -107,6 +125,10 @@ class FakeLedgerRepository implements LedgerRepository {
     required MemberRole role,
     required String createdBy,
   }) async {
+    if (failNextInvite) {
+      failNextInvite = false;
+      _fail('createInvite');
+    }
     invites.add((ledgerId: ledgerId, role: role, createdBy: createdBy));
     return Invite(
       code: 'TESTCODE${invites.length}A',
@@ -122,6 +144,10 @@ class FakeLedgerRepository implements LedgerRepository {
     required String uid,
   }) async {
     joins.add((code: code, uid: uid));
+    if (failNextJoin) {
+      failNextJoin = false;
+      _fail('joinWithInvite');
+    }
     final failure = nextJoinFailure;
     nextJoinFailure = null;
     if (failure != null) throw JoinLedgerException(failure);

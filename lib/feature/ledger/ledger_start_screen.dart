@@ -1,14 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/data/ledger_repository.dart';
-import '../../core/data/providers.dart';
-import '../../core/model/invite.dart';
 import '../../core/model/ledger.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widget/keep_all.dart';
 import '../../core/widget/labeled_field.dart';
 import '../../core/widget/sign_out.dart';
+import 'ledger_start_controller.dart';
 
 /// 가계부 이름 검사. 통과하면 null, 아니면 안내 문구.
 String? validateLedgerName(String? value) {
@@ -20,19 +18,20 @@ String? validateLedgerName(String? value) {
   return null;
 }
 
-/// 초대 코드 입력 검사. 공백·하이픈은 빼고 본다.
-String? validateInviteCodeInput(String? value) {
-  final code = normalizeInviteCode(value ?? '');
-  if (code.isEmpty) return '초대 코드를 입력해 주세요.';
-  if (!isInviteCodeShaped(code)) return '초대 코드를 다시 확인해 주세요.';
-  return null;
-}
-
-String joinFailureMessage(JoinFailure reason) => switch (reason) {
-  JoinFailure.notFound => '초대 코드를 찾을 수 없어요. 코드를 다시 확인해 주세요.',
-  JoinFailure.expired => '기간이 지난 초대 코드예요. 새 코드를 받아 주세요.',
-  JoinFailure.unavailable => '이 가계부에는 더 들어갈 수 없어요. 초대한 사람에게 확인해 주세요.',
+/// 초대 코드 입력란 아래에 보여 줄 문구.
+String inviteCodeProblemMessage(InviteCodeProblem problem) => switch (problem) {
+  InviteCodeProblem.empty => '초대 코드를 입력해 주세요.',
+  InviteCodeProblem.malformed => '초대 코드를 다시 확인해 주세요.',
+  InviteCodeProblem.notFound => '초대 코드를 찾을 수 없어요. 코드를 다시 확인해 주세요.',
+  InviteCodeProblem.expired => '기간이 지난 초대 코드예요. 새 코드를 받아 주세요.',
+  InviteCodeProblem.unavailable => '이 가계부에는 더 들어갈 수 없어요. 초대한 사람에게 확인해 주세요.',
 };
+
+String ledgerStartFailureMessage(LedgerStartFailure failure) =>
+    switch (failure) {
+      LedgerStartFailure.create => '가계부를 만들지 못했어요. 잠시 후 다시 시도해 주세요.',
+      LedgerStartFailure.join => '참여하지 못했어요. 잠시 후 다시 시도해 주세요.',
+    };
 
 /// 가계부 시작 화면(design/app.pen의 02). 새로 만들거나 초대 코드로 참여한다.
 /// 만든 사람이 관리자가 되고, 초대 코드로 들어온 사람은 초대에 정해진 역할을 받는다.
@@ -44,11 +43,10 @@ class LedgerStartScreen extends ConsumerStatefulWidget {
 }
 
 class _LedgerStartScreenState extends ConsumerState<LedgerStartScreen> {
+  // 입력란 내용과 폼은 화면에만 필요한 상태라 위젯이 갖는다.
   final _createForm = GlobalKey<FormState>();
   final _name = TextEditingController(text: '우리 가계부');
   final _code = TextEditingController();
-  bool _busy = false;
-  String? _joinError;
 
   @override
   void dispose() {
@@ -57,58 +55,31 @@ class _LedgerStartScreenState extends ConsumerState<LedgerStartScreen> {
     super.dispose();
   }
 
-  Future<void> _create() async {
+  void _create() {
+    // 가계부 이름은 이 입력란 안에서 끝나는 검사라 폼 검사기로 한다.
     if (!(_createForm.currentState?.validate() ?? false)) return;
-    final user = ref.read(authUserProvider).value;
-    if (user == null) return;
-    setState(() => _busy = true);
-    try {
-      await ref
-          .read(ledgerRepositoryProvider)
-          .create(name: _name.text.trim(), ownerUid: user.uid);
-      // 가계부 목록이 바뀌면 화면 이동 규칙이 홈으로 옮긴다.
-    } catch (e) {
-      _showError('가계부를 만들지 못했어요. 잠시 후 다시 시도해 주세요.');
-      debugPrint('가계부 만들기 실패: $e');
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
+    ref.read(ledgerStartControllerProvider.notifier).create(_name.text);
   }
 
-  Future<void> _join() async {
-    // 입력 검사 오류와 참여 실패 안내를 모두 _joinError 하나로 보여준다.
-    // (Form의 validate()는 forceErrorText가 남아 있으면 검사를 건너뛰고 실패해서 쓰지 않는다)
-    final inputError = validateInviteCodeInput(_code.text);
-    setState(() => _joinError = inputError);
-    if (inputError != null) return;
-    final user = ref.read(authUserProvider).value;
-    if (user == null) return;
-    setState(() => _busy = true);
-    try {
-      await ref
-          .read(ledgerRepositoryProvider)
-          .joinWithInvite(code: normalizeInviteCode(_code.text), uid: user.uid);
-      // 가계부 목록이 바뀌면 화면 이동 규칙이 홈으로 옮긴다.
-    } on JoinLedgerException catch (e) {
-      if (mounted) setState(() => _joinError = joinFailureMessage(e.reason));
-    } catch (e) {
-      _showError('참여하지 못했어요. 잠시 후 다시 시도해 주세요.');
-      debugPrint('가계부 참여 실패: $e');
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
-  }
-
-  void _showError(String message) {
-    if (!mounted) return;
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(keepAll(message))));
-  }
+  void _join() =>
+      ref.read(ledgerStartControllerProvider.notifier).join(_code.text);
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final state = ref.watch(ledgerStartControllerProvider);
+    final controller = ref.read(ledgerStartControllerProvider.notifier);
+    ref.listen(ledgerStartControllerProvider.select((s) => s.failure), (
+      _,
+      failure,
+    ) {
+      if (failure == null) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(keepAll(ledgerStartFailureMessage(failure)))),
+      );
+      controller.failureShown();
+    });
+    final codeProblem = state.codeProblem;
     return Scaffold(
       body: SafeArea(
         child: Center(
@@ -150,7 +121,7 @@ class _LedgerStartScreenState extends ConsumerState<LedgerStartScreen> {
                         child: TextFormField(
                           key: const Key('ledger-name'),
                           controller: _name,
-                          enabled: !_busy,
+                          enabled: !state.busy,
                           maxLength: ledgerNameMaxLength,
                           decoration: const InputDecoration(counterText: ''),
                           validator: (value) =>
@@ -162,7 +133,7 @@ class _LedgerStartScreenState extends ConsumerState<LedgerStartScreen> {
                     ),
                     FilledButton(
                       key: const Key('create-ledger'),
-                      onPressed: _busy ? null : _create,
+                      onPressed: state.busy ? null : _create,
                       child: const Text('만들기'),
                     ),
                   ],
@@ -178,20 +149,18 @@ class _LedgerStartScreenState extends ConsumerState<LedgerStartScreen> {
                       child: TextField(
                         key: const Key('invite-code'),
                         controller: _code,
-                        enabled: !_busy,
+                        enabled: !state.busy,
                         decoration: InputDecoration(
                           hintText: '받은 코드를 붙여 넣어 주세요',
-                          errorText: keepAllOrNull(_joinError),
+                          errorText: codeProblem == null
+                              ? null
+                              : keepAll(inviteCodeProblemMessage(codeProblem)),
                         ),
                         textCapitalization: TextCapitalization.characters,
                         autocorrect: false,
                         enableSuggestions: false,
                         textInputAction: TextInputAction.done,
-                        onChanged: (_) {
-                          if (_joinError != null) {
-                            setState(() => _joinError = null);
-                          }
-                        },
+                        onChanged: (_) => controller.codeEdited(),
                         onSubmitted: (_) => _join(),
                       ),
                     ),
@@ -203,7 +172,7 @@ class _LedgerStartScreenState extends ConsumerState<LedgerStartScreen> {
                     ),
                     OutlinedButton(
                       key: const Key('join-ledger'),
-                      onPressed: _busy ? null : _join,
+                      onPressed: state.busy ? null : _join,
                       child: const Text('참여하기'),
                     ),
                   ],
@@ -215,7 +184,7 @@ class _LedgerStartScreenState extends ConsumerState<LedgerStartScreen> {
                     style: TextButton.styleFrom(
                       foregroundColor: theme.colorScheme.onSurfaceVariant,
                     ),
-                    onPressed: _busy
+                    onPressed: state.busy
                         ? null
                         : () => signOutWithFeedback(context, ref),
                     child: const Text('로그아웃'),

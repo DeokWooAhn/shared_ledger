@@ -2,11 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/data/providers.dart';
-import '../../core/model/invite.dart';
 import '../../core/model/ledger.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widget/keep_all.dart';
+import 'invite_controller.dart';
 import 'member_role_label.dart';
 
 /// 초대 코드가 언제까지 유효한지 보여주는 문구. 예: '10월 28일 오후 3:05까지 쓸 수 있어요'
@@ -32,35 +31,8 @@ class InviteSheet extends ConsumerStatefulWidget {
 }
 
 class _InviteSheetState extends ConsumerState<InviteSheet> {
-  MemberRole _role = MemberRole.editor;
-  bool _busy = false;
+  // 복사했다는 표시는 화면에서만 쓰는 상태라 위젯이 갖는다.
   bool _copied = false;
-  String? _error;
-  Invite? _invite;
-
-  Future<void> _create() async {
-    setState(() {
-      _busy = true;
-      _error = null;
-    });
-    try {
-      final invite = await ref
-          .read(ledgerRepositoryProvider)
-          .createInvite(
-            ledgerId: widget.ledgerId,
-            role: _role,
-            createdBy: widget.uid,
-          );
-      if (mounted) setState(() => _invite = invite);
-    } catch (e) {
-      if (mounted) {
-        setState(() => _error = '초대 코드를 만들지 못했어요. 잠시 후 다시 시도해 주세요.');
-      }
-      debugPrint('초대 코드 만들기 실패: $e');
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
-  }
 
   Future<void> _copy(String code) async {
     await Clipboard.setData(ClipboardData(text: code));
@@ -70,7 +42,9 @@ class _InviteSheetState extends ConsumerState<InviteSheet> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final invite = _invite;
+    final state = ref.watch(inviteControllerProvider);
+    final controller = ref.read(inviteControllerProvider.notifier);
+    final invite = state.invite;
     return SafeArea(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
@@ -98,25 +72,24 @@ class _InviteSheetState extends ConsumerState<InviteSheet> {
                           label: Text(memberRoleLabel(role)),
                         ),
                     ],
-                    selected: {_role},
-                    onSelectionChanged: _busy
+                    selected: {state.role},
+                    onSelectionChanged: state.pending
                         ? null
-                        : (selection) =>
-                              setState(() => _role = selection.first),
+                        : (selection) => controller.selectRole(selection.first),
                   ),
                   const SizedBox(height: 8),
                   Text(
                     keepAll(
-                      _role == MemberRole.editor
+                      state.role == MemberRole.editor
                           ? '편집자는 항목을 적고 고칠 수 있어요.'
                           : '보기 전용은 보기만 할 수 있어요.',
                     ),
                     style: theme.textTheme.labelSmall,
                   ),
-                  if (_error case final error?) ...[
+                  if (state.failed) ...[
                     const SizedBox(height: 12),
                     Text(
-                      keepAll(error),
+                      keepAll('초대 코드를 만들지 못했어요. 잠시 후 다시 시도해 주세요.'),
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: theme.colorScheme.error,
                       ),
@@ -125,7 +98,12 @@ class _InviteSheetState extends ConsumerState<InviteSheet> {
                   const SizedBox(height: 20),
                   FilledButton(
                     key: const Key('confirm-invite'),
-                    onPressed: _busy ? null : _create,
+                    onPressed: state.pending
+                        ? null
+                        : () => controller.create(
+                            ledgerId: widget.ledgerId,
+                            createdBy: widget.uid,
+                          ),
                     child: const Text('만들기'),
                   ),
                 ]
