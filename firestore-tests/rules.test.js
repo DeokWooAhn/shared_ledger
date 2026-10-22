@@ -22,6 +22,7 @@ import {
   setDoc,
   updateDoc,
   where,
+  writeBatch,
 } from 'firebase/firestore';
 
 const OWNER = 'owner-uid';
@@ -454,6 +455,88 @@ describe('가계부 설정과 변경 기록', () => {
     await assertFails(
       setDoc(doc(firestoreAs(VIEWER), 'ledgers', VIEWER_LEDGER, 'categories', 'saving'), category(VIEWER)),
     );
+  });
+
+  function setting(uid, fields = {}) {
+    return {
+      createdBy: uid,
+      updatedBy: uid,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+      ...fields,
+    };
+  }
+
+  function settingRef(db, ledger, collectionName, id) {
+    return doc(db, 'ledgers', ledger, collectionName, id);
+  }
+
+  test('가계부를 만들면서 이름표·분류·결제수단을 한 번의 일괄 쓰기로 넣을 수 있다', async () => {
+    const db = firestoreAs(NEWCOMER);
+    const batch = writeBatch(db);
+    batch.set(ledgerRef(db, 'new-ledger'), newLedger(NEWCOMER));
+    batch.set(settingRef(db, 'new-ledger', 'members', 'owner'), setting(NEWCOMER, { name: '하늘' }));
+    batch.set(settingRef(db, 'new-ledger', 'members', 'partner'), setting(NEWCOMER, { name: '상대' }));
+    batch.set(
+      settingRef(db, 'new-ledger', 'categories', 'c1'),
+      setting(NEWCOMER, { name: '소비', countsAsSaving: false, order: 0 }),
+    );
+    batch.set(
+      settingRef(db, 'new-ledger', 'paymentMethods', 'p1'),
+      setting(NEWCOMER, { name: '공동 통장', kind: 'account', order: 0 }),
+    );
+    await assertSucceeds(batch.commit());
+  });
+
+  test('가계부 문서 없이 설정만 일괄로 넣을 수는 없다', async () => {
+    const db = firestoreAs(NEWCOMER);
+    const batch = writeBatch(db);
+    batch.set(settingRef(db, 'no-ledger', 'members', 'owner'), setting(NEWCOMER, { name: '하늘' }));
+    await assertFails(batch.commit());
+  });
+
+  test('남의 가계부에는 일괄 쓰기로도 설정을 넣을 수 없다', async () => {
+    const db = firestoreAs(OUTSIDER);
+    const batch = writeBatch(db);
+    batch.set(settingRef(db, LEDGER, 'categories', 'c1'), setting(OUTSIDER, { name: '소비', countsAsSaving: false, order: 0 }));
+    await assertFails(batch.commit());
+  });
+
+  test('이름표 문서는 owner·partner 두 장만 만들 수 있다', async () => {
+    const db = firestoreAs(OWNER);
+    await assertSucceeds(setDoc(settingRef(db, SOLO_LEDGER, 'members', 'partner'), setting(OWNER, { name: '바다' })));
+    await assertFails(setDoc(settingRef(db, SOLO_LEDGER, 'members', 'third'), setting(OWNER, { name: '바다' })));
+  });
+
+  // 길이 검사는 만들 때와 고칠 때 모두 한다. 막히는 경우는 통과하는 경우와 이름만 다르다.
+  test('이름표 이름은 10자까지 만들 수 있다', async () => {
+    const db = firestoreAs(OWNER);
+    await assertSucceeds(setDoc(settingRef(db, SOLO_LEDGER, 'members', 'owner'), setting(OWNER, { name: '가'.repeat(10) })));
+  });
+
+  test('이름표 이름이 비었거나 11자면 만들 수 없다', async () => {
+    const db = firestoreAs(OWNER);
+    const ref = settingRef(db, SOLO_LEDGER, 'members', 'owner');
+    await assertFails(setDoc(ref, setting(OWNER, { name: '' })));
+    await assertFails(setDoc(ref, setting(OWNER, { name: '가'.repeat(11) })));
+  });
+
+  test('이름표 이름을 고칠 때도 1~10자다', async () => {
+    await seed((db) =>
+      setDoc(settingRef(db, SOLO_LEDGER, 'members', 'owner'), {
+        name: '하늘',
+        createdBy: OWNER,
+        updatedBy: OWNER,
+        createdAt: Timestamp.fromMillis(0),
+        updatedAt: Timestamp.fromMillis(0),
+      }),
+    );
+    const ref = settingRef(firestoreAs(OWNER), SOLO_LEDGER, 'members', 'owner');
+    const rename = (name) => updateDoc(ref, { name, updatedBy: OWNER, updatedAt: serverTimestamp() });
+
+    await assertSucceeds(rename('가'.repeat(10)));
+    await assertFails(rename(''));
+    await assertFails(rename('가'.repeat(11)));
   });
 
   test('변경 기록은 자기 이름으로 추가만 할 수 있다', async () => {

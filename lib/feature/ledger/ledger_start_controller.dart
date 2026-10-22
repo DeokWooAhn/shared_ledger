@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/data/ledger_repository.dart';
 import '../../core/data/providers.dart';
 import '../../core/model/invite.dart';
+import '../../core/model/member.dart';
 
 /// 진행 중인 동작.
 enum LedgerStartAction { create, join }
@@ -78,9 +79,10 @@ class LedgerStartController extends Notifier<LedgerStartState> {
   LedgerStartState build() => const LedgerStartState();
 
   /// 나를 관리자로 하는 가계부를 만든다. 이름 검사는 화면의 폼이 끝낸 뒤 부른다.
+  /// 이름표의 내 이름은 로그인 이름으로 정하고, 설정 탭에서 바꾼다.
   Future<void> create(String name) async {
-    final uid = ref.read(authUserProvider).value?.uid;
-    if (state.busy || uid == null) return;
+    final user = ref.read(authUserProvider).value;
+    if (state.busy || user == null) return;
     state = LedgerStartState(
       pending: LedgerStartAction.create,
       codeProblem: state.codeProblem,
@@ -88,7 +90,11 @@ class LedgerStartController extends Notifier<LedgerStartState> {
     try {
       await ref
           .read(ledgerRepositoryProvider)
-          .create(name: name.trim(), ownerUid: uid);
+          .create(
+            name: name.trim(),
+            ownerUid: user.uid,
+            ownerName: ownerMemberName(user.displayName),
+          );
       if (!ref.mounted) return;
       state = LedgerStartState(codeProblem: state.codeProblem);
     } catch (e) {

@@ -23,6 +23,12 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/ledgers/$(ledgerId)).data;
     }
 
+    // 이 요청(일괄 쓰기 포함)이 끝난 뒤의 가계부. 가계부를 만들면서 기본 설정을 같은 일괄 쓰기로 넣을 때 쓴다.
+    // 일괄 쓰기의 쓰기마다 따로 규칙을 통과해야 하므로, 남의 가계부를 이 방법으로 고칠 수는 없다.
+    function ledgerDataAfter(ledgerId) {
+      return getAfter(/databases/$(database)/documents/ledgers/$(ledgerId)).data;
+    }
+
     function isMemberOf(ledger) {
       return signedIn() && uid() in ledger.memberUids;
     }
@@ -140,9 +146,16 @@ service cloud.firestore {
           return settings in ['members', 'categories', 'paymentMethods', 'templates'];
         }
 
+        // 이름표는 두 사람 몫 두 장뿐이다: owner(관리자), partner(초대로 들어온 사람). 이름은 1~10자.
+        function validMember() {
+          let name = request.resource.data.get('name', null);
+          return settings != 'members'
+            || (docId in ['owner', 'partner'] && name is string && name.size() >= 1 && name.size() <= 10);
+        }
+
         allow read: if isSettings() && isMemberOf(ledgerData(ledgerId));
-        allow create: if isSettings() && canWriteIn(ledgerData(ledgerId)) && createdNow();
-        allow update: if isSettings() && canWriteIn(ledgerData(ledgerId)) && updatedNow();
+        allow create: if isSettings() && canWriteIn(ledgerDataAfter(ledgerId)) && createdNow() && validMember();
+        allow update: if isSettings() && canWriteIn(ledgerData(ledgerId)) && updatedNow() && validMember();
         allow delete: if isSettings() && canWriteIn(ledgerData(ledgerId));
       }
 

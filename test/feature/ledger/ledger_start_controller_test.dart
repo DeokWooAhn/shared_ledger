@@ -39,11 +39,31 @@ void main() {
           .read(ledgerStartControllerProvider.notifier)
           .create(' 하늘바다 가계부 ');
 
-      expect(ledgers.created, [(name: '하늘바다 가계부', ownerUid: 'me')]);
+      expect(ledgers.created, [
+        (name: '하늘바다 가계부', ownerUid: 'me', ownerName: '나'),
+      ]);
       expect(states, [
         const LedgerStartState(pending: LedgerStartAction.create),
         const LedgerStartState(),
       ]);
+    });
+
+    test('이름표의 내 이름은 로그인 이름이고, 10자를 넘으면 자른다', () async {
+      final ledgers = FakeLedgerRepository();
+      final container = createContainer(
+        auth: FakeAuthRepository(
+          signedIn: const AuthUser(uid: 'me', displayName: ' 가나다라마바사아자차카 '),
+        ),
+        ledgers: ledgers,
+      );
+      await loadSignedInUser(container);
+      recordStates(container, ledgerStartControllerProvider);
+
+      await container
+          .read(ledgerStartControllerProvider.notifier)
+          .create('우리 가계부');
+
+      expect(ledgers.created.single.ownerName, '가나다라마바사아자차');
     });
 
     test('만들기에 실패하면 스낵바로 알릴 실패를 켜고, 알린 뒤 끈다', () async {

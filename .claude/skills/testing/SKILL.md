@@ -26,6 +26,7 @@ description: 심플 공유 가계부(shared_ledger)의 테스트를 쓰거나 �
 - **초기값과 기대값이 같은 단언을 조심한다.** "실패하면 그대로 둔다"를 볼 때 처음부터 그 값이면 아무것도 검증하지 못한다.
 - 경계값을 빠뜨리지 않는다: 0원, 음수, 빈 문자열, 최대 길이(40자), 모르는 enum 값, 두 명이 찬 가계부.
 - 시간·난수에 기대지 않는다. 저장소는 `now:`·`random:`을 주입하고, 위젯 테스트는 `tester.pump(duration)`으로 시간을 넘긴다.
+  오늘 날짜는 `createContainer`·`pumpApp`이 `clockProvider`를 `testNow`(2026-10-15)로 고정한다.
 - 모킹 라이브러리를 쓰지 않는다. Firebase도 모킹하지 않는다.
 
 ## 컨트롤러 테스트
@@ -47,6 +48,9 @@ test('…', () async {
 ```
 
 - 도우미는 `test/support/provider_container.dart`: `createContainer`, `loadSignedInUser`, `recordStates`.
+- Riverpod 3은 듣는 곳이 없는 공급자를 멈춘다. `container.read(xxxProvider.future)` 전에 `container.listen`으로 붙잡아 둔다
+  (`loadSignedInUser`가 로그인 상태에 이렇게 한다). 붙잡지 않으면 값이 오지 않아 테스트가 30초 뒤 시간 초과로 끝난다.
+- 다른 공급자에 기대는 공급자는 앞 공급자의 값이 온 뒤에 읽는다. 가계부 목록이 오기 전의 `membersProvider`는 빈 목록이다(`providers_test.dart`).
 - 상태가 거쳐 간 순서(진행 중 → 끝)는 `recordStates`가 돌려준 목록으로 확인한다. State는 `==`가 있어서 `expect(states, [...])`로 비교된다.
 - 진행 중 두 번 눌림은 `Future.wait([vm.x(), vm.x()])`로 두 번 부르고 저장소 호출 수를 본다(`sign_in_controller_test.dart`).
 - 일회성 실패는 켜지는 것과 `failureShown()`으로 꺼지는 것을 둘 다 본다.
@@ -55,7 +59,10 @@ test('…', () async {
 ## 위젯 테스트
 
 - `pumpApp`이 `ProviderScope(overrides:)`로 가짜 저장소를 끼운 앱 전체를 띄운다. 실제 사용 순서대로 누른다.
+- `pumpApp`은 디자인과 같은 휴대폰 크기(390×844)로 띄운다. 테스트 기본 크기(800×600)는 넓은 화면 배치가 된다. 넓은 화면은 `size: tabletSize`.
+- 탭은 `openTab(tester, HomeTab.settings)`로 옮긴다. 탭 막대 배치와 상관없이 `HomeTab.key`로 찾는다.
 - 불러오는 중 화면의 진행 표시가 계속 돌아서 `pumpAndSettle`은 끝나지 않는다. `settle()`처럼 정해진 횟수만 그린다.
+  화면 전환(300ms)이 끝날 만큼 그려야 한다. 짧으면 이전 화면의 Scaffold가 남아 스낵바가 두 개 보인다.
 - 위젯은 화면 문구가 아니라 `Key`로 찾는다. `keepAll()`로 그린 문장은 `findSentence('…')`(`find.text(keepAll(…))`)로 찾는다.
 - 스크롤되는 화면은 `scrollTo`·`tapVisible`·`enterVisible`로 위젯이 나올 때까지 스크롤한 뒤 다룬다. 화면 밖 항목은 아직 만들어지지 않았을 수 있다.
 - 플랫폼 분기(Apple 버튼)는 `variant: TargetPlatformVariant.only(TargetPlatform.iOS)`로 본다.
@@ -70,7 +77,7 @@ test('…', () async {
   - 로그아웃 상태면 빈 목록, 로그인 창을 닫으면 `false`
   - 두 명이 찬 가계부·이미 구성원이면 참여를 `JoinFailure.unavailable`로 거부
   - 같은 id의 문서를 다시 쓰면 바꾸고, 새로 더하지 않는다
-- 호출 기록을 남긴다(`created`, `invites`, `joins`, `googleCalls`).
+- 호출 기록을 남긴다(`created`, `invites`, `joins`, `googleCalls`, 설정을 구독한 가계부 `watched`).
 - 실패 스위치는 다음 한 번만 실패하고 스스로 꺼진다: 도메인 실패(`nextJoinFailure`), 예상 못 한 오류(`failNextCreate`, `failNextInvite`, `failNextJoin`, `failNextSignIn`, `failNextSignOut`).
 
 ## Firestore 변환 테스트

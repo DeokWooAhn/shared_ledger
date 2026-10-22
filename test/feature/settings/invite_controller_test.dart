@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_ledger/core/model/ledger.dart';
-import 'package:shared_ledger/feature/ledger/invite_controller.dart';
+import 'package:shared_ledger/feature/settings/invite_controller.dart';
 
 import '../../support/fakes.dart';
 import '../../support/provider_container.dart';

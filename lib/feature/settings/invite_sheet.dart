@@ -17,9 +17,7 @@ String inviteExpiryText(DateTime expiresAt) {
   return '${local.month}월 ${local.day}일 $period $hour:$minute까지 쓸 수 있어요';
 }
 
-/// 초대 코드 만들기 시트. 들어올 사람의 역할을 고르고 코드를 만든다.
-///
-/// 디자인에서는 설정 화면(07)에 있는 기능이다. 설정 화면을 만들 때 그쪽으로 옮긴다.
+/// 초대 코드 만들기 시트. 들어올 사람의 역할을 고르고 코드를 만든다. 설정 탭에서 연다.
 class InviteSheet extends ConsumerStatefulWidget {
   const InviteSheet({required this.ledgerId, required this.uid, super.key});
 

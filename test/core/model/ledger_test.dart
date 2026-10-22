@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_ledger/core/model/ledger.dart';
+import 'package:shared_ledger/core/model/member.dart';
 
 void main() {
   const shared = Ledger(
@@ -9,6 +10,15 @@ void main() {
     roles: {'partner': MemberRole.viewer},
   );
   const solo = Ledger(id: 'l2', name: '우리 가계부', ownerUid: 'owner');
+
+  test('관리자는 owner 이름표, 초대로 들어온 사람은 partner 이름표다', () {
+    expect(shared.slotOf('owner'), MemberSlot.owner);
+    expect(shared.slotOf('partner'), MemberSlot.partner);
+    expect(shared.slotOf('stranger'), isNull);
+    expect(shared.uidOf(MemberSlot.owner), 'owner');
+    expect(shared.uidOf(MemberSlot.partner), 'partner');
+    expect(solo.uidOf(MemberSlot.partner), isNull);
+  });
 
   test('관리자·구성원의 역할을 알려주고, 구성원이 아니면 null이다', () {
     expect(shared.roleOf('owner'), MemberRole.owner);
