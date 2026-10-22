@@ -13,7 +13,8 @@ import '../../core/widget/month_header.dart';
 import '../../core/widget/tab_page.dart';
 import '../../core/widget/won.dart';
 
-/// 이 폭부터 월 요약을 두 칸으로 놓는다. 아이패드를 가로로 놓은 정도다(세로는 한 칸).
+/// 본문(양옆 여백을 뺀 폭)이 이 폭 이상이면 월 요약을 두 칸으로 놓는다.
+/// 아이패드를 가로로 놓은 정도다(세로는 한 칸).
 const summaryTwoColumnMinWidth = 840.0;
 
 /// 두 칸일 때 본문의 최대 폭.
@@ -30,7 +31,8 @@ class SummaryScreen extends ConsumerWidget {
     final summary = ref.watch(monthSummaryProvider);
     return LayoutBuilder(
       builder: (context, constraints) {
-        final twoColumns = constraints.maxWidth >= summaryTwoColumnMinWidth;
+        final bodyWidth = constraints.maxWidth - tabPageSidePadding * 2;
+        final twoColumns = bodyWidth >= summaryTwoColumnMinWidth;
         return TabPage(
           header: const MonthHeader(),
           maxWidth: twoColumns ? summaryTwoColumnMaxWidth : tabPageMaxWidth,

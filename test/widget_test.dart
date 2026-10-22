@@ -18,6 +18,7 @@ import 'package:shared_ledger/core/widget/tab_page.dart';
 import 'package:shared_ledger/feature/home/home_shell.dart';
 import 'package:shared_ledger/feature/ledger/ledger_start_screen.dart';
 import 'package:shared_ledger/feature/settings/invite_sheet.dart';
+import 'package:shared_ledger/feature/summary/summary_screen.dart';
 
 import 'support/fakes.dart';
 import 'support/provider_container.dart';
@@ -826,6 +827,22 @@ void main() {
       final planned = tester.getRect(find.byKey(const Key('planned-section')));
       expect(planned.top, greaterThan(cash.bottom));
       expect(planned.width, lessThanOrEqualTo(tabPageMaxWidth));
+    });
+
+    testWidgets('본문 폭이 840에 못 미치면 탭 영역이 840을 넘어도 한 칸으로 둔다', (tester) async {
+      // 양옆 여백(20씩)을 빼기 전 폭으로 두 칸을 정해, 본문이 800~839일 때도 두 칸이 된 적이 있다.
+      await pumpSummary(
+        tester,
+        entries: FakeEntriesRepository({october: designMonth}),
+        settings: settings,
+        size: const Size(950, 768),
+      );
+      final page = tester.getSize(find.byType(SummaryScreen)).width;
+      expect(page, inInclusiveRange(840, 879), reason: '옆 탭 막대를 뺀 탭 영역 폭');
+
+      final cards = tester.getRect(find.byKey(const Key('card-section')));
+      final planned = tester.getRect(find.byKey(const Key('planned-section')));
+      expect(planned.top, greaterThan(cards.bottom));
     });
 
     testWidgets('글자를 크게 해도 넘치지 않는다', (tester) async {

@@ -5,6 +5,9 @@ import 'keep_all.dart';
 /// 탭 화면 본문의 최대 폭. 아이패드·Mac에서는 이 폭으로 가운데 둔다.
 const tabPageMaxWidth = 640.0;
 
+/// 탭 화면 본문 양옆의 최소 여백.
+const tabPageSidePadding = 20.0;
+
 /// 탭 화면의 공통 틀. 머리말 아래로 내용을 세로로 쌓는다.
 ///
 /// 넓은 화면에서는 본문을 [maxWidth]로 가운데 두되, 양옆 여백에서도 스크롤되게 목록은 화면 전체 폭으로 둔다.
@@ -32,7 +35,7 @@ class TabPage extends StatelessWidget {
         child: LayoutBuilder(
           builder: (context, constraints) {
             final side = ((constraints.maxWidth - maxWidth) / 2).clamp(
-              20.0,
+              tabPageSidePadding,
               double.infinity,
             );
             return ListView(
