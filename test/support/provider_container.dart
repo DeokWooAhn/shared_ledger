@@ -5,10 +5,15 @@ import 'package:shared_ledger/core/data/providers.dart';
 
 import 'fakes.dart';
 
+/// 테스트의 '지금'. 날짜에 따라 결과가 흔들리지 않게 고정한다.
+final testNow = DateTime(2026, 10, 15, 9);
+
 /// 가짜 저장소를 끼운 ProviderContainer. 테스트가 끝나면 정리된다.
 ProviderContainer createContainer({
   FakeAuthRepository? auth,
   FakeLedgerRepository? ledgers,
+  FakeSettingsRepository? settings,
+  DateTime? now,
 }) {
   final container = ProviderContainer(
     overrides: [
@@ -16,6 +21,10 @@ ProviderContainer createContainer({
       ledgerRepositoryProvider.overrideWithValue(
         ledgers ?? FakeLedgerRepository(),
       ),
+      settingsRepositoryProvider.overrideWithValue(
+        settings ?? FakeSettingsRepository(),
+      ),
+      clockProvider.overrideWithValue(() => now ?? testNow),
     ],
   );
   addTearDown(container.dispose);

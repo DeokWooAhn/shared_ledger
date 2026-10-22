@@ -62,6 +62,7 @@ lib/
     theme/              design/app.pen 토큰으로 만든 테마
     widget/             여러 화면이 같이 쓰는 위젯과 화면 도우미(keepAll, signOutWithFeedback)
   feature/<기능>/        화면: <이름>_screen.dart(View) + <이름>_controller.dart(컨트롤러)
+  feature/home/         홈의 탭 틀(요약·항목·고정 지출·설정). 탭 화면은 각자 feature 폴더에 있다
 test/                   lib와 같은 구조. test/support/에 가짜 저장소와 ProviderContainer 도우미
 firestore.rules         보안 규칙. 테스트는 firestore-tests/
 ```
@@ -75,7 +76,7 @@ View(*_screen.dart) ─→ 컨트롤러(*_controller.dart) ─→ core/data(저�
 
 - feature끼리 서로 import하지 않는다. 둘 이상이 쓰게 되면 core로 올린다.
 - `core/budget`, `core/model`에는 Flutter·Firebase import를 넣지 않는다.
-- View와 컨트롤러는 Firebase 패키지를 직접 import하지 않고 `core/data`의 인터페이스(`AuthRepository`, `LedgerRepository`)와 공급자만 쓴다.
+- View와 컨트롤러는 Firebase 패키지를 직접 import하지 않고 `core/data`의 인터페이스(`AuthRepository`, `LedgerRepository`, `SettingsRepository`)와 공급자만 쓴다.
 - 어느 화면을 보여줄지는 `router.dart`의 `appGate`·`redirectFor`가 로그인·가계부 상태로 정한다. 화면에서 시작 화면들로 직접 이동하지 않는다.
 - **컨셉은 커플·부부의 가계부다. 한 가계부에는 두 명까지 들어온다.** 이 제한은 보안 규칙(`maxMembers()`)과 앱(`ledgerMaxMembers`) 두 곳에 있어 같이 바꾼다.
 
@@ -108,7 +109,7 @@ View(*_screen.dart) ─→ 컨트롤러(*_controller.dart) ─→ core/data(저�
 - **실패는 문구가 아니라 값으로:** 저장소는 도메인 실패(`JoinFailure`)를, 컨트롤러는 화면용 문제(`InviteCodeProblem`)를 enum으로 넘긴다.
   화면 문구로 바꾸는 것은 View다(CalcMoney의 "UI 문자열 변환은 presentation에서"와 같다).
 - **금액**은 원 단위 `int`다. `double`로 계산·저장하지 않는다.
-- **시간·난수는 주입한다**(`FirestoreLedgerRepository(now:, random:)`). 안에서 `DateTime.now()`를 읽으면 테스트가 흔들린다.
+- **시간·난수는 주입한다**(`FirestoreLedgerRepository(now:, random:)`, 공급자·컨트롤러는 `clockProvider`). 안에서 `DateTime.now()`를 읽으면 테스트가 흔들린다.
 - 저장소 인터페이스, 컨트롤러의 공개 메서드, 공용 위젯에는 무엇을 하는지 한국어 문서 주석을 단다.
 
 ## 화면·상태 작업 (MVVM)
@@ -118,7 +119,7 @@ MVVM의 ViewModel 역할은 Riverpod `Notifier`를 상속한 **컨트롤러**가
 `XxxController`, 파일은 `<이름>_controller.dart`, 공급자는 `xxxControllerProvider`로 짓는다(2026-10-21).
 
 - **화면 하나 = View + 컨트롤러.** `ledger_start_screen.dart` + `ledger_start_controller.dart`가 정석이다.
-  사용자 동작이 없는 화면(`ledger_home_screen.dart`)은 컨트롤러 없이 공급자만 읽는다.
+  저장소를 부르는 동작이 없는 화면(`settings_screen.dart`: 시트 열기와 `signOutWithFeedback`만 씀)은 컨트롤러 없이 공급자만 읽는다.
 - **컨트롤러**는 Riverpod `Notifier<불변 State>`이고 `NotifierProvider.autoDispose`로 만든다. 사용자 동작은 메서드로 받는다.
   `await` 뒤에는 `ref.mounted`를 확인한 뒤 상태를 바꾼다(화면이 사라지면 컨트롤러도 해제된다).
 - **State**는 불변 클래스다. 진행 중인 동작(`pending`), 입력란 문제, 일회성 실패를 필드로 두고 화면 문구는 넣지 않는다.
@@ -133,7 +134,9 @@ MVVM의 ViewModel 역할은 Riverpod `Notifier`를 상속한 **컨트롤러**가
 - 위젯 밖에서 `await`한 뒤 `BuildContext`를 쓰지 않는다. `await` 전에 `ScaffoldMessenger`를 잡아 두거나(`signOutWithFeedback`) `context.mounted`를 확인한다.
 - 위젯을 돌려주는 private 메서드보다 작은 위젯 클래스로 나눈다(`_OptionCard`, `_ValuePoint`). 바뀌지 않는 위젯은 `const`.
 - 긴 목록은 `ListView.builder`로 만들고, 항목에는 안정적인 id로 `ValueKey`를 준다. 인덱스를 키로 쓰지 않는다.
-- **넓은 화면:** 아이패드와 Mac(아이패드 앱)에서도 쓴다. 본문은 `ConstrainedBox(maxWidth: …)`로 가운데 두고,
+- **탭:** 홈은 탭 4개(`HomeTab`)이고 `StatefulShellRoute`가 탭마다 화면 상태를 지킨다. 탭 화면은 `TabPage`로 감싸고,
+  달을 보는 탭은 `MonthHeader`를 머리말로 쓴다. 보고 있는 달은 `selectedMonthProvider` 하나를 모든 탭이 같이 읽는다.
+- **넓은 화면:** 아이패드와 Mac(아이패드 앱)에서도 쓴다. 폭 600 이상이면 탭 막대가 옆(NavigationRail)으로 간다. 본문은 `ConstrainedBox(maxWidth: …)`로 가운데 두고,
   두 칸 배치는 `LayoutBuilder`로 바꾼다(`docs/plan.md`의 '화면'). 플랫폼 분기는 `defaultTargetPlatform`.
 - **테마:** 색은 `Theme.of(context).colorScheme`과 `context.appColors`, 글자는 `textTheme`에서 꺼낸다(`lib/core/theme/app_theme.dart`, 원본은 `design/app.pen`). 화면 디자인은 `design/app/*.png`.
 - **문구:** 해요체. 여러 단어로 된 문장(설명·안내·오류)은 `keepAll()`로 감싸고, 입력란 오류도 `errorText: keepAll(...)`로 넘긴다.
@@ -150,7 +153,7 @@ MVVM의 ViewModel 역할은 Riverpod `Notifier`를 상속한 **컨트롤러**가
 - **쓰는 필드 = 보안 규칙이 받는 필드.** 필드·컬렉션을 바꿀 때 같이 고칠 파일은 flutter-screen 스킬의 체크리스트를 따른다.
 - 시간 필드는 `FieldValue.serverTimestamp()`. 규칙이 `request.time`과 같은지 본다. 방금 쓴 문서는 서버 시간이 아직 null이다.
 - **실패:** 저장소는 처리할 `FirebaseException` 코드만 도메인 실패로 바꿔 던지고 나머지는 다시 던진다. `permission-denied`를 빈 결과로 숨기지 않는다.
-- 여러 문서를 함께 바꿔야 일관성이 맞으면 `WriteBatch`나 트랜잭션을 쓴다.
+- 여러 문서를 함께 바꿔야 일관성이 맞으면 `WriteBatch`나 트랜잭션을 쓴다(가계부 + 기본 설정: `LedgerRepository.create`).
 - **읽기는 곧 비용이다**(Firestore는 지출 한도 대상이 아님). 필요한 문서만 구독하고, 계속 늘어나는 목록(항목, 변경 기록)에는 `limit`이나 달 단위 범위를 두고,
   같은 쿼리는 공급자 하나를 여러 화면이 같이 읽는다.
 - 오프라인에서는 보기와 새 항목 추가만 된다. 수정·삭제는 온라인에서만 한다(`docs/plan.md`).

@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../model/invite.dart';
 import '../model/ledger.dart';
+import 'settings_repository.dart';
 
 /// 초대 코드로 참여하지 못한 이유.
 enum JoinFailure {
@@ -31,7 +32,14 @@ abstract interface class LedgerRepository {
   Stream<List<Ledger>> watchMyLedgers(String uid);
 
   /// 나를 관리자로 하는 가계부를 만들고 id를 돌려준다.
-  Future<String> create({required String name, required String ownerUid});
+  ///
+  /// 기본 설정(이름표 두 장, 기본 분류·결제수단)도 같이 만든다. 이름표의 내 이름은 [ownerName]이다.
+  /// 둘 중 하나만 생기는 일이 없게 한 번의 일괄 쓰기로 한다.
+  Future<String> create({
+    required String name,
+    required String ownerUid,
+    required String ownerName,
+  });
 
   /// [ledgerId]에 [role]로 들어올 사람을 위한 초대 코드를 만든다. 관리자만 할 수 있다.
   Future<Invite> createInvite({
@@ -77,9 +85,15 @@ class FirestoreLedgerRepository implements LedgerRepository {
   Future<String> create({
     required String name,
     required String ownerUid,
+    required String ownerName,
   }) async {
     final ref = _ledgers.doc();
-    await ref.set(newLedgerData(name: name, ownerUid: ownerUid));
+    final batch = _firestore.batch()
+      ..set(ref, newLedgerData(name: name, ownerUid: ownerUid));
+    for (final doc in defaultSettingDocs(uid: ownerUid, ownerName: ownerName)) {
+      batch.set(ref.collection(doc.collection).doc(doc.id), doc.data);
+    }
+    await batch.commit();
     return ref.id;
   }
 

@@ -1,3 +1,5 @@
+import 'member.dart';
+
 /// 한 가계부에 들어올 수 있는 사람 수. 커플·부부 가계부라 두 명이다.
 /// `firestore.rules`의 maxMembers와 같다.
 const ledgerMaxMembers = 2;
@@ -53,4 +55,17 @@ class Ledger {
   /// [uid]가 초대 코드를 만들 수 있는지. 관리자이고 자리가 남아 있어야 한다.
   bool canInvite(String uid) =>
       (roleOf(uid)?.canManageMembers ?? false) && !isFull;
+
+  /// [slot] 자리에 있는 사람의 uid. 상대가 아직 들어오지 않았으면 partner는 null.
+  String? uidOf(MemberSlot slot) => switch (slot) {
+    MemberSlot.owner => ownerUid,
+    MemberSlot.partner => roles.keys.firstOrNull,
+  };
+
+  /// [uid]의 이름표 자리. 관리자면 owner, 초대로 들어온 사람이면 partner, 구성원이 아니면 null.
+  MemberSlot? slotOf(String uid) => switch (roleOf(uid)) {
+    MemberRole.owner => MemberSlot.owner,
+    MemberRole.editor || MemberRole.viewer => MemberSlot.partner,
+    null => null,
+  };
 }

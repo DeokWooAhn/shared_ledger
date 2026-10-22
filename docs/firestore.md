@@ -65,10 +65,49 @@ invites/{code}
 
 ### 가계부 설정: `members`, `categories`, `paymentMethods`, `templates`
 
-필드는 [`lib/core/model`](../lib/core/model)의 모델을 따른다. 규칙은 공통 기록 필드만 확인한다.
+가계부를 만들 때 가계부 문서와 **같은 일괄 쓰기(WriteBatch)** 로 이름표 두 장, 기본 분류, 기본 결제수단을 넣는다
+(`LedgerRepository.create`, 기본값은 `defaultSettingDocs`). 설정을 만드는 규칙은 `getAfter`로 일괄 쓰기가 끝난 뒤의
+가계부를 보고 권한을 확인한다. 그래서 아직 없는 가계부의 설정도 같은 일괄 쓰기 안에서는 만들 수 있고, 남의 가계부에는 만들 수 없다.
+
+규칙은 이름표의 id·이름 길이와 공통 기록 필드만 확인한다. 나머지 필드는 앱의 모델([`lib/core/model`](../lib/core/model))과
+변환 함수(`lib/core/data/settings_repository.dart`)를 따르고, 모르는 값은 앱이 건너뛴다.
+
+**`members/{owner|partner}`**: 두 사람의 이름표
+
+| 필드 | 타입 | 설명 |
+|---|---|---|
+| `name` | string (1~10자) | 화면에 보일 이름. 관리자는 로그인 이름(10자까지, 없으면 '나'), 상대는 '상대'로 시작한다 |
+
+- 문서 id는 `owner`(관리자)와 `partner`(초대로 들어온 사람) 두 개뿐이다(규칙의 `validMember`, 앱의 `MemberSlot`).
+- 항목의 '누가'는 이 id로 적는다. 그래서 상대가 들어오기 전에도 상대 몫을 적을 수 있다.
+
+**`categories/{id}`**: 지출 분류
+
+| 필드 | 타입 | 설명 |
+|---|---|---|
+| `name` | string | 분류 이름 |
+| `countsAsSaving` | bool | 이 분류의 기본 지출을 월 요약의 '저축'에 넣을지 |
+| `order` | int | 보여줄 순서. 앱이 정렬한다(없으면 맨 뒤) |
+
+기본값은 시트와 같은 4개다: 대출원금(저축), 대출이자, 저축/투자(저축), 소비.
+
+**`paymentMethods/{id}`**: 결제수단
+
+| 필드 | 타입 | 설명 |
+|---|---|---|
+| `name` | string | 결제수단 이름 |
+| `kind` | `'account'` \| `'autoTransfer'` \| `'card'` | 계산에서는 카드인지만 본다 |
+| `order` | int | 보여줄 순서 |
+
+기본값은 공동 통장(`account`)과 자동이체(`autoTransfer`)다. 카드는 사람마다 달라 직접 추가한다.
+
+`templates`(고정 지출)의 필드는 고정 지출 화면을 만들 때 정한다.
+
+설정 문서가 생기기 전(2026-10-22 이전)에 만든 가계부에는 이름표가 없다. 앱은 이름표가 없으면 역할 이름('관리자', '상대')으로 보여준다.
 
 ### 가계부 항목: `months/{yyyy-MM}/incomes|planned|extras|cardBills`
 
+- 한 달은 달력 1일~말일이다(앱의 `YearMonth`).
 - 달 문서(`months/{yyyy-MM}`) 자체는 만들지 않고 하위 컬렉션만 쓴다. 달 id는 `2026-10` 형식이어야 한다.
 - `planned`의 문서 id는 템플릿 id다. 두 사람이 동시에 그달을 처음 열어도 같은 문서를 만들어 중복이 생기지 않는다.
 - `amount`: 0 이상의 정수(원). `planned`만 비어 있을 수 있다(금액 미정).

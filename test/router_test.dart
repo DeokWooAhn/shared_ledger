@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_ledger/core/model/auth_user.dart';
 import 'package:shared_ledger/core/model/ledger.dart';
+import 'package:shared_ledger/feature/home/home_shell.dart';
 import 'package:shared_ledger/router.dart';
 
 void main() {
@@ -64,6 +65,20 @@ void main() {
       expect(redirectFor(AppGate.ready, Routes.signIn), Routes.home);
       expect(redirectFor(AppGate.ready, Routes.start), Routes.home);
       expect(redirectFor(AppGate.ready, Routes.home), isNull);
+      expect(redirectFor(AppGate.ready, Routes.settings), isNull);
+    });
+
+    test('탭 화면에 있다가 로그아웃하면 로그인 화면으로 옮긴다', () {
+      expect(redirectFor(AppGate.signedOut, Routes.settings), Routes.signIn);
+      expect(redirectFor(AppGate.noLedger, Routes.entries), Routes.start);
+    });
+  });
+
+  group('탭 경로', () {
+    test('탭마다 경로가 하나씩 있고, 홈은 요약 탭이다', () {
+      final paths = [for (final tab in HomeTab.values) Routes.of(tab)];
+      expect(paths.toSet(), hasLength(HomeTab.values.length));
+      expect(Routes.of(HomeTab.summary), Routes.home);
     });
   });
 }

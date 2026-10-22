@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_ledger/app.dart';
@@ -7,21 +8,35 @@ import 'package:shared_ledger/core/data/providers.dart';
 import 'package:shared_ledger/core/model/auth_user.dart';
 import 'package:shared_ledger/core/model/ledger.dart';
 import 'package:shared_ledger/core/widget/keep_all.dart';
-import 'package:shared_ledger/feature/ledger/invite_sheet.dart';
+import 'package:shared_ledger/feature/home/home_shell.dart';
 import 'package:shared_ledger/feature/ledger/ledger_start_screen.dart';
+import 'package:shared_ledger/feature/settings/invite_sheet.dart';
 
 import 'support/fakes.dart';
+import 'support/provider_container.dart';
+
+/// 디자인과 같은 휴대폰 화면 크기. 테스트 기본값(800×600)은 넓은 화면 배치가 된다.
+const phoneSize = Size(390, 844);
+const tabletSize = Size(1024, 768);
 
 Future<void> pumpApp(
   WidgetTester tester, {
   required FakeAuthRepository auth,
   required FakeLedgerRepository ledgers,
+  FakeSettingsRepository? settings,
+  Size size = phoneSize,
 }) async {
+  tester.view.physicalSize = size * tester.view.devicePixelRatio;
+  addTearDown(tester.view.reset);
   await tester.pumpWidget(
     ProviderScope(
       overrides: [
         authRepositoryProvider.overrideWithValue(auth),
         ledgerRepositoryProvider.overrideWithValue(ledgers),
+        settingsRepositoryProvider.overrideWithValue(
+          settings ?? FakeSettingsRepository(),
+        ),
+        clockProvider.overrideWithValue(() => testNow),
       ],
       child: const SharedLedgerApp(),
     ),
@@ -29,9 +44,15 @@ Future<void> pumpApp(
   await settle(tester);
 }
 
+Future<void> openTab(WidgetTester tester, HomeTab tab) async {
+  await tester.tap(find.byKey(tab.key));
+  await settle(tester);
+}
+
 // 불러오는 중 화면의 진행 표시 때문에 pumpAndSettle 대신 몇 번만 그린다.
+// 화면 전환(300ms)이 끝날 만큼 그려야 이전 화면의 Scaffold가 남아 스낵바가 두 번 보이지 않는다.
 Future<void> settle(WidgetTester tester) async {
-  for (var i = 0; i < 5; i++) {
+  for (var i = 0; i < 8; i++) {
     await tester.pump(const Duration(milliseconds: 50));
   }
 }
@@ -166,7 +187,12 @@ void main() {
       await enterVisible(tester, const Key('ledger-name'), ' 하늘바다 가계부 ');
       await tapVisible(tester, const Key('create-ledger'));
 
-      expect(ledgers.created, [(name: '하늘바다 가계부', ownerUid: 'me')]);
+      expect(ledgers.created, [
+        (name: '하늘바다 가계부', ownerUid: 'me', ownerName: '나'),
+      ]);
+      expect(find.text('2026년 10월'), findsOneWidget);
+
+      await openTab(tester, HomeTab.settings);
       expect(find.text('하늘바다 가계부'), findsOneWidget);
       expect(find.text('관리자'), findsOneWidget);
     });
@@ -202,6 +228,9 @@ void main() {
       await tapVisible(tester, const Key('join-ledger'));
 
       expect(ledgers.joins, [(code: 'ABCDEFGH23', uid: 'me')]);
+      expect(find.text('2026년 10월'), findsOneWidget);
+
+      await openTab(tester, HomeTab.settings);
       expect(find.text('바다네 가계부'), findsOneWidget);
       expect(find.text('보기 전용'), findsOneWidget);
     });
@@ -261,7 +290,7 @@ void main() {
       await tapVisible(tester, const Key('join-ledger'));
 
       expect(ledgers.joins, hasLength(2));
-      expect(find.text('바다네 가계부'), findsOneWidget);
+      expect(find.byType(HomeShell), findsOneWidget);
     });
 
     testWidgets('두 명이 다 찬 가계부의 코드면 들어갈 수 없다고 안내한다', (tester) async {
@@ -333,34 +362,132 @@ void main() {
   });
 
   group('가계부 홈', () {
-    testWidgets('이미 가계부가 있으면 바로 홈을 보여주고, 로그아웃하면 로그인 화면으로 간다', (tester) async {
+    const shared = Ledger(
+      id: 'l1',
+      name: '우리 가계부',
+      ownerUid: 'partner',
+      roles: {'me': MemberRole.viewer},
+    );
+
+    testWidgets('가계부가 있으면 요약 탭에서 이번 달과 두 사람 이름표를 보여준다', (tester) async {
+      await pumpApp(
+        tester,
+        auth: FakeAuthRepository(signedIn: me),
+        ledgers: FakeLedgerRepository([shared]),
+      );
+
+      expect(find.byType(HomeShell), findsOneWidget);
+      expect(find.byType(NavigationRail), findsNothing);
+      expect(find.text('2026년 10월'), findsOneWidget);
+      expect(find.text('하'), findsOneWidget);
+      expect(find.text('바'), findsOneWidget);
+    });
+
+    testWidgets('달을 옮기면 항목 탭도 같은 달을 보고, 해를 넘어간다', (tester) async {
+      await pumpApp(
+        tester,
+        auth: FakeAuthRepository(signedIn: me),
+        ledgers: FakeLedgerRepository([shared]),
+      );
+
+      for (var i = 0; i < 3; i++) {
+        await tester.tap(find.byKey(const Key('next-month')));
+        await settle(tester);
+      }
+      expect(find.text('2027년 1월'), findsOneWidget);
+
+      await openTab(tester, HomeTab.entries);
+      expect(find.text('2027년 1월'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('previous-month')));
+      await settle(tester);
+
+      await openTab(tester, HomeTab.summary);
+      expect(find.text('2026년 12월'), findsOneWidget);
+    });
+
+    testWidgets('글자를 크게 해도 달 이름이 잘리지 않는다', (tester) async {
+      // 달 이름과 오른쪽 여백(Spacer)이 남는 폭을 반씩 나눠 '2026…'으로 잘린 적이 있다.
+      for (final scale in [1.0, 2.0]) {
+        tester.platformDispatcher.textScaleFactorTestValue = scale;
+        addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+        await pumpApp(
+          tester,
+          auth: FakeAuthRepository(signedIn: me),
+          ledgers: FakeLedgerRepository([shared]),
+        );
+
+        final title = tester.renderObject<RenderParagraph>(
+          find.byKey(const Key('month-title')),
+        );
+        expect(title.didExceedMaxLines, isFalse, reason: '글자 배율 $scale');
+        expect(
+          tester.getRect(find.byKey(const Key('month-title'))).right,
+          lessThan(tester.getRect(find.text('하')).left),
+          reason: '글자 배율 $scale',
+        );
+      }
+    });
+
+    testWidgets('고른 탭은 화면 읽기 도구에 선택됨으로 알린다', (tester) async {
+      final semantics = tester.ensureSemantics();
+      await pumpApp(
+        tester,
+        auth: FakeAuthRepository(signedIn: me),
+        ledgers: FakeLedgerRepository([shared]),
+      );
+
+      await openTab(tester, HomeTab.templates);
+
+      expect(
+        tester.getSemantics(find.byKey(HomeTab.templates.key)),
+        isSemantics(label: '고정 지출', isSelected: true, isButton: true),
+      );
+      expect(
+        tester.getSemantics(find.byKey(HomeTab.summary.key)),
+        isSemantics(label: '요약', isSelected: false, isButton: true),
+      );
+      semantics.dispose();
+    });
+
+    testWidgets('넓은 화면에서는 옆 탭 막대로 옮겨 다닌다', (tester) async {
+      await pumpApp(
+        tester,
+        auth: FakeAuthRepository(signedIn: me),
+        ledgers: FakeLedgerRepository([shared]),
+        size: tabletSize,
+      );
+
+      expect(find.byType(NavigationRail), findsOneWidget);
+
+      await openTab(tester, HomeTab.settings);
+      expect(find.text('우리 가계부'), findsOneWidget);
+    });
+
+    testWidgets('설정 탭에서 두 사람의 이름표와 역할을 보고, 로그아웃하면 로그인 화면으로 간다', (tester) async {
       final auth = FakeAuthRepository(signedIn: me);
       await pumpApp(
         tester,
         auth: auth,
-        ledgers: FakeLedgerRepository([
-          const Ledger(
-            id: 'l1',
-            name: '우리 가계부',
-            ownerUid: 'partner',
-            roles: {'me': MemberRole.viewer},
-          ),
-        ]),
+        ledgers: FakeLedgerRepository([shared]),
       );
 
+      await openTab(tester, HomeTab.settings);
+
       expect(find.text('우리 가계부'), findsOneWidget);
+      expect(find.text('구성원 2명'), findsOneWidget);
+      expect(find.text('하늘'), findsOneWidget);
+      expect(find.text('관리자'), findsOneWidget);
+      expect(find.text('바다 (나)'), findsOneWidget);
       expect(find.text('보기 전용'), findsOneWidget);
-      expect(find.text('2명'), findsOneWidget);
       expect(find.byKey(const Key('create-invite')), findsNothing);
 
-      await tester.tap(find.byKey(const Key('sign-out')));
-      await settle(tester);
+      await tapVisible(tester, const Key('sign-out'));
 
       expect(auth.signOutCalls, 1);
       expect(find.byKey(const Key('sign-in-google')), findsOneWidget);
     });
 
-    testWidgets('혼자인 관리자는 역할을 골라 초대 코드를 만들 수 있다', (tester) async {
+    testWidgets('혼자인 관리자는 설정 탭에서 역할을 골라 초대 코드를 만들 수 있다', (tester) async {
       final ledgers = FakeLedgerRepository([
         const Ledger(id: 'l1', name: '우리 가계부', ownerUid: 'me'),
       ]);
@@ -369,9 +496,12 @@ void main() {
         auth: FakeAuthRepository(signedIn: me),
         ledgers: ledgers,
       );
+      await openTab(tester, HomeTab.settings);
 
-      await tester.tap(find.byKey(const Key('create-invite')));
-      await settle(tester);
+      expect(find.text('하늘 (나)'), findsOneWidget);
+      expect(find.text('초대 전'), findsOneWidget);
+
+      await tapVisible(tester, const Key('create-invite'));
       await tester.tap(find.text('보기 전용'));
       await settle(tester);
       await tester.tap(find.byKey(const Key('confirm-invite')));
@@ -397,9 +527,26 @@ void main() {
           ),
         ]),
       );
+      await openTab(tester, HomeTab.settings);
 
+      expect(find.text('편집자'), findsOneWidget);
       expect(find.byKey(const Key('create-invite')), findsNothing);
       expect(findSentence('두 사람이 함께 쓰고 있어요.'), findsOneWidget);
+    });
+
+    testWidgets('이름표가 생기기 전에 만든 가계부는 역할 이름으로 보여준다', (tester) async {
+      await pumpApp(
+        tester,
+        auth: FakeAuthRepository(signedIn: me),
+        ledgers: FakeLedgerRepository([
+          const Ledger(id: 'l1', name: '우리 가계부', ownerUid: 'me'),
+        ]),
+        settings: FakeSettingsRepository(members: const []),
+      );
+      await openTab(tester, HomeTab.settings);
+
+      expect(find.text('관리자 (나)'), findsOneWidget);
+      expect(find.text('상대'), findsOneWidget);
     });
   });
 

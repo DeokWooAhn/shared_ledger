@@ -17,9 +17,20 @@ MVVM의 ViewModel 역할은 Riverpod `Notifier`를 상속한 컨트롤러가 맡
 | `<이름>_controller.dart` | 불변 State, `Notifier` 컨트롤러, `NotifierProvider.autoDispose`, 화면용 문제·실패 enum | `lib/feature/ledger/ledger_start_controller.dart` |
 | `<이름>_screen.dart` | View 위젯, enum → 화면 문구 함수, 화면에서만 쓰는 상태(입력란 컨트롤러·폼 키) | `lib/feature/ledger/ledger_start_screen.dart` |
 
-- 더 작은 예: 로그인(`lib/feature/auth/sign_in_*`), 시트(`lib/feature/ledger/invite_*`)
-- 사용자 동작이 없는 화면은 컨트롤러 없이 공급자만 읽는다: `lib/feature/ledger/ledger_home_screen.dart`
+- 더 작은 예: 로그인(`lib/feature/auth/sign_in_*`), 시트(`lib/feature/settings/invite_*`)
+- 저장소를 부르는 동작이 없는 화면은 컨트롤러 없이 공급자만 읽는다: `lib/feature/settings/settings_screen.dart`
 - 같은 기능 안에서 함께 쓰는 문구·위젯은 그 기능 폴더에 둔다(`member_role_label.dart`). 기능을 넘어 쓰면 `lib/core`로 올린다.
+
+## 탭 화면
+
+홈은 탭 4개다(`HomeTab`: 요약·항목·고정 지출·설정). 틀은 `lib/feature/home/home_shell.dart`, 경로는 `lib/router.dart`의 `StatefulShellRoute.indexedStack`.
+
+- 탭 화면은 `TabPage`(`lib/core/widget/tab_page.dart`)로 감싼다. 넓은 화면에서 본문을 가운데 두고, 좁은 화면에서 떠 있는 탭 막대만큼 아래 여백을 둔다.
+- 머리말은 달을 보는 탭이면 `MonthHeader`, 아니면 `TabTitle`이다. 예: `lib/feature/summary/summary_screen.dart`, `lib/feature/templates/templates_screen.dart`
+- 보고 있는 달은 `selectedMonthProvider`를 읽는다(탭을 옮겨도 같은 달). 오늘 날짜가 필요하면 `clockProvider`.
+- 두 사람 표시는 `MemberAvatar`, 이름은 `membersProvider`에서 꺼낸다.
+- 탭을 더하거나 빼면 `HomeTab`과 router.dart의 `Routes.of`·`_tabScreen`을 같이 고친다(`switch`라 빠뜨리면 컴파일 에러).
+- 폭 600 이상(`wideLayoutMinWidth`)에서는 아래 탭 막대 대신 옆 탭 막대(NavigationRail)가 나온다. 위젯 테스트는 두 배치를 다 본다.
 
 ## 컨트롤러 뼈대
 
@@ -128,7 +139,7 @@ Widget build(BuildContext context) {
    - 시간·난수는 생성자로 주입(`now:`, `random:`)
 3. **공급자** — `lib/core/data/providers.dart`에 저장소 `Provider`와 구독 `StreamProvider`. 로그인하지 않았으면 빈 값(`myLedgersProvider`).
 4. **컨트롤러·View** — 위 뼈대대로.
-5. **경로** — `lib/router.dart`의 `Routes`에 경로를 더하고 `GoRoute`를 등록한다.
+5. **경로** — `lib/router.dart`의 `Routes`에 경로를 더하고 `GoRoute`를 등록한다. 탭이면 위 '탭 화면'을 따른다.
    로그인·가계부 상태에 따라 반드시 거쳐야 하는 화면이면 `AppGate`·`redirectFor`를 고치고 `test/router_test.dart`에 경우를 더한다.
    그 밖의 화면은 `context.push`/`context.go`로 이동한다.
 6. **가짜** — 새 저장소 인터페이스에는 `test/support/fakes.dart`에 가짜를 만든다. 작성 기준은 testing 스킬.

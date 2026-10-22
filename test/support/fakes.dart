@@ -2,9 +2,13 @@ import 'dart:async';
 
 import 'package:shared_ledger/core/data/auth_repository.dart';
 import 'package:shared_ledger/core/data/ledger_repository.dart';
+import 'package:shared_ledger/core/data/settings_repository.dart';
 import 'package:shared_ledger/core/model/auth_user.dart';
+import 'package:shared_ledger/core/model/category.dart';
 import 'package:shared_ledger/core/model/invite.dart';
 import 'package:shared_ledger/core/model/ledger.dart';
+import 'package:shared_ledger/core/model/member.dart';
+import 'package:shared_ledger/core/model/payment_method.dart';
 
 /// 화면 테스트용 가짜 로그인. 로그인하면 [signInAs]로 바뀐다.
 class FakeAuthRepository implements AuthRepository {
@@ -75,7 +79,7 @@ class FakeLedgerRepository implements LedgerRepository {
 
   final List<Ledger> _ledgers;
   final _changes = StreamController<void>.broadcast();
-  final created = <({String name, String ownerUid})>[];
+  final created = <({String name, String ownerUid, String ownerName})>[];
   final invites = <({String ledgerId, MemberRole role, String createdBy})>[];
   final joins = <({String code, String uid})>[];
 
@@ -107,12 +111,13 @@ class FakeLedgerRepository implements LedgerRepository {
   Future<String> create({
     required String name,
     required String ownerUid,
+    required String ownerName,
   }) async {
     if (failNextCreate) {
       failNextCreate = false;
       _fail('create');
     }
-    created.add((name: name, ownerUid: ownerUid));
+    created.add((name: name, ownerUid: ownerUid, ownerName: ownerName));
     final id = 'ledger-${created.length}';
     _ledgers.add(Ledger(id: id, name: name, ownerUid: ownerUid));
     _changes.add(null);
@@ -172,5 +177,47 @@ class FakeLedgerRepository implements LedgerRepository {
       _ledgers.add(joined);
     }
     _changes.add(null);
+  }
+}
+
+/// 화면 테스트용 가짜 설정 저장소. 어느 가계부를 물어도 같은 설정을 돌려준다.
+class FakeSettingsRepository implements SettingsRepository {
+  FakeSettingsRepository({
+    this.members = const [
+      Member(slot: MemberSlot.owner, name: '하늘'),
+      Member(slot: MemberSlot.partner, name: '바다'),
+    ],
+    this.categories = const [
+      Category(id: 'c-principal', name: '대출원금', countsAsSaving: true),
+      Category(id: 'c-spending', name: '소비'),
+    ],
+    this.paymentMethods = const [
+      PaymentMethod(id: 'p-account', name: '공동 통장', kind: PaymentKind.account),
+    ],
+  });
+
+  final List<Member> members;
+  final List<Category> categories;
+  final List<PaymentMethod> paymentMethods;
+
+  /// 구독한 가계부 id. 읽기 비용을 확인할 때 쓴다.
+  final watched = <String>[];
+
+  @override
+  Stream<List<Member>> watchMembers(String ledgerId) {
+    watched.add(ledgerId);
+    return Stream.value(members);
+  }
+
+  @override
+  Stream<List<Category>> watchCategories(String ledgerId) {
+    watched.add(ledgerId);
+    return Stream.value(categories);
+  }
+
+  @override
+  Stream<List<PaymentMethod>> watchPaymentMethods(String ledgerId) {
+    watched.add(ledgerId);
+    return Stream.value(paymentMethods);
   }
 }
