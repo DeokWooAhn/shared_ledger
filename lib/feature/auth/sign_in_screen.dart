@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/widget/keep_all.dart';
+import '../../core/widget/wallet_glyph.dart';
 import 'sign_in_controller.dart';
 
 /// 로그인 화면(design/app.pen의 01). Apple 로그인은 iOS에서만 보여준다.
@@ -115,10 +116,12 @@ class _Hero extends StatelessWidget {
           ),
           child: SizedBox.square(
             dimension: 84,
-            child: Icon(
-              Icons.account_balance_wallet_outlined,
-              size: 40,
-              color: scheme.onTertiary,
+            child: Center(
+              child: WalletGlyph(
+                key: const Key('app-logo'),
+                size: 42,
+                color: scheme.onTertiary,
+              ),
             ),
           ),
         ),

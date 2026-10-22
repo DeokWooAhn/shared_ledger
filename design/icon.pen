@@ -1,0 +1,421 @@
+{
+  "version": "2.21",
+  "children": [
+    {
+      "type": "frame",
+      "id": "hqPWk",
+      "x": 0,
+      "y": 0,
+      "name": "iOS 1024",
+      "clip": true,
+      "width": 1024,
+      "height": 1024,
+      "fill": "$accent",
+      "layout": "none",
+      "children": [
+        {
+          "type": "icon",
+          "id": "BrcbF",
+          "x": 256,
+          "y": 256,
+          "name": "Wallet",
+          "width": 512,
+          "height": 512,
+          "icon": "wallet",
+          "library": "lucide",
+          "fill": "$glyph"
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "Z7iTaQ",
+      "x": 1104,
+      "y": 0,
+      "name": "iOS 1024 다크",
+      "clip": true,
+      "width": 1024,
+      "height": 1024,
+      "layout": "none",
+      "children": [
+        {
+          "type": "icon",
+          "id": "cjR3G",
+          "x": 256,
+          "y": 256,
+          "name": "Wallet",
+          "width": 512,
+          "height": 512,
+          "icon": "wallet",
+          "library": "lucide",
+          "fill": "$accent-on-dark"
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "BDK8q",
+      "x": 2208,
+      "y": 0,
+      "name": "iOS 1024 틴트",
+      "clip": true,
+      "width": 1024,
+      "height": 1024,
+      "fill": "#000000",
+      "layout": "none",
+      "children": [
+        {
+          "type": "icon",
+          "id": "C4WZ58",
+          "x": 256,
+          "y": 256,
+          "name": "Wallet",
+          "width": 512,
+          "height": 512,
+          "icon": "wallet",
+          "library": "lucide",
+          "fill": "#FFFFFF"
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "ZiFka",
+      "x": 3312,
+      "y": 0,
+      "name": "Android 앞 레이어 108dp",
+      "clip": true,
+      "width": 108,
+      "height": 108,
+      "layout": "none",
+      "children": [
+        {
+          "type": "icon",
+          "id": "pw0oq",
+          "x": 36,
+          "y": 36,
+          "name": "Wallet",
+          "width": 36,
+          "height": 36,
+          "icon": "wallet",
+          "library": "lucide",
+          "fill": "$glyph"
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "pVnMp",
+      "x": 3500,
+      "y": 0,
+      "name": "Android 기존 48dp",
+      "clip": true,
+      "width": 48,
+      "height": 48,
+      "fill": "$accent",
+      "cornerRadius": 10,
+      "layout": "none",
+      "children": [
+        {
+          "type": "icon",
+          "id": "n9ws9a",
+          "x": 12,
+          "y": 12,
+          "name": "Wallet",
+          "width": 24,
+          "height": 24,
+          "icon": "wallet",
+          "library": "lucide",
+          "fill": "$glyph"
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "Yi0Ph",
+      "x": 3628,
+      "y": 0,
+      "name": "Play 스토어 512",
+      "clip": true,
+      "width": 512,
+      "height": 512,
+      "fill": "$accent",
+      "layout": "none",
+      "children": [
+        {
+          "type": "icon",
+          "id": "mLa4f",
+          "x": 128,
+          "y": 128,
+          "name": "Wallet",
+          "width": 256,
+          "height": 256,
+          "icon": "wallet",
+          "library": "lucide",
+          "fill": "$glyph"
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "X73o3",
+      "x": 0,
+      "y": 1184,
+      "name": "미리보기",
+      "fill": "#FFFFFF",
+      "layout": "vertical",
+      "gap": 24,
+      "padding": 40,
+      "children": [
+        {
+          "type": "frame",
+          "id": "FjO4i",
+          "name": "Row",
+          "gap": 40,
+          "alignItems": "end",
+          "children": [
+            {
+              "type": "frame",
+              "id": "je6QH",
+              "name": "Cell iOS",
+              "layout": "vertical",
+              "gap": 12,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "u0vCTM",
+                  "name": "Backdrop",
+                  "fill": "#DCE3EC",
+                  "cornerRadius": 28,
+                  "padding": 32,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "aL1yp",
+                      "name": "Icon",
+                      "clip": true,
+                      "width": 180,
+                      "height": 180,
+                      "fill": "$accent",
+                      "cornerRadius": 40,
+                      "layout": "none",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "F8xVT",
+                          "x": 45,
+                          "y": 45,
+                          "name": "Wallet",
+                          "width": 90,
+                          "height": 90,
+                          "icon": "wallet",
+                          "library": "lucide",
+                          "fill": "$glyph"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "Idw1X",
+                  "name": "Label",
+                  "fill": "#1A1A1A",
+                  "content": "iOS",
+                  "fontFamily": "$font",
+                  "fontSize": 16,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "u0pET",
+              "name": "Cell iOS 다크",
+              "layout": "vertical",
+              "gap": 12,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "s0wPQS",
+                  "name": "Backdrop",
+                  "fill": "#1C1C1E",
+                  "cornerRadius": 28,
+                  "padding": 32,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "jrOps",
+                      "name": "Icon",
+                      "clip": true,
+                      "width": 180,
+                      "height": 180,
+                      "fill": "#2A2A2C",
+                      "cornerRadius": 40,
+                      "layout": "none",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "a62HE",
+                          "x": 45,
+                          "y": 45,
+                          "name": "Wallet",
+                          "width": 90,
+                          "height": 90,
+                          "icon": "wallet",
+                          "library": "lucide",
+                          "fill": "$accent-on-dark"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "zJ4Ss",
+                  "name": "Label",
+                  "fill": "#1A1A1A",
+                  "content": "iOS 다크",
+                  "fontFamily": "$font",
+                  "fontSize": 16,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "YPpn0",
+              "name": "Cell Android 원형",
+              "layout": "vertical",
+              "gap": 12,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "K2mb7",
+                  "name": "Backdrop",
+                  "fill": "#DCE3EC",
+                  "cornerRadius": 28,
+                  "padding": 32,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "ntwN1",
+                      "name": "Icon",
+                      "clip": true,
+                      "width": 180,
+                      "height": 180,
+                      "fill": "$accent",
+                      "cornerRadius": 90,
+                      "layout": "none",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "Ej4js",
+                          "x": 45,
+                          "y": 45,
+                          "name": "Wallet",
+                          "width": 90,
+                          "height": 90,
+                          "icon": "wallet",
+                          "library": "lucide",
+                          "fill": "$glyph"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "W1lVVO",
+                  "name": "Label",
+                  "fill": "#1A1A1A",
+                  "content": "Android 원형",
+                  "fontFamily": "$font",
+                  "fontSize": 16,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "U2MxM4",
+              "name": "Cell Android 테마",
+              "layout": "vertical",
+              "gap": 12,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "VkkCw",
+                  "name": "Backdrop",
+                  "fill": "#E8E2D9",
+                  "cornerRadius": 28,
+                  "padding": 32,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "r9azV",
+                      "name": "Icon",
+                      "clip": true,
+                      "width": 180,
+                      "height": 180,
+                      "fill": "#D7CFC2",
+                      "cornerRadius": 90,
+                      "layout": "none",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "PdDsr",
+                          "x": 45,
+                          "y": 45,
+                          "name": "Wallet",
+                          "width": 90,
+                          "height": 90,
+                          "icon": "wallet",
+                          "library": "lucide",
+                          "fill": "#4A4135"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "ffI3W",
+                  "name": "Label",
+                  "fill": "#1A1A1A",
+                  "content": "Android 테마",
+                  "fontFamily": "$font",
+                  "fontSize": 16,
+                  "fontWeight": "700"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "variables": {
+    "font": {
+      "type": "string",
+      "value": "Noto Sans KR"
+    },
+    "accent": {
+      "type": "color",
+      "value": "#2D5BFF"
+    },
+    "accent-on-dark": {
+      "type": "color",
+      "value": "#7C9BFF"
+    },
+    "glyph": {
+      "type": "color",
+      "value": "#FFFFFF"
+    }
+  },
+  "fileToken": "c7147aee-5a91-43e2-a317-c6dced1ad26e"
+}
