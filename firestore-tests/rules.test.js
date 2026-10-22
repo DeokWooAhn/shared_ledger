@@ -106,7 +106,7 @@ function entryRef(db, { type = 'extras', id = 'entry-1', month = MONTH, ledger =
 
 function newEntry(uid, fields = {}) {
   return {
-    memberId: 'member-a',
+    memberId: 'owner',
     title: '장보기',
     paymentMethodId: 'card',
     amount: 10000,

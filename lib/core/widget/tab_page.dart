@@ -7,13 +7,21 @@ const tabPageMaxWidth = 640.0;
 
 /// 탭 화면의 공통 틀. 머리말 아래로 내용을 세로로 쌓는다.
 ///
-/// 넓은 화면에서는 본문을 [tabPageMaxWidth]로 가운데 두되, 양옆 여백에서도 스크롤되게 목록은 화면 전체 폭으로 둔다.
+/// 넓은 화면에서는 본문을 [maxWidth]로 가운데 두되, 양옆 여백에서도 스크롤되게 목록은 화면 전체 폭으로 둔다.
 /// 좁은 화면에서는 아래 탭 막대가 내용 위에 떠 있어(HomeShell의 extendBody) 그 높이만큼 아래 여백을 둔다.
 class TabPage extends StatelessWidget {
-  const TabPage({required this.header, this.children = const [], super.key});
+  const TabPage({
+    required this.header,
+    this.children = const [],
+    this.maxWidth = tabPageMaxWidth,
+    super.key,
+  });
 
   final Widget header;
   final List<Widget> children;
+
+  /// 본문의 최대 폭. 두 칸으로 놓는 화면(월 요약)만 넓힌다.
+  final double maxWidth;
 
   @override
   Widget build(BuildContext context) {
@@ -23,7 +31,7 @@ class TabPage extends StatelessWidget {
         bottom: false,
         child: LayoutBuilder(
           builder: (context, constraints) {
-            final side = ((constraints.maxWidth - tabPageMaxWidth) / 2).clamp(
+            final side = ((constraints.maxWidth - maxWidth) / 2).clamp(
               20.0,
               double.infinity,
             );

@@ -18,7 +18,7 @@ MVVM의 ViewModel 역할은 Riverpod `Notifier`를 상속한 컨트롤러가 맡
 | `<이름>_screen.dart` | View 위젯, enum → 화면 문구 함수, 화면에서만 쓰는 상태(입력란 컨트롤러·폼 키) | `lib/feature/ledger/ledger_start_screen.dart` |
 
 - 더 작은 예: 로그인(`lib/feature/auth/sign_in_*`), 시트(`lib/feature/settings/invite_*`)
-- 저장소를 부르는 동작이 없는 화면은 컨트롤러 없이 공급자만 읽는다: `lib/feature/settings/settings_screen.dart`
+- 저장소를 부르는 동작이 없는 화면은 컨트롤러 없이 공급자만 읽는다: `lib/feature/settings/settings_screen.dart`, `lib/feature/summary/summary_screen.dart`(계산한 요약 `monthSummaryProvider`를 그린다)
 - 같은 기능 안에서 함께 쓰는 문구·위젯은 그 기능 폴더에 둔다(`member_role_label.dart`). 기능을 넘어 쓰면 `lib/core`로 올린다.
 
 ## 탭 화면
@@ -26,6 +26,7 @@ MVVM의 ViewModel 역할은 Riverpod `Notifier`를 상속한 컨트롤러가 맡
 홈은 탭 4개다(`HomeTab`: 요약·항목·고정 지출·설정). 틀은 `lib/feature/home/home_shell.dart`, 경로는 `lib/router.dart`의 `StatefulShellRoute.indexedStack`.
 
 - 탭 화면은 `TabPage`(`lib/core/widget/tab_page.dart`)로 감싼다. 넓은 화면에서 본문을 가운데 두고, 좁은 화면에서 떠 있는 탭 막대만큼 아래 여백을 둔다.
+  두 칸으로 놓는 탭은 `LayoutBuilder`로 칸 수를 정하고 `TabPage(maxWidth:)`를 넓힌다(월 요약: 본문 폭 840 이상이면 두 칸).
 - 머리말은 달을 보는 탭이면 `MonthHeader`, 아니면 `TabTitle`이다. 예: `lib/feature/summary/summary_screen.dart`, `lib/feature/templates/templates_screen.dart`
 - 보고 있는 달은 `selectedMonthProvider`를 읽는다(탭을 옮겨도 같은 달). 오늘 날짜가 필요하면 `clockProvider`.
 - 두 사람 표시는 `MemberAvatar`, 이름은 `membersProvider`에서 꺼낸다.

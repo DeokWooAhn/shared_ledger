@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:shared_ledger/core/data/auth_repository.dart';
+import 'package:shared_ledger/core/data/entries_repository.dart';
 import 'package:shared_ledger/core/data/ledger_repository.dart';
 import 'package:shared_ledger/core/data/settings_repository.dart';
 import 'package:shared_ledger/core/model/auth_user.dart';
@@ -8,7 +9,9 @@ import 'package:shared_ledger/core/model/category.dart';
 import 'package:shared_ledger/core/model/invite.dart';
 import 'package:shared_ledger/core/model/ledger.dart';
 import 'package:shared_ledger/core/model/member.dart';
+import 'package:shared_ledger/core/model/month_ledger.dart';
 import 'package:shared_ledger/core/model/payment_method.dart';
+import 'package:shared_ledger/core/model/year_month.dart';
 
 /// 화면 테스트용 가짜 로그인. 로그인하면 [signInAs]로 바뀐다.
 class FakeAuthRepository implements AuthRepository {
@@ -219,5 +222,41 @@ class FakeSettingsRepository implements SettingsRepository {
   Stream<List<PaymentMethod>> watchPaymentMethods(String ledgerId) {
     watched.add(ledgerId);
     return Stream.value(paymentMethods);
+  }
+}
+
+/// 화면 테스트용 가짜 항목 저장소. 넣어 둔 달의 항목을 돌려주고, 없는 달은 빈 달이다.
+///
+/// 실제 저장소처럼 휴지통 항목은 이미 빠진 [MonthLedger]를 넣는다. [put]으로 바꾸면 구독 중인 곳에 다시 알린다.
+class FakeEntriesRepository implements EntriesRepository {
+  FakeEntriesRepository([Map<YearMonth, MonthLedger> months = const {}])
+    : _months = {...months};
+
+  final Map<YearMonth, MonthLedger> _months;
+  final _changes = StreamController<void>.broadcast();
+
+  /// 구독한 가계부와 달. 읽기 비용(그달만 구독하는지)을 확인할 때 쓴다.
+  final watched = <({String ledgerId, YearMonth month})>[];
+
+  /// true면 다음 구독이 권한 오류처럼 실패한다.
+  bool failNextWatch = false;
+
+  /// [month]의 항목을 바꾼다. 어느 가계부를 물어도 같은 달이면 같은 항목이다.
+  void put(YearMonth month, MonthLedger ledger) {
+    _months[month] = ledger;
+    _changes.add(null);
+  }
+
+  @override
+  Stream<MonthLedger> watchMonth(String ledgerId, YearMonth month) async* {
+    watched.add((ledgerId: ledgerId, month: month));
+    if (failNextWatch) {
+      failNextWatch = false;
+      throw StateError('watchMonth failed');
+    }
+    yield _months[month] ?? const MonthLedger();
+    await for (final _ in _changes.stream) {
+      yield _months[month] ?? const MonthLedger();
+    }
   }
 }
