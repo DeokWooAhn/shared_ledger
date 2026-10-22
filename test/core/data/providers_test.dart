@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_ledger/core/data/providers.dart';
 import 'package:shared_ledger/core/model/auth_user.dart';
+import 'package:shared_ledger/core/model/expense_template.dart';
 import 'package:shared_ledger/core/model/ledger.dart';
 import 'package:shared_ledger/core/model/ledger_entries.dart';
 import 'package:shared_ledger/core/model/month_ledger.dart';
@@ -63,6 +64,36 @@ void main() {
     expect(await container.read(categoriesProvider.future), isEmpty);
     expect(await container.read(paymentMethodsProvider.future), isEmpty);
     expect(settings.watched, isEmpty);
+  });
+
+  test('고정 지출은 지금 가계부의 것을 읽고, 가계부가 없으면 구독하지 않는다', () async {
+    const rent = ExpenseTemplate(
+      id: 'rent',
+      title: '관리비',
+      categoryId: 'c1',
+      paymentMethodId: 'p1',
+      memberId: 'owner',
+      dueDay: lastDueDay,
+    );
+    final templates = FakeTemplatesRepository(const [rent]);
+    final container = createContainer(
+      auth: FakeAuthRepository(signedIn: me),
+      ledgers: FakeLedgerRepository([
+        const Ledger(id: 'l1', name: '우리 가계부', ownerUid: 'me'),
+      ]),
+      templates: templates,
+    );
+    await loadSignedInUser(container);
+    container.listen(templatesProvider, (_, _) {});
+
+    expect(await container.read(templatesProvider.future), isEmpty);
+    expect(templates.watched, isEmpty);
+
+    await container.read(myLedgersProvider.future);
+    await pumpEventQueue();
+
+    expect(container.read(templatesProvider).value, [rent]);
+    expect(templates.watched, ['l1']);
   });
 
   group('내 역할과 항목 탭의 종류', () {

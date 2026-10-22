@@ -7,6 +7,7 @@ import '../../firebase_options.dart';
 import '../budget/month_summary.dart';
 import '../model/auth_user.dart';
 import '../model/category.dart';
+import '../model/expense_template.dart';
 import '../model/ledger.dart';
 import '../model/ledger_entries.dart';
 import '../model/member.dart';
@@ -17,6 +18,7 @@ import 'auth_repository.dart';
 import 'entries_repository.dart';
 import 'ledger_repository.dart';
 import 'settings_repository.dart';
+import 'templates_repository.dart';
 
 final authRepositoryProvider = Provider<AuthRepository>(
   (ref) => FirebaseAuthRepository(
@@ -37,6 +39,10 @@ final settingsRepositoryProvider = Provider<SettingsRepository>(
 
 final entriesRepositoryProvider = Provider<EntriesRepository>(
   (ref) => FirestoreEntriesRepository(FirebaseFirestore.instance),
+);
+
+final templatesRepositoryProvider = Provider<TemplatesRepository>(
+  (ref) => FirestoreTemplatesRepository(FirebaseFirestore.instance),
 );
 
 /// 지금 시각. 테스트에서 날짜를 고정하려고 공급자로 둔다.
@@ -88,6 +94,15 @@ final paymentMethodsProvider = StreamProvider<List<PaymentMethod>>((ref) {
   final ledgerId = ref.watch(currentLedgerProvider.select((l) => l?.id));
   if (ledgerId == null) return Stream.value(const []);
   return ref.watch(settingsRepositoryProvider).watchPaymentMethods(ledgerId);
+});
+
+/// 지금 가계부의 고정 지출. 가계부가 없으면 빈 목록.
+///
+/// 고정 지출 탭과 새 달을 채우는 홈 틀이 같이 읽어서 구독은 한 벌뿐이다.
+final templatesProvider = StreamProvider<List<ExpenseTemplate>>((ref) {
+  final ledgerId = ref.watch(currentLedgerProvider.select((l) => l?.id));
+  if (ledgerId == null) return Stream.value(const []);
+  return ref.watch(templatesRepositoryProvider).watchTemplates(ledgerId);
 });
 
 /// 요약·항목 탭이 같이 보는 달. 처음에는 이번 달이고, 탭을 옮겨도 유지된다.

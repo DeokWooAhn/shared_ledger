@@ -131,8 +131,10 @@ Widget build(BuildContext context) {
 - 입력란 오류: 그 칸에서 끝나는 검사는 `Form` + `TextFormField.validator`, 서버 결과도 보여야 하는 칸은 `TextField` + `errorText`를 컨트롤러 상태로.
   둘을 한 칸에 섞지 않는다(`forceErrorText`와 `validate()`를 섞으면 실패 뒤 첫 누름이 무시된다).
 - 입력란은 `LabeledField`로 이름표와 묶는다. 본문은 `ConstrainedBox(maxWidth: 440~560)`로 가운데 둔다.
+- X로 닫는 전체 화면 입력(항목·고정 지출)은 `lib/core/widget/form_parts.dart`의 `FormNavBar`(닫기·제목), `WonAmountField`(큰 금액 칸),
+  `ChoiceGroup`·`ChoicePill`(고르기 단추)을 같이 쓴다. 테스트용 키는 화면이 넘긴다(`fieldKey`, `closeKey`, `noteKey`).
   - `LabeledField`(MergeSemantics) 안의 입력란에 `InputDecoration.suffix`·`suffixText`를 쓰지 않는다. 초점에 따라 나타났다 사라지면서
-    semantics 단언(`node.isMergedIntoParent`)이 깨진다(Flutter 3.47, PR ③에서 겪음). 늘 보이는 `suffixIcon`이나 입력란 밖 글자로 둔다(`_AmountField`).
+    semantics 단언(`node.isMergedIntoParent`)이 깨진다(Flutter 3.47, PR ③에서 겪음). 늘 보이는 `suffixIcon`이나 입력란 밖 글자로 둔다(`WonAmountField`).
   - 안에 따로 누를 단추가 있는 칸(날짜 칸의 '지우기')은 `LabeledField`로 합치지 않고 `Semantics(button:, label:, value:)`로 직접 알린다(`_DateField`).
 
 ## 레이어 배선 순서

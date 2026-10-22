@@ -83,25 +83,3 @@ class TabTitle extends StatelessWidget {
     );
   }
 }
-
-/// 아직 만들지 않은 탭 내용 자리. 해당 화면을 만들면 지운다.
-class TabPlaceholder extends StatelessWidget {
-  const TabPlaceholder(this.message, {super.key});
-
-  final String message;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 32),
-        child: Text(
-          keepAll(message),
-          textAlign: TextAlign.center,
-          style: theme.textTheme.bodySmall,
-        ),
-      ),
-    );
-  }
-}

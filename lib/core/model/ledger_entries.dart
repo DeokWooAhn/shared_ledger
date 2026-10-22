@@ -80,6 +80,7 @@ class PlannedExpense extends LedgerEntry {
     required this.paymentMethodId,
     this.amount,
     this.paidOn,
+    this.dueOn,
     this.memo,
   });
 
@@ -97,6 +98,9 @@ class PlannedExpense extends LedgerEntry {
 
   /// 실제로 빠져나간 날. 카드가 아닌 지출은 이 값이 있어야 현금 유출에 들어간다.
   final DateTime? paidOn;
+
+  /// 고정 지출에서 옮긴 그달 예정일. 직접 더한 기본 월 지출은 null이다. 계산에는 쓰지 않는다.
+  final DateTime? dueOn;
   @override
   final String? memo;
 
@@ -185,6 +189,7 @@ class EntryDraft {
     this.paymentMethodId,
     this.cardId,
     this.date,
+    this.dueOn,
     this.memo,
   });
 
@@ -206,6 +211,7 @@ class EntryDraft {
       categoryId: entry.categoryId,
       paymentMethodId: entry.paymentMethodId,
       date: entry.paidOn,
+      dueOn: entry.dueOn,
       memo: entry.memo,
     ),
     ExtraExpense() => EntryDraft(
@@ -250,6 +256,9 @@ class EntryDraft {
   /// 받은 날·지급한 날·쓴 날·출금일. 기본 월 지출은 이 값이 있어야 지급 완료다.
   final DateTime? date;
 
+  /// 기본 월 지출만 쓴다. 고정 지출에서 옮긴 그달 예정일이고, 입력 화면에서는 고치지 않고 그대로 둔다.
+  final DateTime? dueOn;
+
   /// 비었으면 null.
   final String? memo;
 
@@ -264,6 +273,7 @@ class EntryDraft {
       other.paymentMethodId == paymentMethodId &&
       other.cardId == cardId &&
       other.date == date &&
+      other.dueOn == dueOn &&
       other.memo == memo;
 
   @override
@@ -276,6 +286,7 @@ class EntryDraft {
     paymentMethodId,
     cardId,
     date,
+    dueOn,
     memo,
   );
 }

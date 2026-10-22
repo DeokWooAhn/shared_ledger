@@ -379,6 +379,11 @@ class EntryFormController extends Notifier<EntryFormState> {
       paymentMethodId: state.paymentMethodId,
       cardId: state.cardId,
       date: state.date,
+      // 고정 지출에서 옮긴 예정일은 입력 화면에서 고치지 않고 그대로 둔다.
+      dueOn: switch (args.entry) {
+        PlannedExpense(:final dueOn) => dueOn,
+        _ => null,
+      },
       memo: trimmedMemo.isEmpty ? null : trimmedMemo,
     );
     final problems = entryProblemsOf(draft);

@@ -78,13 +78,6 @@ Future<void> pumpEntries(
   await openTab(tester, HomeTab.entries);
 }
 
-// 입력 화면이 열리고 닫히는 전환은 settle(400ms)보다 길다. 끝날 때까지 그린다.
-Future<void> settleRoute(WidgetTester tester) async {
-  for (var i = 0; i < 3; i++) {
-    await settle(tester);
-  }
-}
-
 // 항목 탭 아래에 입력 화면이 겹쳐 있을 때 입력 화면 안의 것만 찾는다(종류 세그먼트는 둘 다에 있다).
 Finder inForm(Finder finder) =>
     find.descendant(of: find.byType(EntryFormScreen), matching: finder);

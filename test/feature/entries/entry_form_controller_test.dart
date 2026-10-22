@@ -340,6 +340,35 @@ void main() {
       expect(container.read(provider).outcome, EntryFormOutcome.saved);
     });
 
+    test('고정 지출에서 옮긴 예정일은 고쳐도 그대로 남는다', () async {
+      final scheduled = PlannedExpense(
+        id: 'template-rent',
+        categoryId: 'c-living',
+        memberId: 'partner',
+        title: '관리비',
+        paymentMethodId: 'p-account',
+        dueOn: DateTime(2026, 10, 31),
+      );
+      final entries = FakeEntriesRepository({
+        october: MonthLedger(plannedExpenses: [scheduled]),
+      });
+      final container = await ready(entries: entries);
+      final provider = entryFormControllerProvider(
+        EntryFormArgs.edit(entry: scheduled, month: october),
+      );
+      recordStates(container, provider);
+
+      await container
+          .read(provider.notifier)
+          .save(amount: '210,000', title: '관리비', memo: '');
+
+      expect(entries.updated.single.draft.dueOn, DateTime(2026, 10, 31));
+      expect(
+        entries.monthOf(october).plannedExpenses.single.dueOn,
+        DateTime(2026, 10, 31),
+      );
+    });
+
     test('연결이 없으면 고치지 않고 연결된 뒤에 하라고 알린다', () async {
       final entries = withRent()..offline = true;
       final container = await ready(entries: entries);

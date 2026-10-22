@@ -6,6 +6,7 @@ import '../../core/model/ledger_entries.dart';
 import '../../core/model/member.dart';
 import '../../core/model/payment_method.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/widget/form_parts.dart';
 import '../../core/widget/keep_all.dart';
 import '../../core/widget/labeled_field.dart';
 import '../../core/widget/won_input.dart';
@@ -164,8 +165,9 @@ class _EntryFormScreenState extends ConsumerState<EntryFormScreen> {
         selected: kind,
         onSelect: isEdit || !enabled ? null : controller.selectKind,
       ),
-      _AmountField(
+      WonAmountField(
         controller: _amount,
+        fieldKey: const Key('entry-amount'),
         optional: kind == EntryKind.planned,
         autofocus: !isEdit,
         enabled: enabled,
@@ -192,11 +194,11 @@ class _EntryFormScreenState extends ConsumerState<EntryFormScreen> {
             onChanged: (_) => controller.textEdited(EntryTextField.title),
           ),
         ),
-      _ChoiceGroup(
+      ChoiceGroup(
         label: '누가',
         children: [
           for (final slot in MemberSlot.values)
-            _ChoicePill(
+            ChoicePill(
               key: Key('entry-member-${slot.name}'),
               label: memberIn(members, slot).name,
               selected: state.memberId == slot.name,
@@ -209,13 +211,13 @@ class _EntryFormScreenState extends ConsumerState<EntryFormScreen> {
         ],
       ),
       if (kind == EntryKind.planned)
-        _ChoiceGroup(
+        ChoiceGroup(
           label: '분류',
           errorText: errorOf({EntryProblem.categoryMissing}),
           empty: categories.isEmpty ? '설정에서 분류를 먼저 추가해 주세요.' : null,
           children: [
             for (final category in categories)
-              _ChoicePill(
+              ChoicePill(
                 key: Key('entry-category-${category.id}'),
                 label: category.name,
                 selected: state.categoryId == category.id,
@@ -226,14 +228,15 @@ class _EntryFormScreenState extends ConsumerState<EntryFormScreen> {
           ],
         ),
       if (kind == EntryKind.planned || kind == EntryKind.extra)
-        _ChoiceGroup(
+        ChoiceGroup(
           label: '결제수단',
           errorText: errorOf({EntryProblem.paymentMethodMissing}),
           empty: methods.isEmpty ? '설정에서 결제수단을 먼저 추가해 주세요.' : null,
           note: paidByCard ? '카드로 낸 돈은 다음 달 카드대금으로 빠져나가요.' : null,
+          noteKey: const Key('entry-card-note'),
           children: [
             for (final method in methods)
-              _ChoicePill(
+              ChoicePill(
                 key: Key('entry-method-${method.id}'),
                 label: method.name,
                 selected: state.paymentMethodId == method.id,
@@ -244,13 +247,13 @@ class _EntryFormScreenState extends ConsumerState<EntryFormScreen> {
           ],
         ),
       if (kind == EntryKind.cardBill)
-        _ChoiceGroup(
+        ChoiceGroup(
           label: '카드',
           errorText: errorOf({EntryProblem.cardMissing}),
           empty: cards.isEmpty ? '카드가 아직 없어요. 설정에서 카드를 추가한 뒤 적어 주세요.' : null,
           children: [
             for (final card in cards)
-              _ChoicePill(
+              ChoicePill(
                 key: Key('entry-card-${card.id}'),
                 label: card.name,
                 selected: state.cardId == card.id,
@@ -325,7 +328,10 @@ class _EntryFormScreenState extends ConsumerState<EntryFormScreen> {
             constraints: const BoxConstraints(maxWidth: 560),
             child: Column(
               children: [
-                _NavBar(title: isEdit ? '항목 고치기' : '항목 추가'),
+                FormNavBar(
+                  title: isEdit ? '항목 고치기' : '항목 추가',
+                  closeKey: const Key('entry-close'),
+                ),
                 Expanded(
                   child: ListView(
                     padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
@@ -341,305 +347,6 @@ class _EntryFormScreenState extends ConsumerState<EntryFormScreen> {
             ),
           ),
         ),
-      ),
-    );
-  }
-}
-
-/// 맨 위의 닫기 버튼과 제목.
-class _NavBar extends StatelessWidget {
-  const _NavBar({required this.title});
-
-  final String title;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
-      child: Row(
-        children: [
-          IconButton(
-            key: const Key('entry-close'),
-            tooltip: '닫기',
-            style: IconButton.styleFrom(
-              backgroundColor: scheme.surface,
-              fixedSize: const Size(40, 40),
-            ),
-            onPressed: () => Navigator.of(context).maybePop(),
-            icon: Icon(Icons.close, size: 20, color: scheme.onSurface),
-          ),
-          Expanded(
-            child: Semantics(
-              header: true,
-              child: Text(
-                title,
-                textAlign: TextAlign.center,
-                style: theme.textTheme.titleMedium,
-              ),
-            ),
-          ),
-          const SizedBox(width: 48),
-        ],
-      ),
-    );
-  }
-}
-
-/// 큰 글자의 금액 입력란. 숫자만 받고 세 자리마다 쉼표를 넣는다.
-/// 기본 월 지출은 비워 둘 수 있다(금액 미정).
-///
-/// 디자인처럼 '원'을 숫자 바로 뒤에 붙이려고 입력란은 글자 폭만큼만 두고 밑줄은 줄 전체에 직접 그린다.
-/// (InputDecoration의 suffix는 초점이 있을 때만 나타나는데, LabeledField 안에서 나타났다 사라지면
-/// Flutter 3.47의 semantics 단언이 깨진다.)
-class _AmountField extends StatefulWidget {
-  const _AmountField({
-    required this.controller,
-    required this.optional,
-    required this.autofocus,
-    required this.enabled,
-    required this.errorText,
-    required this.onChanged,
-  });
-
-  final TextEditingController controller;
-  final bool optional;
-  final bool autofocus;
-  final bool enabled;
-  final String? errorText;
-  final ValueChanged<String> onChanged;
-
-  @override
-  State<_AmountField> createState() => _AmountFieldState();
-}
-
-class _AmountFieldState extends State<_AmountField> {
-  // 초점에 따라 밑줄 색이 바뀌는 것은 이 칸에서만 쓰는 상태다.
-  final _focus = FocusNode();
-
-  @override
-  void initState() {
-    super.initState();
-    _focus.addListener(_focusChanged);
-  }
-
-  void _focusChanged() => setState(() {});
-
-  @override
-  void dispose() {
-    _focus
-      ..removeListener(_focusChanged)
-      ..dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
-    final errorText = widget.errorText;
-    final helper = widget.optional ? '비워 두면 금액 미정으로 저장돼요.' : null;
-    final number = theme.textTheme.headlineMedium?.copyWith(fontSize: 36);
-    final (lineColor, lineWidth) = errorText != null
-        ? (scheme.error, _focus.hasFocus ? 2.0 : 1.0)
-        : _focus.hasFocus
-        ? (scheme.tertiary, 2.0)
-        : (scheme.outline, 1.0);
-    return LabeledField(
-      label: '금액',
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        spacing: 6,
-        children: [
-          // 숫자 오른쪽 빈 곳을 눌러도 입력란에 들어가게 한다. 화면 읽기 도구에는 입력란만 알린다.
-          GestureDetector(
-            behavior: HitTestBehavior.translucent,
-            excludeFromSemantics: true,
-            onTap: widget.enabled ? _focus.requestFocus : null,
-            child: Container(
-              padding: EdgeInsets.only(bottom: 12 - (lineWidth - 1)),
-              decoration: BoxDecoration(
-                border: Border(
-                  bottom: BorderSide(color: lineColor, width: lineWidth),
-                ),
-              ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.baseline,
-                textBaseline: TextBaseline.alphabetic,
-                spacing: 4,
-                children: [
-                  Flexible(
-                    child: IntrinsicWidth(
-                      child: TextField(
-                        key: const Key('entry-amount'),
-                        controller: widget.controller,
-                        focusNode: _focus,
-                        enabled: widget.enabled,
-                        autofocus: widget.autofocus,
-                        keyboardType: TextInputType.number,
-                        inputFormatters: const [WonInputFormatter()],
-                        style: number,
-                        // 밑줄은 줄 전체에 직접 그리므로 테마의 바탕·테두리를 모두 끈다.
-                        decoration: InputDecoration(
-                          isCollapsed: true,
-                          filled: false,
-                          contentPadding: EdgeInsets.zero,
-                          border: InputBorder.none,
-                          enabledBorder: InputBorder.none,
-                          focusedBorder: InputBorder.none,
-                          disabledBorder: InputBorder.none,
-                          errorBorder: InputBorder.none,
-                          focusedErrorBorder: InputBorder.none,
-                          hintText: widget.optional ? '금액 미정' : '0',
-                          hintStyle: number?.copyWith(
-                            color: context.appColors.textMuted,
-                          ),
-                        ),
-                        onChanged: widget.onChanged,
-                      ),
-                    ),
-                  ),
-                  // 화면 읽기 도구에는 숫자만 읽힌다.
-                  ExcludeSemantics(
-                    child: Text(
-                      '원',
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w600,
-                        color: scheme.onSurfaceVariant,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          if (errorText != null)
-            Text(
-              errorText,
-              style: theme.textTheme.bodySmall?.copyWith(color: scheme.error),
-            )
-          else if (helper != null)
-            Text(keepAll(helper), style: theme.textTheme.bodySmall),
-        ],
-      ),
-    );
-  }
-}
-
-/// 이름표와 고르기 단추 묶음. 단추마다 고른 상태를 화면 읽기 도구에 알린다.
-class _ChoiceGroup extends StatelessWidget {
-  const _ChoiceGroup({
-    required this.label,
-    required this.children,
-    this.errorText,
-    this.empty,
-    this.note,
-  });
-
-  final String label;
-  final List<Widget> children;
-  final String? errorText;
-
-  /// 고를 것이 없을 때의 안내.
-  final String? empty;
-
-  /// 단추 아래 안내 상자(카드 결제 안내).
-  final String? note;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
-    final errorText = this.errorText;
-    final empty = this.empty;
-    final note = this.note;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      spacing: 10,
-      children: [
-        Semantics(
-          header: true,
-          child: Text(label, style: theme.textTheme.labelMedium),
-        ),
-        if (empty != null)
-          Text(keepAll(empty), style: theme.textTheme.bodySmall)
-        else
-          Wrap(spacing: 8, runSpacing: 8, children: children),
-        if (errorText != null)
-          Text(
-            errorText,
-            style: theme.textTheme.bodySmall?.copyWith(color: scheme.error),
-          ),
-        if (note != null)
-          Container(
-            key: const Key('entry-card-note'),
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            decoration: BoxDecoration(
-              color: scheme.primaryContainer,
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Row(
-              spacing: 6,
-              children: [
-                Icon(Icons.info_outline, size: 16, color: scheme.primary),
-                Expanded(
-                  child: Text(
-                    keepAll(note),
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      fontWeight: FontWeight.w500,
-                      color: scheme.primary,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-      ],
-    );
-  }
-}
-
-/// 고르기 단추. 고르면 [selectedColor]로 채우고 체크 표시를 붙인다(색만으로 구분하지 않는다).
-/// 단추는 높이 40이지만 누르는 곳은 48이다(Material 칩의 기본 여백).
-class _ChoicePill extends StatelessWidget {
-  const _ChoicePill({
-    required this.label,
-    required this.selected,
-    required this.onSelected,
-    this.selectedColor,
-    super.key,
-  });
-
-  final String label;
-  final bool selected;
-  final VoidCallback? onSelected;
-
-  /// 고른 단추의 바탕. 없으면 버튼 색(primary). 누가는 두 사람의 색을 쓴다.
-  final Color? selectedColor;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final fill = selectedColor ?? scheme.primary;
-    final onSelected = this.onSelected;
-    return ChoiceChip(
-      label: Text(label),
-      selected: selected,
-      onSelected: onSelected == null ? null : (_) => onSelected(),
-      showCheckmark: true,
-      checkmarkColor: scheme.onPrimary,
-      selectedColor: fill,
-      disabledColor: selected ? fill : scheme.surfaceContainerLowest,
-      backgroundColor: scheme.surfaceContainerLowest,
-      side: BorderSide(color: selected ? fill : scheme.outline),
-      shape: const StadiumBorder(),
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
-      labelStyle: TextStyle(
-        fontSize: 14,
-        fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-        color: selected ? scheme.onPrimary : scheme.onSurface,
       ),
     );
   }

@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import '../model/expense_template.dart';
 import '../model/ledger_entries.dart';
 import '../model/month_ledger.dart';
 import '../model/year_month.dart';
@@ -76,6 +77,18 @@ abstract interface class EntriesRepository {
     required YearMonth month,
     required EntryKind kind,
     required String id,
+    required String uid,
+  });
+
+  /// [month]에 아직 없는 [templates]의 기본 월 지출을 만들고, 만든 개수를 돌려준다. 작성자는 [uid]다.
+  ///
+  /// 문서 id가 템플릿 id라서 이미 있는 문서(휴지통에 넣은 것 포함)는 건드리지 않는다. 서버에서 읽고 없을 때만
+  /// 만드는 트랜잭션이라 두 사람이 동시에 그달을 처음 열어도 하나만 생기고 덮어쓰지 않는다.
+  /// 온라인에서만 되고, 연결이 없으면 [EntryWriteException]([EntryWriteFailure.offline])으로 실패한다.
+  Future<int> fillPlanned({
+    required String ledgerId,
+    required YearMonth month,
+    required List<ExpenseTemplate> templates,
     required String uid,
   });
 }
@@ -198,6 +211,41 @@ class FirestoreEntriesRepository implements EntriesRepository {
     trashed: true,
   );
 
+  @override
+  Future<int> fillPlanned({
+    required String ledgerId,
+    required YearMonth month,
+    required List<ExpenseTemplate> templates,
+    required String uid,
+  }) async {
+    if (templates.isEmpty) return 0;
+    final planned = _entries(ledgerId, month, EntryKind.planned);
+    try {
+      return await _firestore.runTransaction(timeout: _onlineTimeout, (
+        transaction,
+      ) async {
+        // 트랜잭션은 읽기를 모두 마친 뒤에 써야 한다.
+        final missing = <ExpenseTemplate>[];
+        for (final template in templates) {
+          final current = await transaction.get(planned.doc(template.id));
+          if (!current.exists) missing.add(template);
+        }
+        for (final template in missing) {
+          transaction.set(
+            planned.doc(template.id),
+            newEntryData(template.draftFor(month), uid: uid),
+          );
+        }
+        return missing.length;
+      });
+    } on FirebaseException catch (e) {
+      if (e.code == 'unavailable' || e.code == 'deadline-exceeded') {
+        throw const EntryWriteException(EntryWriteFailure.offline);
+      }
+      rethrow;
+    }
+  }
+
   // 트랜잭션은 서버에서 문서를 읽어야 해서 오프라인이면 실패한다. 그래서 온라인에서만 고치는 데 쓴다.
   // 읽은 문서가 없거나 휴지통 상태가 [trashed]와 다르면(그사이 상대가 바꿈) 고치지 않는다.
   Future<void> _writeOnline(
@@ -283,6 +331,7 @@ Map<Object, Object> restoreEntryUpdate({required String uid}) => {
 Map<String, Object?> _entryFields(EntryDraft draft) {
   final memo = draft.memo?.trim() ?? '';
   final date = draft.date;
+  final dueOn = draft.dueOn;
   return {
     'memberId': draft.memberId,
     'amount': draft.amount,
@@ -294,6 +343,8 @@ Map<String, Object?> _entryFields(EntryDraft draft) {
     entryDateField(draft.kind): date == null
         ? null
         : entryDateToFirestore(date),
+    if (draft.kind == EntryKind.planned)
+      'dueOn': dueOn == null ? null : entryDateToFirestore(dueOn),
     'memo': memo.isEmpty ? null : memo,
   };
 }
@@ -306,6 +357,9 @@ typedef EntryDoc = ({
 });
 
 /// 그달 네 컬렉션의 문서로 [MonthLedger]를 만든다. 휴지통 항목과 읽을 수 없는 문서는 뺀다.
+///
+/// 기본 월 지출 문서 id는 휴지통 항목과 읽을 수 없는 문서까지 [MonthLedger.plannedIds]에 모은다.
+/// 고정 지출로 채울 때 그 id의 문서를 다시 만들지 않게 한다.
 MonthLedger monthLedgerFromFirestore({
   required List<EntryDoc> incomes,
   required List<EntryDoc> planned,
@@ -325,6 +379,7 @@ MonthLedger monthLedgerFromFirestore({
     plannedExpenses: live(planned, plannedExpenseFromFirestore),
     extraExpenses: live(extras, extraExpenseFromFirestore),
     cardBills: live(cardBills, cardBillFromFirestore),
+    plannedIds: {for (final doc in planned) doc.id},
   );
 }
 
@@ -380,6 +435,7 @@ PlannedExpense? plannedExpenseFromFirestore(
     paymentMethodId: paymentMethodId,
     amount: amount,
     paidOn: entryDateFromFirestore(data['paidOn']),
+    dueOn: entryDateFromFirestore(data['dueOn']),
     memo: _memo(data),
   );
 }
