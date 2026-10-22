@@ -26,9 +26,11 @@ class SignInScreen extends ConsumerWidget {
       controller.failureShown();
     });
     final showApple = defaultTargetPlatform == TargetPlatform.iOS;
+    final theme = Theme.of(context);
+    final dark = theme.brightness == Brightness.dark;
     return Scaffold(
-      // 디자인에서 로그인 화면만 카드색(흰색) 바탕이다.
-      backgroundColor: Theme.of(context).colorScheme.surfaceContainerLowest,
+      // 디자인에서 로그인 화면만 카드색 바탕이다.
+      backgroundColor: theme.colorScheme.surfaceContainerLowest,
       body: SafeArea(
         child: Center(
           child: ConstrainedBox(
@@ -52,9 +54,14 @@ class SignInScreen extends ConsumerWidget {
                         if (showApple) ...[
                           FilledButton.icon(
                             key: const Key('sign-in-apple'),
+                            // Apple 규정: 밝은 바탕에는 검정, 어두운 바탕에는 흰 버튼.
                             style: FilledButton.styleFrom(
-                              backgroundColor: Colors.black,
-                              foregroundColor: Colors.white,
+                              backgroundColor: dark
+                                  ? Colors.white
+                                  : Colors.black,
+                              foregroundColor: dark
+                                  ? Colors.black
+                                  : Colors.white,
                             ),
                             onPressed: state.busy
                                 ? null

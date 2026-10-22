@@ -101,6 +101,35 @@ void main() {
       expect(find.byKey(const Key('sign-in-apple')), findsNothing);
     }, variant: TargetPlatformVariant.only(TargetPlatform.android));
 
+    testWidgets('기기가 다크 모드면 어두운 테마로 그린다', (tester) async {
+      tester.platformDispatcher.platformBrightnessTestValue = Brightness.dark;
+      addTearDown(tester.platformDispatcher.clearPlatformBrightnessTestValue);
+      await pumpApp(
+        tester,
+        auth: FakeAuthRepository(),
+        ledgers: FakeLedgerRepository(),
+      );
+
+      final context = tester.element(find.byKey(const Key('sign-in-google')));
+      expect(Theme.of(context).brightness, Brightness.dark);
+    });
+
+    testWidgets('다크 모드에서 Apple 버튼은 흰 바탕에 검정 글자다', (tester) async {
+      tester.platformDispatcher.platformBrightnessTestValue = Brightness.dark;
+      addTearDown(tester.platformDispatcher.clearPlatformBrightnessTestValue);
+      await pumpApp(
+        tester,
+        auth: FakeAuthRepository(),
+        ledgers: FakeLedgerRepository(),
+      );
+
+      final button = tester.widget<FilledButton>(
+        find.byKey(const Key('sign-in-apple')),
+      );
+      expect(button.style?.backgroundColor?.resolve({}), Colors.white);
+      expect(button.style?.foregroundColor?.resolve({}), Colors.black);
+    }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
+
     testWidgets('Google로 로그인하고 가계부가 없으면 가계부 시작 화면으로 간다', (tester) async {
       final auth = FakeAuthRepository();
       await pumpApp(tester, auth: auth, ledgers: FakeLedgerRepository());
