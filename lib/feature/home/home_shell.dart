@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -93,25 +96,116 @@ class HomeShell extends ConsumerWidget {
       );
     });
     final onAdd = _addEntry(context, ref);
-    if (MediaQuery.sizeOf(context).width >= wideLayoutMinWidth) {
-      return Scaffold(
-        body: Row(
-          children: [
-            _SideTabBar(selected: _current, onSelect: _select, onAdd: onAdd),
-            Expanded(child: navigationShell),
-          ],
+    return _HomeBackHandler(
+      current: _current,
+      onBackToSummary: () => navigationShell.goBranch(HomeTab.summary.index),
+      child: MediaQuery.sizeOf(context).width >= wideLayoutMinWidth
+          ? Scaffold(
+              body: Row(
+                children: [
+                  _SideTabBar(
+                    selected: _current,
+                    onSelect: _select,
+                    onAdd: onAdd,
+                  ),
+                  Expanded(child: navigationShell),
+                ],
+              ),
+            )
+          : Scaffold(
+              // 탭 막대가 내용 위에 떠 있도록 본문을 막대 뒤까지 늘린다. 본문은 그 높이만큼 아래 여백을 둔다(TabPage).
+              extendBody: true,
+              body: navigationShell,
+              bottomNavigationBar: _BottomTabBar(
+                selected: _current,
+                onSelect: _select,
+                onAdd: onAdd,
+              ),
+            ),
+    );
+  }
+}
+
+/// 요약 탭에서 한 번 뒤로 간 뒤 이 시간 안에 다시 뒤로 가면 앱을 닫는다. 안내 스낵바도 이만큼 보인다.
+const homeExitWindow = Duration(seconds: 2);
+
+/// Android 뒤로가기(버튼이나 스와이프 동작)로 탭의 첫 화면을 벗어날 때의 동작.
+///
+/// 요약이 아닌 탭에서는 요약 탭으로 가고, 요약 탭에서는 안내를 띄운 뒤 [homeExitWindow] 안에 한 번 더 뒤로 가면 앱을 닫는다.
+/// 탭 안의 하위 화면(설정 → 분류)과 탭 위로 연 화면(항목 입력)은 go_router가 안쪽 Navigator부터 닫으므로
+/// 여기까지 오지 않고 평소처럼 닫힌다.
+class _HomeBackHandler extends StatefulWidget {
+  const _HomeBackHandler({
+    required this.current,
+    required this.onBackToSummary,
+    required this.child,
+  });
+
+  final HomeTab current;
+  final VoidCallback onBackToSummary;
+  final Widget child;
+
+  @override
+  State<_HomeBackHandler> createState() => _HomeBackHandlerState();
+}
+
+class _HomeBackHandlerState extends State<_HomeBackHandler> {
+  // 한 번 뒤로 간 뒤 앱 닫기를 기다리는 동안 살아 있다. 화면에서만 쓰는 상태라 위젯이 갖는다.
+  Timer? _exitArmed;
+
+  bool get _armed => _exitArmed?.isActive ?? false;
+
+  void _disarm() {
+    _exitArmed?.cancel();
+    _exitArmed = null;
+  }
+
+  void _onBack() {
+    final messenger = ScaffoldMessenger.of(context);
+    if (widget.current != HomeTab.summary) {
+      widget.onBackToSummary();
+      return;
+    }
+    if (_armed) {
+      _disarm();
+      messenger.hideCurrentSnackBar();
+      unawaited(SystemNavigator.pop());
+      return;
+    }
+    _exitArmed = Timer(homeExitWindow, () {});
+    messenger
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          key: const Key('exit-hint'),
+          duration: homeExitWindow,
+          // 버튼과 스와이프 동작 어느 쪽으로도 맞게 '누르면' 대신 '뒤로 가면'이라고 쓴다.
+          content: Text(keepAll('한 번 더 뒤로 가면 앱이 종료돼요.')),
         ),
       );
-    }
-    return Scaffold(
-      // 탭 막대가 내용 위에 떠 있도록 본문을 막대 뒤까지 늘린다. 본문은 그 높이만큼 아래 여백을 둔다(TabPage).
-      extendBody: true,
-      body: navigationShell,
-      bottomNavigationBar: _BottomTabBar(
-        selected: _current,
-        onSelect: _select,
-        onAdd: onAdd,
-      ),
+  }
+
+  @override
+  void didUpdateWidget(_HomeBackHandler oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // 다른 탭으로 옮기면 앱 닫기 대기를 푼다. 요약으로 돌아와 뒤로 가면 처음부터 다시 안내한다.
+    if (oldWidget.current != widget.current) _disarm();
+  }
+
+  @override
+  void dispose() {
+    _disarm();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _onBack();
+      },
+      child: widget.child,
     );
   }
 }
