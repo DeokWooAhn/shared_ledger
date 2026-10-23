@@ -364,7 +364,7 @@
           "name": "Badge Left",
           "width": 36,
           "height": 36,
-          "fill": "$sky-soft",
+          "fill": "$avatar",
           "cornerRadius": 18,
           "justifyContent": "center",
           "alignItems": "center",
@@ -373,7 +373,7 @@
               "type": "text",
               "id": "jWWtc",
               "name": "Initial",
-              "fill": "$on-primary",
+              "fill": "$text-secondary",
               "content": "하",
               "fontFamily": "$font",
               "fontSize": 14,
@@ -892,8 +892,9 @@
                       "name": "Avatar 하늘",
                       "width": 32,
                       "height": 32,
-                      "fill": "$sky-soft",
+                      "fill": "$avatar",
                       "cornerRadius": 16,
+                      "stroke": "$line",
                       "justifyContent": "center",
                       "alignItems": "center",
                       "children": [
@@ -901,7 +902,7 @@
                           "type": "text",
                           "id": "YO7ua",
                           "name": "Initial",
-                          "fill": "$on-primary",
+                          "fill": "$text-secondary",
                           "content": "하",
                           "fontFamily": "$font",
                           "fontSize": 13,
@@ -915,10 +916,9 @@
                       "name": "Avatar 바다",
                       "width": 32,
                       "height": 32,
-                      "fill": "$sea-soft",
+                      "fill": "$avatar",
                       "cornerRadius": 16,
-                      "stroke": "$member-line",
-                      "strokeWidth": 1,
+                      "stroke": "$line",
                       "justifyContent": "center",
                       "alignItems": "center",
                       "children": [
@@ -926,7 +926,7 @@
                           "type": "text",
                           "id": "BlYmX",
                           "name": "Initial",
-                          "fill": "$sea",
+                          "fill": "$text-secondary",
                           "content": "바",
                           "fontFamily": "$font",
                           "fontSize": 13,
@@ -1905,13 +1905,22 @@
                       "alignItems": "center",
                       "children": [
                         {
+                          "type": "ellipse",
+                          "id": "P3TKgG",
+                          "name": "Dot",
+                          "fill": "$sky",
+                          "width": 10,
+                          "height": 10
+                        },
+                        {
                           "type": "frame",
                           "id": "FEwL7",
                           "name": "Avatar 하늘",
                           "width": 24,
                           "height": 24,
-                          "fill": "$sky-soft",
+                          "fill": "$avatar",
                           "cornerRadius": 12,
+                          "stroke": "$line",
                           "justifyContent": "center",
                           "alignItems": "center",
                           "children": [
@@ -1919,7 +1928,7 @@
                               "type": "text",
                               "id": "JhbXi",
                               "name": "Initial",
-                              "fill": "$on-primary",
+                              "fill": "$text-secondary",
                               "content": "하",
                               "fontFamily": "$font",
                               "fontSize": 10,
@@ -1947,15 +1956,22 @@
                       "alignItems": "center",
                       "children": [
                         {
+                          "type": "ellipse",
+                          "id": "LYqKp",
+                          "name": "Dot",
+                          "fill": "$sea",
+                          "width": 10,
+                          "height": 10
+                        },
+                        {
                           "type": "frame",
                           "id": "L0U92k",
                           "name": "Avatar 바다",
                           "width": 24,
                           "height": 24,
-                          "fill": "$sea-soft",
+                          "fill": "$avatar",
                           "cornerRadius": 12,
-                          "stroke": "$member-line",
-                          "strokeWidth": 1,
+                          "stroke": "$line",
                           "justifyContent": "center",
                           "alignItems": "center",
                           "children": [
@@ -1963,7 +1979,7 @@
                               "type": "text",
                               "id": "bWcRD",
                               "name": "Initial",
-                              "fill": "$sea",
+                              "fill": "$text-secondary",
                               "content": "바",
                               "fontFamily": "$font",
                               "fontSize": 10,
@@ -2466,8 +2482,9 @@
                       "name": "Avatar 하늘",
                       "width": 32,
                       "height": 32,
-                      "fill": "$sky-soft",
+                      "fill": "$avatar",
                       "cornerRadius": 16,
+                      "stroke": "$line",
                       "justifyContent": "center",
                       "alignItems": "center",
                       "children": [
@@ -2475,7 +2492,7 @@
                           "type": "text",
                           "id": "BQOGE",
                           "name": "Initial",
-                          "fill": "$on-primary",
+                          "fill": "$text-secondary",
                           "content": "하",
                           "fontFamily": "$font",
                           "fontSize": 13,
@@ -2489,10 +2506,9 @@
                       "name": "Avatar 바다",
                       "width": 32,
                       "height": 32,
-                      "fill": "$sea-soft",
+                      "fill": "$avatar",
                       "cornerRadius": 16,
-                      "stroke": "$member-line",
-                      "strokeWidth": 1,
+                      "stroke": "$line",
                       "justifyContent": "center",
                       "alignItems": "center",
                       "children": [
@@ -2500,7 +2516,7 @@
                           "type": "text",
                           "id": "DB7Pw",
                           "name": "Initial",
-                          "fill": "$sea",
+                          "fill": "$text-secondary",
                           "content": "바",
                           "fontFamily": "$font",
                           "fontSize": 13,
@@ -2786,11 +2802,13 @@
                   "strokeWidth": 0,
                   "descendants": {
                     "jaQok": {
-                      "fill": "$sky-soft"
+                      "fill": "$avatar",
+                      "stroke": "$line",
+                      "strokeWidth": 0
                     },
                     "jWWtc": {
                       "content": "하",
-                      "fill": "$on-primary"
+                      "fill": "$text-secondary"
                     },
                     "uZRF0": {
                       "content": "주택담보대출 원금"
@@ -2875,11 +2893,13 @@
                   "strokeWidth": 0,
                   "descendants": {
                     "jaQok": {
-                      "fill": "$sky-soft"
+                      "fill": "$avatar",
+                      "stroke": "$line",
+                      "strokeWidth": 0
                     },
                     "jWWtc": {
                       "content": "하",
-                      "fill": "$on-primary"
+                      "fill": "$text-secondary"
                     },
                     "uZRF0": {
                       "content": "주택담보대출 이자"
@@ -2986,13 +3006,13 @@
                   "width": "fill_container",
                   "descendants": {
                     "jaQok": {
-                      "fill": "$sea-soft",
-                      "stroke": "$member-line",
-                      "strokeWidth": 1
+                      "fill": "$avatar",
+                      "stroke": "$line",
+                      "strokeWidth": 0
                     },
                     "jWWtc": {
                       "content": "바",
-                      "fill": "$sea"
+                      "fill": "$text-secondary"
                     },
                     "uZRF0": {
                       "content": "적금"
@@ -3014,11 +3034,13 @@
                   "strokeWidth": 0,
                   "descendants": {
                     "jaQok": {
-                      "fill": "$sky-soft"
+                      "fill": "$avatar",
+                      "stroke": "$line",
+                      "strokeWidth": 0
                     },
                     "jWWtc": {
                       "content": "하",
-                      "fill": "$on-primary"
+                      "fill": "$text-secondary"
                     },
                     "uZRF0": {
                       "content": "ISA"
@@ -3108,13 +3130,13 @@
                   "width": "fill_container",
                   "descendants": {
                     "jaQok": {
-                      "fill": "$sea-soft",
-                      "stroke": "$member-line",
-                      "strokeWidth": 1
+                      "fill": "$avatar",
+                      "stroke": "$line",
+                      "strokeWidth": 0
                     },
                     "jWWtc": {
                       "content": "바",
-                      "fill": "$sea"
+                      "fill": "$text-secondary"
                     },
                     "uZRF0": {
                       "content": "관리비"
@@ -3143,13 +3165,13 @@
                   "width": "fill_container",
                   "descendants": {
                     "jaQok": {
-                      "fill": "$sea-soft",
-                      "stroke": "$member-line",
-                      "strokeWidth": 1
+                      "fill": "$avatar",
+                      "stroke": "$line",
+                      "strokeWidth": 0
                     },
                     "jWWtc": {
                       "content": "바",
-                      "fill": "$sea"
+                      "fill": "$text-secondary"
                     },
                     "uZRF0": {
                       "content": "통신비"
@@ -3170,11 +3192,13 @@
                   "width": "fill_container",
                   "descendants": {
                     "jaQok": {
-                      "fill": "$sky-soft"
+                      "fill": "$avatar",
+                      "stroke": "$line",
+                      "strokeWidth": 0
                     },
                     "jWWtc": {
                       "content": "하",
-                      "fill": "$on-primary"
+                      "fill": "$text-secondary"
                     },
                     "uZRF0": {
                       "content": "보험"
@@ -3196,11 +3220,13 @@
                   "strokeWidth": 0,
                   "descendants": {
                     "jaQok": {
-                      "fill": "$sky-soft"
+                      "fill": "$avatar",
+                      "stroke": "$line",
+                      "strokeWidth": 0
                     },
                     "jWWtc": {
                       "content": "하",
-                      "fill": "$on-primary"
+                      "fill": "$text-secondary"
                     },
                     "uZRF0": {
                       "content": "구독 서비스"
@@ -3633,9 +3659,9 @@
                       "id": "HjOZV",
                       "name": "Chip 바다",
                       "height": 40,
-                      "fill": "$sea",
+                      "fill": "$primary",
                       "cornerRadius": 20,
-                      "stroke": "$sea",
+                      "stroke": "$primary",
                       "strokeWidth": 1,
                       "gap": 6,
                       "padding": [
@@ -4578,8 +4604,9 @@
                       "name": "Avatar 하늘",
                       "width": 40,
                       "height": 40,
-                      "fill": "$sky-soft",
+                      "fill": "$avatar",
                       "cornerRadius": 20,
+                      "stroke": "$line",
                       "justifyContent": "center",
                       "alignItems": "center",
                       "children": [
@@ -4587,7 +4614,7 @@
                           "type": "text",
                           "id": "vYL71",
                           "name": "Initial",
-                          "fill": "$on-primary",
+                          "fill": "$text-secondary",
                           "content": "하",
                           "fontFamily": "$font",
                           "fontSize": 17,
@@ -4650,10 +4677,9 @@
                       "name": "Avatar 바다",
                       "width": 40,
                       "height": 40,
-                      "fill": "$sea-soft",
+                      "fill": "$avatar",
                       "cornerRadius": 20,
-                      "stroke": "$member-line",
-                      "strokeWidth": 1,
+                      "stroke": "$line",
                       "justifyContent": "center",
                       "alignItems": "center",
                       "children": [
@@ -4661,7 +4687,7 @@
                           "type": "text",
                           "id": "XYZX5",
                           "name": "Initial",
-                          "fill": "$sea",
+                          "fill": "$text-secondary",
                           "content": "바",
                           "fontFamily": "$font",
                           "fontSize": 17,
@@ -7221,13 +7247,13 @@
                   "width": "fill_container",
                   "descendants": {
                     "jaQok": {
-                      "fill": "$sea-soft",
-                      "stroke": "$member-line",
-                      "strokeWidth": 1
+                      "fill": "$avatar",
+                      "stroke": "$line",
+                      "strokeWidth": 0
                     },
                     "jWWtc": {
                       "content": "바",
-                      "fill": "$sea"
+                      "fill": "$text-secondary"
                     },
                     "uZRF0": {
                       "content": "마트 장보기"
@@ -7249,11 +7275,13 @@
                   "strokeWidth": 0,
                   "descendants": {
                     "jaQok": {
-                      "fill": "$sky-soft"
+                      "fill": "$avatar",
+                      "stroke": "$line",
+                      "strokeWidth": 0
                     },
                     "jWWtc": {
                       "content": "하",
-                      "fill": "$on-primary"
+                      "fill": "$text-secondary"
                     },
                     "uZRF0": {
                       "content": "외식"
@@ -9203,11 +9231,13 @@
                   "width": "fill_container",
                   "descendants": {
                     "jaQok": {
-                      "fill": "$sky-soft"
+                      "fill": "$avatar",
+                      "stroke": "$line",
+                      "strokeWidth": 0
                     },
                     "jWWtc": {
                       "content": "하",
-                      "fill": "$on-primary"
+                      "fill": "$text-secondary"
                     },
                     "uZRF0": {
                       "content": "주택담보대출 원금"
@@ -9235,11 +9265,13 @@
                   "strokeWidth": 0,
                   "descendants": {
                     "jaQok": {
-                      "fill": "$sky-soft"
+                      "fill": "$avatar",
+                      "stroke": "$line",
+                      "strokeWidth": 0
                     },
                     "jWWtc": {
                       "content": "하",
-                      "fill": "$on-primary"
+                      "fill": "$text-secondary"
                     },
                     "uZRF0": {
                       "content": "주택담보대출 이자"
@@ -11455,23 +11487,6 @@
         }
       ]
     },
-    "sky-soft": {
-      "type": "color",
-      "value": [
-        {
-          "value": "#2D5BFF",
-          "theme": {
-            "mode": "light"
-          }
-        },
-        {
-          "value": "#2D5BFF",
-          "theme": {
-            "mode": "dark"
-          }
-        }
-      ]
-    },
     "sea": {
       "type": "color",
       "value": [
@@ -11483,23 +11498,6 @@
         },
         {
           "value": "#A3A9B8",
-          "theme": {
-            "mode": "dark"
-          }
-        }
-      ]
-    },
-    "sea-soft": {
-      "type": "color",
-      "value": [
-        {
-          "value": "#FFFFFF",
-          "theme": {
-            "mode": "light"
-          }
-        },
-        {
-          "value": "#181B23",
           "theme": {
             "mode": "dark"
           }
@@ -11526,23 +11524,6 @@
     "font": {
       "type": "string",
       "value": "Noto Sans KR"
-    },
-    "member-line": {
-      "type": "color",
-      "value": [
-        {
-          "value": "#D5DAE4",
-          "theme": {
-            "mode": "light"
-          }
-        },
-        {
-          "value": "#3A4050",
-          "theme": {
-            "mode": "dark"
-          }
-        }
-      ]
     },
     "accent": {
       "type": "color",
@@ -11793,6 +11774,23 @@
         },
         {
           "value": "#7C9BFF",
+          "theme": {
+            "mode": "dark"
+          }
+        }
+      ]
+    },
+    "avatar": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#E4E8F0",
+          "theme": {
+            "mode": "light"
+          }
+        },
+        {
+          "value": "#2A2F3B",
           "theme": {
             "mode": "dark"
           }
