@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_ledger/core/model/auth_user.dart';
 import 'package:shared_ledger/core/model/ledger.dart';
 import 'package:shared_ledger/core/widget/keep_all.dart';
+import 'package:shared_ledger/feature/entries/entry_form_screen.dart';
 import 'package:shared_ledger/feature/home/home_shell.dart';
 import 'package:shared_ledger/feature/settings/categories_screen.dart';
 import 'package:shared_ledger/feature/settings/settings_screen.dart';
@@ -103,6 +104,32 @@ void main() {
     await pressBack(tester);
 
     expect(exitHint, findsOneWidget);
+    expect(exits, isEmpty);
+  });
+
+  testWidgets('안내를 띄운 뒤 다른 탭으로 옮기면 안내도 닫힌다', (tester) async {
+    await pumpHome(tester);
+
+    await pressBack(tester);
+    expect(exitHint, findsOneWidget);
+    await openTab(tester, HomeTab.entries);
+
+    expect(exitHint, findsNothing);
+  });
+
+  testWidgets('탭 위로 연 항목 입력 화면에서는 입력 화면만 닫히고 앱은 그대로다', (tester) async {
+    final exits = recordExits(tester);
+    await pumpHome(tester);
+    await tester.tap(find.byKey(const Key('add-entry')));
+    await settleRoute(tester);
+    expect(find.byType(EntryFormScreen), findsOneWidget);
+
+    await pressBack(tester);
+    await settleRoute(tester);
+
+    expect(find.byType(EntryFormScreen), findsNothing);
+    expect(find.byType(SummaryScreen), findsOneWidget);
+    expect(exitHint, findsNothing);
     expect(exits, isEmpty);
   });
 
