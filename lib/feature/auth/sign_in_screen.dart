@@ -176,7 +176,7 @@ class _ValuePoint extends StatelessWidget {
         CircleAvatar(
           radius: 18,
           backgroundColor: scheme.primaryContainer,
-          child: Icon(icon, size: 18, color: scheme.primary),
+          child: Icon(icon, size: 18, color: scheme.onPrimaryContainer),
         ),
         const SizedBox(width: 12),
         Flexible(child: Text(keepAll(text))),

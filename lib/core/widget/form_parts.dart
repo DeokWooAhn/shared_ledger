@@ -257,13 +257,17 @@ class ChoiceGroup extends StatelessWidget {
             child: Row(
               spacing: 6,
               children: [
-                Icon(Icons.info_outline, size: 16, color: scheme.primary),
+                Icon(
+                  Icons.info_outline,
+                  size: 16,
+                  color: scheme.onPrimaryContainer,
+                ),
                 Expanded(
                   child: Text(
                     keepAll(note),
                     style: theme.textTheme.labelSmall?.copyWith(
                       fontWeight: FontWeight.w500,
-                      color: scheme.primary,
+                      color: scheme.onPrimaryContainer,
                     ),
                   ),
                 ),
@@ -275,14 +279,13 @@ class ChoiceGroup extends StatelessWidget {
   }
 }
 
-/// 고르기 단추. 고르면 [selectedColor]로 채우고 체크 표시를 붙인다(색만으로 구분하지 않는다).
+/// 고르기 단추. 고르면 버튼 색(primary)으로 채우고 체크 표시를 붙인다(색만으로 구분하지 않는다).
 /// 단추는 높이 40이지만 누르는 곳은 48이다(Material 칩의 기본 여백).
 class ChoicePill extends StatelessWidget {
   const ChoicePill({
     required this.label,
     required this.selected,
     required this.onSelected,
-    this.selectedColor,
     super.key,
   });
 
@@ -290,13 +293,10 @@ class ChoicePill extends StatelessWidget {
   final bool selected;
   final VoidCallback? onSelected;
 
-  /// 고른 단추의 바탕. 없으면 버튼 색(primary). 누가는 두 사람의 색을 쓴다.
-  final Color? selectedColor;
-
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final fill = selectedColor ?? scheme.primary;
+    final fill = scheme.primary;
     final onSelected = this.onSelected;
     return ChoiceChip(
       label: Text(label),

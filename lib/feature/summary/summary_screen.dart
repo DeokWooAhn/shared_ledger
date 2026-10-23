@@ -94,7 +94,7 @@ class _SummaryBody extends ConsumerWidget {
   }
 }
 
-/// 남는 현금과 현금 유입·유출. 라이트·다크 모두 어두운 카드다.
+/// 남는 현금과 현금 유입·유출. 라이트·다크 모두 진한 코발트 카드다.
 class _CashCard extends StatelessWidget {
   const _CashCard({required this.totals});
 
@@ -325,7 +325,7 @@ class _MetricTile extends StatelessWidget {
             Row(
               spacing: 6,
               children: [
-                Icon(icon, size: 16, color: theme.colorScheme.primary),
+                Icon(icon, size: 16, color: context.appColors.accentText),
                 Flexible(
                   child: Text(label, style: theme.textTheme.labelMedium),
                 ),
@@ -469,7 +469,7 @@ class _CardUsageRow extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.w700,
-                  color: scheme.primary,
+                  color: scheme.onPrimaryContainer,
                 ),
               ),
             ),
@@ -609,7 +609,7 @@ class _SectionTitle extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       spacing: 8,
       children: [
-        Icon(icon, size: 18, color: theme.colorScheme.primary),
+        Icon(icon, size: 18, color: context.appColors.accentText),
         Flexible(
           child: Semantics(
             header: true,
@@ -699,7 +699,7 @@ class _SavingPill extends StatelessWidget {
         style: TextStyle(
           fontSize: 11,
           fontWeight: FontWeight.w700,
-          color: scheme.primary,
+          color: scheme.onPrimaryContainer,
         ),
       ),
     );
@@ -802,10 +802,19 @@ class _MemberTotal extends StatelessWidget {
     final style = Theme.of(
       context,
     ).textTheme.bodyMedium?.copyWith(fontSize: 14, fontWeight: FontWeight.w700);
+    final barColor = switch (member.slot) {
+      MemberSlot.owner => context.appColors.sky,
+      MemberSlot.partner => context.appColors.sea,
+    };
     return Row(
       mainAxisSize: MainAxisSize.min,
       spacing: 8,
       children: [
+        // 프로필이 둘 다 회색이라, 막대 색 점으로 어느 막대가 누구인지 잇는다.
+        DecoratedBox(
+          decoration: BoxDecoration(color: barColor, shape: BoxShape.circle),
+          child: const SizedBox.square(dimension: 10),
+        ),
         MemberAvatar(member: member, size: 24),
         // 금액이 '원' 앞에서 줄바뀌지 않게, 폭이 모자라면 줄인다.
         Flexible(

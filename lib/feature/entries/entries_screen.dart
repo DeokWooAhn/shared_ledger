@@ -485,7 +485,7 @@ class _SavingPill extends StatelessWidget {
         style: TextStyle(
           fontSize: 11,
           fontWeight: FontWeight.w700,
-          color: scheme.primary,
+          color: scheme.onPrimaryContainer,
         ),
       ),
     );

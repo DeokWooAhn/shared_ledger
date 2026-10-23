@@ -3,7 +3,7 @@ import 'package:flutter/services.dart';
 
 /// `design/app.pen`의 색 토큰. 이름은 디자인 변수 이름을 따르고, 라이트·다크 두 벌이 있다.
 ///
-/// 무채색 바탕에 포인트 색([accent]) 하나를 쓴다. 다크에서는 버튼([primary])이 밝은 색으로 뒤집힌다.
+/// 코발트([primary])가 버튼·선택된 칩·남는 현금 카드를 맡고, 바탕과 글자는 푸른 회색이다.
 /// 화면에서는 이 값을 직접 쓰지 않고 `Theme.of(context).colorScheme`이나 [AppColors]로 꺼낸다.
 @immutable
 class AppPalette {
@@ -13,6 +13,7 @@ class AppPalette {
     required this.primary,
     required this.onPrimary,
     required this.primarySoft,
+    required this.accentText,
     required this.line,
     required this.lineSoft,
     required this.textPrimary,
@@ -26,10 +27,9 @@ class AppPalette {
     required this.heroSub,
     required this.barMuted,
     required this.sky,
-    required this.skySoft,
     required this.sea,
-    required this.seaSoft,
-    required this.memberLine,
+    required this.avatar,
+    required this.income,
     required this.danger,
     required this.onDanger,
     required this.track,
@@ -41,6 +41,9 @@ class AppPalette {
   final Color primary;
   final Color onPrimary;
   final Color primarySoft;
+
+  /// 파란 글자·아이콘. [primarySoft] 바탕 위와 카드 위 모두에서 대비가 맞는다.
+  final Color accentText;
   final Color line;
   final Color lineSoft;
   final Color textPrimary;
@@ -56,10 +59,9 @@ class AppPalette {
   final Color heroSub;
   final Color barMuted;
   final Color sky;
-  final Color skySoft;
   final Color sea;
-  final Color seaSoft;
-  final Color memberLine;
+  final Color avatar;
+  final Color income;
   final Color danger;
 
   /// 디자인에는 오류 색으로 채운 버튼이 없다. [ColorScheme.onError]를 채우려고 둔다.
@@ -72,61 +74,61 @@ class AppPalette {
   final Color segmentOn;
 
   static const light = AppPalette._(
-    bgApp: Color(0xFFF5F5F4),
+    bgApp: Color(0xFFF4F6FA),
     card: Color(0xFFFFFFFF),
-    primary: Color(0xFF1A1A1A),
+    primary: Color(0xFF2D5BFF),
     onPrimary: Color(0xFFFFFFFF),
-    primarySoft: Color(0xFFF0F0EE),
-    line: Color(0xFFE6E6E4),
-    lineSoft: Color(0xFFF0F0EE),
-    textPrimary: Color(0xFF191F1C),
-    textSecondary: Color(0xFF5F5F5F),
-    textMuted: Color(0xFF737373),
+    primarySoft: Color(0xFFEAF0FF),
+    accentText: Color(0xFF1F45D6),
+    line: Color(0xFFE4E8F0),
+    lineSoft: Color(0xFFEEF1F6),
+    textPrimary: Color(0xFF171A21),
+    textSecondary: Color(0xFF586070),
+    textMuted: Color(0xFF6B7285),
     accent: Color(0xFF2D5BFF),
     onAccent: Color(0xFFFFFFFF),
-    hero: Color(0xFF1A1A1A),
+    hero: Color(0xFF2449D8),
     onHero: Color(0xFFFFFFFF),
-    accentOnDark: Color(0xFF7C9BFF),
-    heroSub: Color(0xFFBDBDBD),
-    barMuted: Color(0xFFD4D4D2),
-    sky: Color(0xFF1A1A1A),
-    skySoft: Color(0xFF1A1A1A),
-    sea: Color(0xFF6B6B69),
-    seaSoft: Color(0xFFFFFFFF),
-    memberLine: Color(0xFFD6D6D4),
-    danger: Color(0xFFC93C3C),
+    accentOnDark: Color(0xFFFFFFFF),
+    heroSub: Color(0xFFD6E0FF),
+    barMuted: Color(0xFFD5DAE4),
+    sky: Color(0xFF2D5BFF),
+    sea: Color(0xFF5F6677),
+    avatar: Color(0xFFE4E8F0),
+    income: Color(0xFF3366FF),
+    danger: Color(0xFFD93A3F),
     onDanger: Color(0xFFFFFFFF),
-    track: Color(0xFFEBEBE9),
+    track: Color(0xFFE9EDF5),
     segmentOn: Color(0xFFFFFFFF),
   );
 
   static const dark = AppPalette._(
-    bgApp: Color(0xFF121212),
-    card: Color(0xFF1E1E1E),
-    primary: Color(0xFFF2F2F2),
-    onPrimary: Color(0xFF121212),
-    primarySoft: Color(0xFF2A2A2A),
-    line: Color(0xFF333333),
-    lineSoft: Color(0xFF2A2A2A),
-    textPrimary: Color(0xFFF2F2F2),
-    textSecondary: Color(0xFFB0B0B0),
-    textMuted: Color(0xFF8E8E8E),
+    bgApp: Color(0xFF0F1117),
+    card: Color(0xFF181B23),
+    primary: Color(0xFF2D5BFF),
+    onPrimary: Color(0xFFFFFFFF),
+    primarySoft: Color(0xFF1B2547),
+    accentText: Color(0xFF9DB4FF),
+    line: Color(0xFF2A2F3B),
+    lineSoft: Color(0xFF222632),
+    textPrimary: Color(0xFFF2F3F7),
+    textSecondary: Color(0xFFADB3C2),
+    textMuted: Color(0xFF8C92A3),
     accent: Color(0xFF2D5BFF),
     onAccent: Color(0xFFFFFFFF),
-    hero: Color(0xFF262626),
+    hero: Color(0xFF2449D8),
     onHero: Color(0xFFFFFFFF),
-    accentOnDark: Color(0xFF7C9BFF),
-    heroSub: Color(0xFFB0B0B0),
-    barMuted: Color(0xFF4A4A4A),
-    sky: Color(0xFFF2F2F2),
-    skySoft: Color(0xFFF2F2F2),
-    sea: Color(0xFFA3A3A1),
-    seaSoft: Color(0xFF1E1E1E),
-    memberLine: Color(0xFF4A4A4A),
+    accentOnDark: Color(0xFFFFFFFF),
+    heroSub: Color(0xFFD6E0FF),
+    barMuted: Color(0xFF3A4050),
+    sky: Color(0xFF2D5BFF),
+    sea: Color(0xFFA3A9B8),
+    avatar: Color(0xFF2A2F3B),
+    income: Color(0xFF7C9BFF),
     danger: Color(0xFFFF6B6B),
     onDanger: Color(0xFF121212),
-    track: Color(0xFF262626),
-    segmentOn: Color(0xFF3A3A3A),
+    track: Color(0xFF222632),
+    segmentOn: Color(0xFF2E3443),
   );
 
   static AppPalette of(Brightness brightness) => switch (brightness) {
@@ -138,26 +140,27 @@ class AppPalette {
 /// [ColorScheme]에 자리가 없는 디자인 토큰.
 ///
 /// - [textMuted]: 흐린 글자. 카드·시트·입력란 바탕 위에서만 쓴다.
-/// - 두 사람 구분은 색이 아니라 채움과 테두리로 한다. 관리자([sky])는 [skySoft]를 채운 동그라미에
-///   `colorScheme.onPrimary` 글자, 상대([sea])는 [seaSoft] 바탕에 [memberLine] 테두리와 [sea] 글자.
-/// - 남는 현금 카드는 [hero] 바탕에 금액 [accentOnDark], 현금 유입·유출 금액 [onHero], 보조 글자 [heroSub].
-///   라이트·다크 모두 어두운 카드다.
+/// - [accentText]: 카드 위의 파란 글자·아이콘. 연한 코발트 바탕 위에서는 `colorScheme.onPrimaryContainer`(같은 색)를 쓴다.
+/// - [income]: 달력의 들어온 돈. 토요일 날짜(진한 파랑)와 구분되게 조금 연하다.
+/// - 두 사람의 프로필은 둘 다 [avatar] 바탕에 이름 첫 글자다(나중에 프로필 사진으로 바꾼다).
+///   구성원별 막대에서는 관리자를 [sky], 상대를 [sea]로 칠한다.
+/// - 남는 현금 카드는 [hero](진한 코발트) 바탕에 금액 [accentOnDark], 현금 유입·유출 금액 [onHero], 보조 글자 [heroSub].
 /// - 막대그래프에서 강조하지 않는 막대는 [barMuted].
 /// - 세그먼트(항목 종류 고르기)는 [track] 바탕에 고른 칸만 [segmentOn].
 @immutable
 class AppColors extends ThemeExtension<AppColors> {
   const AppColors({
     required this.textMuted,
+    required this.accentText,
+    required this.income,
     required this.hero,
     required this.onHero,
     required this.accentOnDark,
     required this.heroSub,
     required this.barMuted,
     required this.sky,
-    required this.skySoft,
     required this.sea,
-    required this.seaSoft,
-    required this.memberLine,
+    required this.avatar,
     required this.track,
     required this.segmentOn,
   });
@@ -165,31 +168,31 @@ class AppColors extends ThemeExtension<AppColors> {
   AppColors.from(AppPalette p)
     : this(
         textMuted: p.textMuted,
+        accentText: p.accentText,
+        income: p.income,
         hero: p.hero,
         onHero: p.onHero,
         accentOnDark: p.accentOnDark,
         heroSub: p.heroSub,
         barMuted: p.barMuted,
         sky: p.sky,
-        skySoft: p.skySoft,
         sea: p.sea,
-        seaSoft: p.seaSoft,
-        memberLine: p.memberLine,
+        avatar: p.avatar,
         track: p.track,
         segmentOn: p.segmentOn,
       );
 
   final Color textMuted;
+  final Color accentText;
+  final Color income;
   final Color hero;
   final Color onHero;
   final Color accentOnDark;
   final Color heroSub;
   final Color barMuted;
   final Color sky;
-  final Color skySoft;
   final Color sea;
-  final Color seaSoft;
-  final Color memberLine;
+  final Color avatar;
   final Color track;
   final Color segmentOn;
 
@@ -204,30 +207,30 @@ class AppColors extends ThemeExtension<AppColors> {
   @override
   AppColors copyWith({
     Color? textMuted,
+    Color? accentText,
+    Color? income,
     Color? hero,
     Color? onHero,
     Color? accentOnDark,
     Color? heroSub,
     Color? barMuted,
     Color? sky,
-    Color? skySoft,
     Color? sea,
-    Color? seaSoft,
-    Color? memberLine,
+    Color? avatar,
     Color? track,
     Color? segmentOn,
   }) => AppColors(
     textMuted: textMuted ?? this.textMuted,
+    accentText: accentText ?? this.accentText,
+    income: income ?? this.income,
     hero: hero ?? this.hero,
     onHero: onHero ?? this.onHero,
     accentOnDark: accentOnDark ?? this.accentOnDark,
     heroSub: heroSub ?? this.heroSub,
     barMuted: barMuted ?? this.barMuted,
     sky: sky ?? this.sky,
-    skySoft: skySoft ?? this.skySoft,
     sea: sea ?? this.sea,
-    seaSoft: seaSoft ?? this.seaSoft,
-    memberLine: memberLine ?? this.memberLine,
+    avatar: avatar ?? this.avatar,
     track: track ?? this.track,
     segmentOn: segmentOn ?? this.segmentOn,
   );
@@ -238,16 +241,16 @@ class AppColors extends ThemeExtension<AppColors> {
     Color mix(Color a, Color b) => Color.lerp(a, b, t) ?? a;
     return AppColors(
       textMuted: mix(textMuted, other.textMuted),
+      accentText: mix(accentText, other.accentText),
+      income: mix(income, other.income),
       hero: mix(hero, other.hero),
       onHero: mix(onHero, other.onHero),
       accentOnDark: mix(accentOnDark, other.accentOnDark),
       heroSub: mix(heroSub, other.heroSub),
       barMuted: mix(barMuted, other.barMuted),
       sky: mix(sky, other.sky),
-      skySoft: mix(skySoft, other.skySoft),
       sea: mix(sea, other.sea),
-      seaSoft: mix(seaSoft, other.seaSoft),
-      memberLine: mix(memberLine, other.memberLine),
+      avatar: mix(avatar, other.avatar),
       track: mix(track, other.track),
       segmentOn: mix(segmentOn, other.segmentOn),
     );
@@ -257,32 +260,32 @@ class AppColors extends ThemeExtension<AppColors> {
   bool operator ==(Object other) =>
       other is AppColors &&
       other.textMuted == textMuted &&
+      other.accentText == accentText &&
+      other.income == income &&
       other.hero == hero &&
       other.onHero == onHero &&
       other.accentOnDark == accentOnDark &&
       other.heroSub == heroSub &&
       other.barMuted == barMuted &&
       other.sky == sky &&
-      other.skySoft == skySoft &&
       other.sea == sea &&
-      other.seaSoft == seaSoft &&
-      other.memberLine == memberLine &&
+      other.avatar == avatar &&
       other.track == track &&
       other.segmentOn == segmentOn;
 
   @override
   int get hashCode => Object.hash(
     textMuted,
+    accentText,
+    income,
     hero,
     onHero,
     accentOnDark,
     heroSub,
     barMuted,
     sky,
-    skySoft,
     sea,
-    seaSoft,
-    memberLine,
+    avatar,
     track,
     segmentOn,
   );
@@ -321,17 +324,18 @@ ThemeData buildAppTheme([Brightness brightness = Brightness.light]) {
   final p = AppPalette.of(brightness);
   final scheme = ColorScheme(
     brightness: brightness,
-    // 버튼과 선택된 칩. 라이트는 검정, 다크는 밝은 회색이다.
+    // 버튼과 선택된 칩은 코발트다.
     primary: p.primary,
     onPrimary: p.onPrimary,
+    // 연한 코발트 바탕(아이콘 원, 배지, 안내 상자)과 그 위의 파란 글자.
     primaryContainer: p.primarySoft,
-    onPrimaryContainer: p.primary,
+    onPrimaryContainer: p.accentText,
     secondary: p.primary,
     onSecondary: p.onPrimary,
     // 선택 표시는 디자인에서 컴포넌트마다 달라(탭은 포인트 색, 칩은 primary, 세그먼트는 밝은 바탕)
-    // 그 화면을 만들 때 컴포넌트 테마로 정한다. 여기서는 중립색만 둔다.
+    // 그 화면을 만들 때 컴포넌트 테마로 정한다. 여기서는 연한 코발트를 둔다.
     secondaryContainer: p.primarySoft,
-    onSecondaryContainer: p.primary,
+    onSecondaryContainer: p.accentText,
     // 포인트 색. 선택된 탭, + 버튼, 지급 전 배지, 입력 중인 칸, 앱 아이콘에만 쓴다.
     tertiary: p.accent,
     onTertiary: p.onAccent,

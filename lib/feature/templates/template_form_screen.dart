@@ -7,7 +7,6 @@ import '../../core/model/expense_template.dart';
 import '../../core/model/ledger_entries.dart';
 import '../../core/model/member.dart';
 import '../../core/model/payment_method.dart';
-import '../../core/theme/app_theme.dart';
 import '../../core/widget/form_parts.dart';
 import '../../core/widget/keep_all.dart';
 import '../../core/widget/labeled_field.dart';
@@ -160,10 +159,6 @@ class _TemplateFormScreenState extends ConsumerState<TemplateFormScreen> {
               key: Key('template-member-${slot.name}'),
               label: memberIn(members, slot).name,
               selected: state.memberId == slot.name,
-              selectedColor: switch (slot) {
-                MemberSlot.owner => context.appColors.sky,
-                MemberSlot.partner => context.appColors.sea,
-              },
               onSelected: enabled ? () => controller.selectMember(slot) : null,
             ),
         ],

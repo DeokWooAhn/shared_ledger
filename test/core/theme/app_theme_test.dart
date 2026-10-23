@@ -54,9 +54,9 @@ void main() {
           ('남는 현금 금액 / 남는 현금 카드', colors.accentOnDark, colors.hero),
           ('남는 현금 보조 글자 / 남는 현금 카드', colors.heroSub, colors.hero),
           ('현금 유입·유출 금액 / 남는 현금 카드', colors.onHero, colors.hero),
-          ('관리자 동그라미 글자 / 그 바탕', scheme.onPrimary, colors.skySoft),
-          ('상대 동그라미 글자 / 그 바탕', colors.sea, colors.seaSoft),
-          ('상대를 고른 칩 글자 / 그 바탕', scheme.onPrimary, colors.sea),
+          ('프로필 글자 / 프로필 바탕', scheme.onSurfaceVariant, colors.avatar),
+          ('파란 글자 / 카드', colors.accentText, scheme.surfaceContainerLowest),
+          ('달력의 들어온 돈 / 카드', colors.income, scheme.surfaceContainerLowest),
           ('세그먼트 글자 / 세그먼트 바탕', scheme.onSurfaceVariant, colors.track),
           ('세그먼트에서 고른 칸 글자 / 그 바탕', scheme.onSurface, colors.segmentOn),
         ];
