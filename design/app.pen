@@ -6088,11 +6088,11 @@
                           "type": "text",
                           "id": "nSXze",
                           "name": "In",
-                          "fill": "$accent-text",
+                          "fill": "$income",
                           "content": "+270만",
                           "fontFamily": "$font",
                           "fontSize": 10,
-                          "fontWeight": "700"
+                          "fontWeight": "600"
                         },
                         {
                           "type": "text",
@@ -6545,11 +6545,11 @@
                           "type": "text",
                           "id": "ndAwD",
                           "name": "In",
-                          "fill": "$accent-text",
+                          "fill": "$income",
                           "content": "+310만",
                           "fontFamily": "$font",
                           "fontSize": 10,
-                          "fontWeight": "700"
+                          "fontWeight": "600"
                         }
                       ]
                     },
@@ -7071,7 +7071,7 @@
                           "type": "ellipse",
                           "id": "VVhbx",
                           "name": "Dot",
-                          "fill": "$accent-text",
+                          "fill": "$income",
                           "width": 7,
                           "height": 7
                         },
@@ -8070,11 +8070,11 @@
                           "type": "text",
                           "id": "s4EVHI",
                           "name": "In",
-                          "fill": "$accent-text",
+                          "fill": "$income",
                           "content": "+270만",
                           "fontFamily": "$font",
                           "fontSize": 10,
-                          "fontWeight": "700"
+                          "fontWeight": "600"
                         },
                         {
                           "type": "text",
@@ -8526,11 +8526,11 @@
                           "type": "text",
                           "id": "Rphnp",
                           "name": "In",
-                          "fill": "$accent-text",
+                          "fill": "$income",
                           "content": "+310만",
                           "fontFamily": "$font",
                           "fontSize": 10,
-                          "fontWeight": "700"
+                          "fontWeight": "600"
                         }
                       ]
                     },
@@ -9053,7 +9053,7 @@
                           "type": "ellipse",
                           "id": "Mp3SX",
                           "name": "Dot",
-                          "fill": "$accent-text",
+                          "fill": "$income",
                           "width": 7,
                           "height": 7
                         },
@@ -10089,11 +10089,11 @@
                           "type": "text",
                           "id": "sfDuB",
                           "name": "In",
-                          "fill": "$accent-text",
+                          "fill": "$income",
                           "content": "+270만",
                           "fontFamily": "$font",
                           "fontSize": 10,
-                          "fontWeight": "700"
+                          "fontWeight": "600"
                         },
                         {
                           "type": "text",
@@ -10545,11 +10545,11 @@
                           "type": "text",
                           "id": "vFOm0",
                           "name": "In",
-                          "fill": "$accent-text",
+                          "fill": "$income",
                           "content": "+310만",
                           "fontFamily": "$font",
                           "fontSize": 10,
-                          "fontWeight": "700"
+                          "fontWeight": "600"
                         }
                       ]
                     },
@@ -11072,7 +11072,7 @@
                           "type": "ellipse",
                           "id": "kLjaS",
                           "name": "Dot",
-                          "fill": "$accent-text",
+                          "fill": "$income",
                           "width": 7,
                           "height": 7
                         },
@@ -11776,6 +11776,23 @@
         },
         {
           "value": "#9DB4FF",
+          "theme": {
+            "mode": "dark"
+          }
+        }
+      ]
+    },
+    "income": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#3366FF",
+          "theme": {
+            "mode": "light"
+          }
+        },
+        {
+          "value": "#7C9BFF",
           "theme": {
             "mode": "dark"
           }
