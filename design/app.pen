@@ -5422,16 +5422,6 @@
                           "fontFamily": "$font",
                           "fontSize": 19,
                           "fontWeight": "700"
-                        },
-                        {
-                          "type": "icon",
-                          "id": "xR0QC",
-                          "name": "Pick",
-                          "width": 16,
-                          "height": 16,
-                          "icon": "chevron-down",
-                          "library": "lucide",
-                          "fill": "$text-secondary"
                         }
                       ]
                     },
@@ -7414,16 +7404,6 @@
                           "fontFamily": "$font",
                           "fontSize": 19,
                           "fontWeight": "700"
-                        },
-                        {
-                          "type": "icon",
-                          "id": "qWpDJ",
-                          "name": "Pick",
-                          "width": 16,
-                          "height": 16,
-                          "icon": "chevron-down",
-                          "library": "lucide",
-                          "fill": "$text-secondary"
                         }
                       ]
                     },
@@ -9443,16 +9423,6 @@
                           "fontFamily": "$font",
                           "fontSize": 19,
                           "fontWeight": "700"
-                        },
-                        {
-                          "type": "icon",
-                          "id": "D2t4VR",
-                          "name": "Pick",
-                          "width": 16,
-                          "height": 16,
-                          "icon": "chevron-down",
-                          "library": "lucide",
-                          "fill": "$text-secondary"
                         }
                       ]
                     },
