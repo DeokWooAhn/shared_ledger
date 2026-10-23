@@ -76,7 +76,7 @@ View(*_screen.dart) ─→ 컨트롤러(*_controller.dart) ─→ core/data(저�
 
 - feature끼리 서로 import하지 않는다. 둘 이상이 쓰게 되면 core로 올린다.
 - `core/budget`, `core/model`에는 Flutter·Firebase import를 넣지 않는다.
-- View와 컨트롤러는 Firebase 패키지를 직접 import하지 않고 `core/data`의 인터페이스(`AuthRepository`, `LedgerRepository`, `SettingsRepository`, `EntriesRepository`, `TemplatesRepository`)와 공급자만 쓴다.
+- View와 컨트롤러는 Firebase 패키지를 직접 import하지 않고 `core/data`의 인터페이스(`AuthRepository`, `LedgerRepository`, `SettingsRepository`, `EntriesRepository`, `TemplatesRepository`, `ActivityRepository`)와 공급자만 쓴다.
 - 어느 화면을 보여줄지는 `router.dart`의 `appGate`·`redirectFor`가 로그인·가계부 상태로 정한다. 화면에서 시작 화면들로 직접 이동하지 않는다.
 - **컨셉은 커플·부부의 가계부다. 한 가계부에는 두 명까지 들어온다.** 이 제한은 보안 규칙(`maxMembers()`)과 앱(`ledgerMaxMembers`) 두 곳에 있어 같이 바꾼다.
 
@@ -154,6 +154,8 @@ MVVM의 ViewModel 역할은 Riverpod `Notifier`를 상속한 **컨트롤러**가
 - 시간 필드는 `FieldValue.serverTimestamp()`. 규칙이 `request.time`과 같은지 본다. 방금 쓴 문서는 서버 시간이 아직 null이다.
 - **실패:** 저장소는 처리할 `FirebaseException` 코드만 도메인 실패로 바꿔 던지고 나머지는 다시 던진다. `permission-denied`를 빈 결과로 숨기지 않는다.
 - 여러 문서를 함께 바꿔야 일관성이 맞으면 `WriteBatch`나 트랜잭션을 쓴다(가계부 + 기본 설정: `LedgerRepository.create`).
+- 항목·고정 지출·설정을 쓰는 저장소는 변경 기록(`activity`)을 같은 일괄 쓰기·트랜잭션으로 남긴다(`newActivityData`, 요약은 `activity_summary.dart`).
+  새 쓰기를 만들면 기록도 같이 남긴다. 요약에는 금액·제목이 들어가므로 로그에 찍지 않는다.
 - **읽기는 곧 비용이다**(Firestore는 지출 한도 대상이 아님). 필요한 문서만 구독하고, 계속 늘어나는 목록(항목, 변경 기록)에는 `limit`이나 달 단위 범위를 두고,
   같은 쿼리는 공급자 하나를 여러 화면이 같이 읽는다.
 - 오프라인에서는 보기와 새 항목 추가만 된다. 수정·삭제는 온라인에서만 한다(`docs/plan.md`).

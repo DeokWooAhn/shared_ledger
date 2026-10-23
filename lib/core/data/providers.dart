@@ -5,6 +5,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 
 import '../../firebase_options.dart';
 import '../budget/month_summary.dart';
+import '../model/activity.dart';
 import '../model/auth_user.dart';
 import '../model/category.dart';
 import '../model/expense_template.dart';
@@ -14,6 +15,7 @@ import '../model/member.dart';
 import '../model/month_ledger.dart';
 import '../model/payment_method.dart';
 import '../model/year_month.dart';
+import 'activity_repository.dart';
 import 'auth_repository.dart';
 import 'entries_repository.dart';
 import 'ledger_repository.dart';
@@ -43,6 +45,10 @@ final entriesRepositoryProvider = Provider<EntriesRepository>(
 
 final templatesRepositoryProvider = Provider<TemplatesRepository>(
   (ref) => FirestoreTemplatesRepository(FirebaseFirestore.instance),
+);
+
+final activityRepositoryProvider = Provider<ActivityRepository>(
+  (ref) => FirestoreActivityRepository(FirebaseFirestore.instance),
 );
 
 /// 지금 시각. 테스트에서 날짜를 고정하려고 공급자로 둔다.
@@ -178,4 +184,15 @@ final monthSummaryProvider = Provider<AsyncValue<MonthSummary>>((ref) {
     );
   }
   return const AsyncLoading();
+});
+
+/// 지금 가계부의 최근 변경 기록([activityPageSize]건, 새것부터). 가계부가 없으면 빈 목록.
+///
+/// 계속 늘어나는 목록이라 변경 기록 화면이 열려 있을 때만 구독한다(autoDispose). 더 오래된 기록은 화면이 따로 읽는다.
+final recentActivityProvider = StreamProvider.autoDispose<List<Activity>>((
+  ref,
+) {
+  final ledgerId = ref.watch(currentLedgerProvider.select((l) => l?.id));
+  if (ledgerId == null) return Stream.value(const []);
+  return ref.watch(activityRepositoryProvider).watchRecent(ledgerId);
 });

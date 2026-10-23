@@ -246,15 +246,19 @@ service cloud.firestore {
             || (amount is int && amount >= 0);
         }
 
+        // 휴지통: deletedAt은 넣은 시간. purgeAt은 TTL 정책이 지울 때이고, 휴지통에 있을 때만 적는다.
+        // 그래서 휴지통 밖의 항목은 TTL로도 지워지지 않는다(완전 삭제는 휴지통 항목만).
         function validTrash() {
           let deletedAt = request.resource.data.get('deletedAt', null);
-          return deletedAt == null || deletedAt is timestamp;
+          let purgeAt = request.resource.data.get('purgeAt', null);
+          return (deletedAt == null || deletedAt is timestamp)
+            && (purgeAt == null || (purgeAt is timestamp && deletedAt != null));
         }
 
         // 종류마다 받는 필드. 앱의 newEntryData(lib/core/data/entries_repository.dart)와 같다.
         // 기본 월 지출의 dueOn은 고정 지출에서 옮긴 그달 예정일이다.
         function entryFields() {
-          let common = ['memberId', 'amount', 'memo', 'deletedAt', 'createdBy', 'createdAt', 'updatedBy', 'updatedAt'];
+          let common = ['memberId', 'amount', 'memo', 'deletedAt', 'purgeAt', 'createdBy', 'createdAt', 'updatedBy', 'updatedAt'];
           return entryType == 'incomes' ? common.concat(['title', 'receivedOn'])
             : entryType == 'planned' ? common.concat(['title', 'categoryId', 'paymentMethodId', 'paidOn', 'dueOn'])
             : entryType == 'extras' ? common.concat(['title', 'paymentMethodId', 'spentOn'])
@@ -315,14 +319,23 @@ service cloud.firestore {
 
       // ---------- 변경 기록: 추가만 가능 ----------
 
+      // 앱의 newActivityData(lib/core/data/activity_repository.dart)와 같은 필드만 받는다.
+      // 앱은 항목·설정을 쓸 때 같은 일괄 쓰기·트랜잭션으로 남긴다. expireAt이 지나면(1년) TTL 정책이 지운다.
       match /activity/{activityId} {
+        function validActivity() {
+          let data = request.resource.data;
+          let action = data.get('action', null);
+          let summary = data.get('summary', null);
+          return data.keys().hasOnly(['actorUid', 'at', 'action', 'summary', 'expireAt'])
+            && data.get('actorUid', null) == uid()
+            && data.get('at', null) == request.time
+            && action is string && action.size() <= 40 && action.matches('^[a-z][a-zA-Z]*[.][a-z][a-zA-Z]*$')
+            && summary is string && summary.size() >= 1 && summary.size() <= 200
+            && data.get('expireAt', null) is timestamp;
+        }
+
         allow read: if isMemberOf(ledgerData(ledgerId));
-        allow create: if canWriteIn(ledgerData(ledgerId))
-          && request.resource.data.keys().hasOnly(['actorUid', 'at', 'action', 'summary'])
-          && request.resource.data.actorUid == uid()
-          && request.resource.data.at == request.time
-          && request.resource.data.action is string
-          && request.resource.data.summary is string;
+        allow create: if canWriteIn(ledgerData(ledgerId)) && validActivity();
         allow update, delete: if false;
       }
     }

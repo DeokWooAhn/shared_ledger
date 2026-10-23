@@ -23,24 +23,27 @@ Future<void> pumpApp(
   FakeSettingsRepository? settings,
   FakeEntriesRepository? entries,
   FakeTemplatesRepository? templates,
+  FakeActivityRepository? activity,
   Size size = phoneSize,
 }) async {
   tester.view.physicalSize = size * tester.view.devicePixelRatio;
   addTearDown(tester.view.reset);
+  final fakes = linkActivity(
+    ledgers: ledgers,
+    settings: settings,
+    entries: entries,
+    templates: templates,
+    activity: activity,
+  );
   await tester.pumpWidget(
     ProviderScope(
       overrides: [
         authRepositoryProvider.overrideWithValue(auth),
         ledgerRepositoryProvider.overrideWithValue(ledgers),
-        settingsRepositoryProvider.overrideWithValue(
-          settings ?? FakeSettingsRepository(),
-        ),
-        entriesRepositoryProvider.overrideWithValue(
-          entries ?? FakeEntriesRepository(),
-        ),
-        templatesRepositoryProvider.overrideWithValue(
-          templates ?? FakeTemplatesRepository(),
-        ),
+        settingsRepositoryProvider.overrideWithValue(fakes.settings),
+        entriesRepositoryProvider.overrideWithValue(fakes.entries),
+        templatesRepositoryProvider.overrideWithValue(fakes.templates),
+        activityRepositoryProvider.overrideWithValue(fakes.activity),
         clockProvider.overrideWithValue(() => testNow),
       ],
       child: const SharedLedgerApp(),

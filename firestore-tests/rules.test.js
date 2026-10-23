@@ -17,6 +17,8 @@ import {
   doc,
   getDoc,
   getDocs,
+  limit,
+  orderBy,
   query,
   serverTimestamp,
   setDoc,
@@ -137,6 +139,22 @@ function seedEntry({ ledger = LEDGER, ...fields } = {}) {
       ...fields,
     }),
   );
+}
+
+function activityRef(db, { id = 'log-1', ledger = LEDGER } = {}) {
+  return doc(db, 'ledgers', ledger, 'activity', id);
+}
+
+// 앱의 newActivityData(lib/core/data/activity_repository.dart)와 같은 필드. 1년 뒤 TTL 정책이 지운다.
+function newActivity(uid, fields = {}) {
+  return {
+    actorUid: uid,
+    at: serverTimestamp(),
+    action: 'entry.create',
+    summary: "10월 추가지출 '장보기' 10,000원",
+    expireAt: Timestamp.fromMillis(Date.now() + 365 * DAY),
+    ...fields,
+  };
 }
 
 function inviteRef(db, code) {
@@ -455,6 +473,56 @@ describe('가계부 항목', () => {
         updatedBy: EDITOR,
         updatedAt: serverTimestamp(),
       }),
+    );
+  });
+
+  // 앱의 trashEntryUpdate·restoreEntryUpdate와 같다. purgeAt이 지나면 TTL 정책이 지운다.
+  test('휴지통에 넣을 때 자동으로 지울 때(purgeAt)를 같이 적고, 꺼낼 때 같이 지운다', async () => {
+    await seedEntry();
+    const ref = entryRef(firestoreAs(EDITOR));
+    await assertSucceeds(
+      updateDoc(ref, {
+        deletedAt: serverTimestamp(),
+        purgeAt: Timestamp.fromMillis(Date.now() + 30 * DAY),
+        updatedBy: EDITOR,
+        updatedAt: serverTimestamp(),
+      }),
+    );
+    await assertSucceeds(
+      updateDoc(ref, {
+        deletedAt: deleteField(),
+        purgeAt: deleteField(),
+        updatedBy: EDITOR,
+        updatedAt: serverTimestamp(),
+      }),
+    );
+  });
+
+  test('휴지통이 아닌 항목에는 자동으로 지울 때를 적을 수 없다', async () => {
+    const purgeAt = Timestamp.fromMillis(Date.now() + 30 * DAY);
+    const db = firestoreAs(EDITOR);
+    await assertFails(setDoc(entryRef(db), newEntry(EDITOR, { purgeAt })));
+    await assertSucceeds(
+      setDoc(entryRef(db, { id: 'entry-trashed' }), newEntry(EDITOR, { deletedAt: serverTimestamp(), purgeAt })),
+    );
+
+    await seedEntry();
+    await assertFails(updateDoc(entryRef(db), { purgeAt, updatedBy: EDITOR, updatedAt: serverTimestamp() }));
+  });
+
+  test('꺼내면서 자동으로 지울 때를 남겨 둘 수 없다', async () => {
+    await seedEntry({
+      deletedAt: Timestamp.fromMillis(2000),
+      purgeAt: Timestamp.fromMillis(Date.now() + 30 * DAY),
+    });
+    const ref = entryRef(firestoreAs(EDITOR));
+    await assertFails(updateDoc(ref, { deletedAt: deleteField(), updatedBy: EDITOR, updatedAt: serverTimestamp() }));
+  });
+
+  test('자동으로 지울 때는 시각(timestamp)만 받는다', async () => {
+    const db = firestoreAs(EDITOR);
+    await assertFails(
+      setDoc(entryRef(db), newEntry(EDITOR, { deletedAt: serverTimestamp(), purgeAt: '2026-11-22' })),
     );
   });
 
@@ -876,7 +944,7 @@ describe('분류와 결제수단', () => {
   });
 });
 
-describe('가계부 설정과 변경 기록', () => {
+describe('가계부 설정', () => {
   function category(uid) {
     return {
       name: '소비',
@@ -1015,19 +1083,93 @@ describe('가계부 설정과 변경 기록', () => {
     await assertFails(rename(VIEWER, VIEWER_LEDGER, 'partner'));
     await assertSucceeds(rename(OWNER, VIEWER_LEDGER, 'partner'));
   });
+});
 
+describe('변경 기록', () => {
   test('변경 기록은 자기 이름으로 추가만 할 수 있다', async () => {
     const db = firestoreAs(EDITOR);
-    const ref = doc(db, 'ledgers', LEDGER, 'activity', 'log-1');
-    const log = (actorUid) => ({
-      actorUid,
-      at: serverTimestamp(),
-      action: 'entry.create',
-      summary: '추가지출 장보기 10,000원',
-    });
-    await assertFails(setDoc(doc(db, 'ledgers', LEDGER, 'activity', 'log-0'), log(OWNER)));
-    await assertSucceeds(setDoc(ref, log(EDITOR)));
+    const ref = activityRef(db);
+    await assertFails(setDoc(activityRef(db, { id: 'log-0' }), newActivity(OWNER)));
+    await assertSucceeds(setDoc(ref, newActivity(EDITOR)));
     await assertFails(updateDoc(ref, { summary: '고친 기록' }));
     await assertFails(deleteDoc(ref));
+  });
+
+  test('시간은 서버 시간이어야 한다', async () => {
+    const db = firestoreAs(EDITOR);
+    await assertFails(setDoc(activityRef(db), newActivity(EDITOR, { at: Timestamp.fromMillis(0) })));
+  });
+
+  test('사라질 때(expireAt)가 꼭 있어야 하고 시각(timestamp)만 받는다', async () => {
+    const db = firestoreAs(EDITOR);
+    const { expireAt, ...withoutExpiry } = newActivity(EDITOR);
+    await assertFails(setDoc(activityRef(db, { id: 'log-0' }), withoutExpiry));
+    await assertFails(setDoc(activityRef(db, { id: 'log-1' }), newActivity(EDITOR, { expireAt: '2027-10-23' })));
+    await assertSucceeds(setDoc(activityRef(db, { id: 'log-2' }), newActivity(EDITOR, { expireAt })));
+  });
+
+  test('받지 않는 필드가 있으면 남길 수 없다', async () => {
+    const db = firestoreAs(EDITOR);
+    await assertFails(setDoc(activityRef(db), newActivity(EDITOR, { amount: 10000 })));
+  });
+
+  test('동작은 영문.영문 형식으로 40자까지 받는다', async () => {
+    const db = firestoreAs(EDITOR);
+    const write = (id, action) => setDoc(activityRef(db, { id }), newActivity(EDITOR, { action }));
+    await assertSucceeds(write('log-1', 'paymentMethod.rename'));
+    await assertSucceeds(write('log-2', `entry.${'a'.repeat(34)}`));
+    await assertFails(write('log-3', `entry.${'a'.repeat(35)}`));
+    await assertFails(write('log-4', 'entry'));
+    await assertFails(write('log-5', '항목.추가'));
+    await assertFails(write('log-6', 1));
+  });
+
+  test('요약은 1~200자다', async () => {
+    const db = firestoreAs(EDITOR);
+    const write = (id, summary) => setDoc(activityRef(db, { id }), newActivity(EDITOR, { summary }));
+    await assertSucceeds(write('log-1', '가'.repeat(200)));
+    await assertFails(write('log-2', '가'.repeat(201)));
+    await assertFails(write('log-3', ''));
+  });
+
+  test('보기 전용과 다른 가계부 사람은 남길 수 없다', async () => {
+    await assertSucceeds(setDoc(activityRef(firestoreAs(OWNER), { ledger: VIEWER_LEDGER }), newActivity(OWNER)));
+    await assertFails(
+      setDoc(activityRef(firestoreAs(VIEWER), { id: 'log-2', ledger: VIEWER_LEDGER }), newActivity(VIEWER)),
+    );
+    await assertFails(setDoc(activityRef(firestoreAs(OUTSIDER), { id: 'log-3' }), newActivity(OUTSIDER)));
+  });
+
+  test('구성원은 보기 전용도 최근 기록을 정해진 개수만큼 읽을 수 있고, 다른 가계부 사람은 읽을 수 없다', async () => {
+    await seed((db) =>
+      setDoc(activityRef(db, { ledger: VIEWER_LEDGER }), {
+        ...newActivity(OWNER),
+        at: Timestamp.fromMillis(1000),
+      }),
+    );
+    const recent = (uid) =>
+      getDocs(
+        query(
+          collection(firestoreAs(uid), 'ledgers', VIEWER_LEDGER, 'activity'),
+          orderBy('at', 'desc'),
+          limit(50),
+        ),
+      );
+    await assertSucceeds(recent(VIEWER));
+    await assertSucceeds(recent(OWNER));
+    await assertFails(recent(OUTSIDER));
+  });
+
+  // 앱은 항목 추가를 기다리지 않는 일괄 쓰기로 해서, 오프라인에서도 기록이 같이 쌓이고 서버가 거부하면 둘 다 빠진다.
+  test('항목 추가와 변경 기록을 한 번의 일괄 쓰기로 남기고, 쓸 수 없는 사람이면 둘 다 거부된다', async () => {
+    const add = (uid) => {
+      const db = firestoreAs(uid);
+      const batch = writeBatch(db);
+      batch.set(entryRef(db, { ledger: VIEWER_LEDGER, id: `entry-${uid}` }), newEntry(uid));
+      batch.set(activityRef(db, { ledger: VIEWER_LEDGER, id: `log-${uid}` }), newActivity(uid));
+      return batch.commit();
+    };
+    await assertSucceeds(add(OWNER));
+    await assertFails(add(VIEWER));
   });
 });

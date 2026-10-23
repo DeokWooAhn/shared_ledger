@@ -34,7 +34,7 @@ MVVM의 ViewModel 역할은 Riverpod `Notifier`를 상속한 컨트롤러가 맡
 - 두 사람 표시는 `MemberAvatar`, 이름은 `membersProvider`에서 꺼낸다.
 - 탭을 더하거나 빼면 `HomeTab`과 router.dart의 `Routes.of`·`_tabScreen`을 같이 고친다(`switch`라 빠뜨리면 컴파일 에러).
 - 폭 600 이상(`wideLayoutMinWidth`)에서는 아래 탭 막대 대신 옆 탭 막대(NavigationRail)가 나온다. 위젯 테스트는 두 배치를 다 본다.
-- 탭 안에서 더 들어가는 화면(설정 → 분류·결제수단 목록)은 그 탭 `GoRoute`의 하위 경로로 둔다(router.dart의 `_tabRoutes`). 탭 막대가 그대로 보이고,
+- 탭 안에서 더 들어가는 화면(설정 → 분류·결제수단 목록, 휴지통, 변경 기록)은 그 탭 `GoRoute`의 하위 경로로 둔다(router.dart의 `_tabRoutes`). 탭 막대가 그대로 보이고,
   탭을 다시 누르면 탭 첫 화면으로 돌아온다. 머리말은 뒤로 가기 단추가 있는 `SubPageTitle`(`lib/feature/settings/setting_list.dart`).
 - 탭 화면에서 여는 아래 시트는 `useRootNavigator: true`로 앱 맨 위에 띄운다. 기본값(탭의 navigator)이면 좁은 화면의 떠 있는 탭 막대가
   시트 아래쪽을 가린다(PR ⑤에서 초대 시트로 겪음). 설정 시트는 `showSettingSheet`(넓은 화면 560폭)를 쓴다.
@@ -170,6 +170,7 @@ Widget build(BuildContext context) {
 - [ ] `docs/firestore.md`
 - [ ] 새 쿼리에 복합 색인이 필요하면 `firestore.indexes.json`
 - [ ] 가짜 저장소가 같은 약속을 지키는지(`test/support/fakes.dart`)
+- [ ] 새 쓰기면 변경 기록을 같은 일괄 쓰기·트랜잭션으로 남기는지(`activity_repository.dart`의 `addActivity`·`newActivityData`, 요약은 `activity_summary.dart`). 가짜도 `logActivity`로 같은 요약을 남긴다
 
 리스너는 필요한 문서만 구독한다. 규칙 배포는 PR이 합쳐진 뒤에 한다(firebase 스킬).
 

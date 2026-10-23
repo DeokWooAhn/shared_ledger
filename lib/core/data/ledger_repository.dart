@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../model/invite.dart';
 import '../model/ledger.dart';
+import 'activity_summary.dart';
 import 'settings_repository.dart';
 
 /// 초대 코드로 참여하지 못한 이유.
@@ -51,11 +52,15 @@ abstract interface class LedgerRepository {
   /// 초대 코드로 가계부에 들어간다. 들어가지 못하면 [JoinLedgerException]을 던진다.
   Future<void> joinWithInvite({required String code, required String uid});
 
-  /// 가계부 이름을 [name]으로 바꾼다. 관리자만 할 수 있다(규칙의 ownerManages).
+  /// 가계부 이름을 [name]으로 바꾼다. 관리자([uid])만 할 수 있다(규칙의 ownerManages).
   ///
-  /// 다른 설정처럼 온라인에서만 된다. 연결이 없으면 [SettingsWriteException]([SettingsWriteFailure.offline]),
+  /// 다른 설정처럼 온라인에서만 되고 변경 기록을 같이 남긴다. 연결이 없으면 [SettingsWriteException]([SettingsWriteFailure.offline]),
   /// 가계부가 없어졌으면 [SettingsWriteFailure.notFound]로 실패한다.
-  Future<void> rename({required String ledgerId, required String name});
+  Future<void> rename({
+    required String ledgerId,
+    required String name,
+    required String uid,
+  });
 }
 
 class FirestoreLedgerRepository implements LedgerRepository {
@@ -159,14 +164,32 @@ class FirestoreLedgerRepository implements LedgerRepository {
   }
 
   @override
-  Future<void> rename({required String ledgerId, required String name}) {
+  Future<void> rename({
+    required String ledgerId,
+    required String name,
+    required String uid,
+  }) {
     final doc = _ledgers.doc(ledgerId);
-    return runSettingsWrite(_firestore, (transaction) async {
-      if (!(await transaction.get(doc)).exists) {
-        throw const SettingsWriteException(SettingsWriteFailure.notFound);
-      }
-      transaction.update(doc, ledgerRenameUpdate(name));
-    });
+    return runSettingsWrite(
+      _firestore,
+      ledgerId: ledgerId,
+      uid: uid,
+      now: _now(),
+      write: (transaction) async {
+        final current = (await transaction.get(doc)).data();
+        if (current == null) {
+          throw const SettingsWriteException(SettingsWriteFailure.notFound);
+        }
+        transaction.update(doc, ledgerRenameUpdate(name));
+        return ledgerRenameActivity(
+          from: switch (current['name']) {
+            final String name => name,
+            _ => null,
+          },
+          to: name,
+        );
+      },
+    );
   }
 
   // 방금 만든 가계부는 서버 시간이 아직 없어서(null) 맨 뒤로 보낸다.

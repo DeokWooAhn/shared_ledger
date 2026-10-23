@@ -2,17 +2,21 @@ import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import '../model/activity.dart';
 import '../model/expense_template.dart';
 import '../model/ledger_entries.dart';
 import '../model/month_ledger.dart';
+import '../model/trashed_entry.dart';
 import '../model/year_month.dart';
+import 'activity_repository.dart';
+import 'activity_summary.dart';
 
 /// 항목을 고치거나 휴지통에 넣거나 꺼내지 못한 이유.
 enum EntryWriteFailure {
   /// 연결이 없거나 서버가 답하지 않는다. 고치기·휴지통은 두 사람의 기록이 엇갈리지 않게 온라인에서만 한다.
   offline,
 
-  /// 그사이 상대가 휴지통에 넣었거나(꺼낼 때는 꺼냈거나) 완전히 지웠다.
+  /// 그사이 상대가 휴지통에 넣었거나(꺼내거나 완전히 지울 때는 꺼냈거나) 완전히 지웠다.
   notFound,
 }
 
@@ -32,8 +36,10 @@ typedef RejectedEntry = ({String id, YearMonth month, EntryKind kind});
 ///
 /// 오프라인에서는 보기와 새 항목 추가만 된다(docs/plan.md). 고치기·휴지통은 서버에 바로 닿아야 해서,
 /// 연결이 없으면 [EntryWriteException]([EntryWriteFailure.offline])으로 실패한다.
+///
+/// 쓸 때마다 변경 기록(`activity`)을 같은 일괄 쓰기·트랜잭션으로 남긴다. 고정 지출로 채우기([fillPlanned])는 남기지 않는다.
 abstract interface class EntriesRepository {
-  /// [month] 한 달의 항목. 휴지통에 넣은 항목은 뺀다.
+  /// [month] 한 달의 항목. 휴지통에 넣은 항목은 목록에서 빼고 [MonthLedger.trashed]에 따로 모은다.
   ///
   /// 그달의 하위 컬렉션 네 개만 구독한다. 다른 달의 항목은 읽지 않는다.
   Stream<MonthLedger> watchMonth(String ledgerId, YearMonth month);
@@ -42,6 +48,7 @@ abstract interface class EntriesRepository {
   ///
   /// 오프라인에서도 더할 수 있게 서버에 닿기를 기다리지 않는다. 기기 캐시에 바로 들어가 [watchMonth]에 보이고,
   /// 연결되면 서버로 올라간다. 그래서 서버가 나중에 거부한 것은 이 Future가 아니라 [rejectedAdds]로 알린다.
+  /// 변경 기록도 같은 일괄 쓰기라 오프라인에서 같이 쌓이고, 서버가 거부하면 같이 빠진다.
   Future<String> add({
     required String ledgerId,
     required YearMonth month,
@@ -63,6 +70,9 @@ abstract interface class EntriesRepository {
   });
 
   /// 항목을 휴지통에 넣는다. 목록과 합계에서 빠진다. 온라인에서만 된다.
+  ///
+  /// [trashRetention]이 지나면 자동으로 지워지게 한다. 다만 고정 지출에서 만든 이번 달 이후의 기본 월 지출은
+  /// 지우면 다시 만들어져서 자동으로 지우지 않는다([staysInTrash]).
   Future<void> trash({
     required String ledgerId,
     required YearMonth month,
@@ -71,8 +81,18 @@ abstract interface class EntriesRepository {
     required String uid,
   });
 
-  /// 휴지통에 넣은 항목을 꺼낸다. 온라인에서만 된다.
+  /// 휴지통에 넣은 항목을 꺼낸다(되살리기). 자동으로 지울 때도 지운다. 온라인에서만 된다.
   Future<void> restore({
+    required String ledgerId,
+    required YearMonth month,
+    required EntryKind kind,
+    required String id,
+    required String uid,
+  });
+
+  /// 휴지통에 넣은 항목을 완전히 지운다. 되살릴 수 없다. 온라인에서만 되고, 휴지통 밖의 항목은
+  /// [EntryWriteFailure.notFound]로 실패한다(규칙도 휴지통 항목만 지우게 한다).
+  Future<void> purge({
     required String ledgerId,
     required YearMonth month,
     required EntryKind kind,
@@ -94,9 +114,11 @@ abstract interface class EntriesRepository {
 }
 
 class FirestoreEntriesRepository implements EntriesRepository {
-  FirestoreEntriesRepository(this._firestore);
+  FirestoreEntriesRepository(this._firestore, {DateTime Function()? now})
+    : _now = now ?? DateTime.now;
 
   final FirebaseFirestore _firestore;
+  final DateTime Function() _now;
   final _rejectedAdds = StreamController<RejectedEntry>.broadcast();
 
   @override
@@ -154,14 +176,24 @@ class FirestoreEntriesRepository implements EntriesRepository {
     required String uid,
   }) async {
     final doc = _entries(ledgerId, month, draft.kind).doc();
-    // set의 Future는 서버가 받아야 끝나서, 기다리면 오프라인에서는 저장이 끝나지 않는다.
+    final activity = entryActivity(
+      ActivityAction.entryCreate,
+      month: month,
+      kind: draft.kind,
+      entry: draft,
+    );
+    // 항목과 변경 기록을 한 번의 일괄 쓰기로 해서 함께 쓰이거나 함께 거부된다.
+    final batch = _firestore.batch()
+      ..set(doc, newEntryData(draft, uid: uid))
+      ..set(
+        activityCollection(_firestore, ledgerId).doc(),
+        newActivityData(activity, uid: uid, now: _now()),
+      );
+    // commit의 Future는 서버가 받아야 끝나서, 기다리면 오프라인에서는 저장이 끝나지 않는다.
     // 캐시에는 바로 들어가므로 기다리지 않는다. 서버가 규칙으로 거부하면 rejectedAdds로 알리고,
     // 예상 못 한 오류는 삼키지 않고 다시 던져 앱의 오류 처리로 보낸다.
     unawaited(
-      doc.set(newEntryData(draft, uid: uid)).catchError((
-        Object error,
-        StackTrace stackTrace,
-      ) {
+      batch.commit().catchError((Object error, StackTrace stackTrace) {
         if (error is FirebaseException && error.code == 'permission-denied') {
           _rejectedAdds.add((id: doc.id, month: month, kind: draft.kind));
           return;
@@ -180,9 +212,22 @@ class FirestoreEntriesRepository implements EntriesRepository {
     required EntryDraft draft,
     required String uid,
   }) => _writeOnline(
-    _entries(ledgerId, month, draft.kind).doc(id),
-    entryUpdateData(draft, uid: uid),
+    ledgerId,
+    month,
+    draft.kind,
+    id,
+    uid: uid,
     trashed: false,
+    write: (transaction, doc, before) {
+      transaction.update(doc, entryUpdateData(draft, uid: uid));
+      return entryActivity(
+        ActivityAction.entryUpdate,
+        month: month,
+        kind: draft.kind,
+        entry: draft,
+        before: before == null ? null : EntryDraft.of(before),
+      );
+    },
   );
 
   @override
@@ -193,9 +238,26 @@ class FirestoreEntriesRepository implements EntriesRepository {
     required String id,
     required String uid,
   }) => _writeOnline(
-    _entries(ledgerId, month, kind).doc(id),
-    trashEntryUpdate(uid: uid),
+    ledgerId,
+    month,
+    kind,
+    id,
+    uid: uid,
     trashed: false,
+    write: (transaction, doc, entry) {
+      final now = _now();
+      final stays =
+          entry != null &&
+          staysInTrash(entry, month: month, thisMonth: YearMonth.of(now));
+      transaction.update(
+        doc,
+        trashEntryUpdate(
+          uid: uid,
+          purgeAt: stays ? null : now.add(trashRetention),
+        ),
+      );
+      return _entryActivity(ActivityAction.entryTrash, month, kind, entry);
+    },
   );
 
   @override
@@ -206,9 +268,48 @@ class FirestoreEntriesRepository implements EntriesRepository {
     required String id,
     required String uid,
   }) => _writeOnline(
-    _entries(ledgerId, month, kind).doc(id),
-    restoreEntryUpdate(uid: uid),
+    ledgerId,
+    month,
+    kind,
+    id,
+    uid: uid,
     trashed: true,
+    write: (transaction, doc, entry) {
+      transaction.update(doc, restoreEntryUpdate(uid: uid));
+      return _entryActivity(ActivityAction.entryRestore, month, kind, entry);
+    },
+  );
+
+  @override
+  Future<void> purge({
+    required String ledgerId,
+    required YearMonth month,
+    required EntryKind kind,
+    required String id,
+    required String uid,
+  }) => _writeOnline(
+    ledgerId,
+    month,
+    kind,
+    id,
+    uid: uid,
+    trashed: true,
+    write: (transaction, doc, entry) {
+      transaction.delete(doc);
+      return _entryActivity(ActivityAction.entryPurge, month, kind, entry);
+    },
+  );
+
+  static ActivityDraft _entryActivity(
+    ActivityAction action,
+    YearMonth month,
+    EntryKind kind,
+    LedgerEntry? entry,
+  ) => entryActivity(
+    action,
+    month: month,
+    kind: kind,
+    entry: entry == null ? null : EntryDraft.of(entry),
   );
 
   @override
@@ -248,11 +349,22 @@ class FirestoreEntriesRepository implements EntriesRepository {
 
   // 트랜잭션은 서버에서 문서를 읽어야 해서 오프라인이면 실패한다. 그래서 온라인에서만 고치는 데 쓴다.
   // 읽은 문서가 없거나 휴지통 상태가 [trashed]와 다르면(그사이 상대가 바꿈) 고치지 않는다.
+  // [write]는 읽은 항목(모양이 잘못됐으면 null)으로 문서를 고치고 남길 변경 기록을 돌려준다. 기록도 같은 트랜잭션에 쓴다.
   Future<void> _writeOnline(
-    DocumentReference<Map<String, dynamic>> doc,
-    Map<Object, Object> data, {
+    String ledgerId,
+    YearMonth month,
+    EntryKind kind,
+    String id, {
+    required String uid,
     required bool trashed,
+    required ActivityDraft Function(
+      Transaction transaction,
+      DocumentReference<Map<String, dynamic>> doc,
+      LedgerEntry? current,
+    )
+    write,
   }) async {
+    final doc = _entries(ledgerId, month, kind).doc(id);
     try {
       await _firestore.runTransaction(timeout: _onlineTimeout, (
         transaction,
@@ -262,7 +374,19 @@ class FirestoreEntriesRepository implements EntriesRepository {
             entryIsTrashed(current, hasPendingWrites: false) != trashed) {
           throw const EntryWriteException(EntryWriteFailure.notFound);
         }
-        transaction.update(doc, data);
+        final activity = write(
+          transaction,
+          doc,
+          entryFromFirestore(kind, id, current),
+        );
+        addActivity(
+          transaction,
+          _firestore,
+          ledgerId: ledgerId,
+          draft: activity,
+          uid: uid,
+          now: _now(),
+        );
       });
     } on FirebaseException catch (e) {
       if (e.code == 'unavailable' || e.code == 'deadline-exceeded') {
@@ -314,15 +438,22 @@ Map<Object, Object> entryUpdateData(EntryDraft draft, {required String uid}) =>
     };
 
 /// 휴지통에 넣을 때 쓰는 값. 넣을 때만 서버 시간으로 쓴다.
-Map<Object, Object> trashEntryUpdate({required String uid}) => {
+///
+/// [purgeAt]이 있으면 그때 Firestore TTL 정책이 문서를 지운다. null이면 자동으로 지우지 않는다([staysInTrash]).
+Map<Object, Object> trashEntryUpdate({
+  required String uid,
+  DateTime? purgeAt,
+}) => {
   'deletedAt': FieldValue.serverTimestamp(),
+  'purgeAt': ?(purgeAt == null ? null : Timestamp.fromDate(purgeAt)),
   'updatedBy': uid,
   'updatedAt': FieldValue.serverTimestamp(),
 };
 
-/// 휴지통에서 꺼낼 때 쓰는 값. `deletedAt`을 null로 쓰지 않고 필드를 지운다.
+/// 휴지통에서 꺼낼 때 쓰는 값. `deletedAt`을 null로 쓰지 않고 필드를 지운다. 자동으로 지울 때(`purgeAt`)도 지운다.
 Map<Object, Object> restoreEntryUpdate({required String uid}) => {
   'deletedAt': FieldValue.delete(),
+  'purgeAt': FieldValue.delete(),
   'updatedBy': uid,
   'updatedAt': FieldValue.serverTimestamp(),
 };
@@ -356,7 +487,8 @@ typedef EntryDoc = ({
   bool hasPendingWrites,
 });
 
-/// 그달 네 컬렉션의 문서로 [MonthLedger]를 만든다. 휴지통 항목과 읽을 수 없는 문서는 뺀다.
+/// 그달 네 컬렉션의 문서로 [MonthLedger]를 만든다. 휴지통 항목은 [MonthLedger.trashed]에 따로 모으고,
+/// 읽을 수 없는 문서는 뺀다.
 ///
 /// 기본 월 지출 문서 id는 휴지통 항목과 읽을 수 없는 문서까지 [MonthLedger.plannedIds]에 모은다.
 /// 고정 지출로 채울 때 그 id의 문서를 다시 만들지 않게 한다.
@@ -366,22 +498,53 @@ MonthLedger monthLedgerFromFirestore({
   required List<EntryDoc> extras,
   required List<EntryDoc> cardBills,
 }) {
+  bool trashed(EntryDoc doc) =>
+      entryIsTrashed(doc.data, hasPendingWrites: doc.hasPendingWrites);
   List<T> live<T extends Object>(
     List<EntryDoc> docs,
     T? Function(String id, Map<String, dynamic> data) from,
   ) => [
     for (final doc in docs)
-      if (!entryIsTrashed(doc.data, hasPendingWrites: doc.hasPendingWrites))
-        ?from(doc.id, doc.data),
+      if (!trashed(doc)) ?from(doc.id, doc.data),
   ];
   return MonthLedger(
     incomes: live(incomes, incomeFromFirestore),
     plannedExpenses: live(planned, plannedExpenseFromFirestore),
     extraExpenses: live(extras, extraExpenseFromFirestore),
     cardBills: live(cardBills, cardBillFromFirestore),
+    trashed: [
+      for (final (kind, docs) in [
+        (EntryKind.income, incomes),
+        (EntryKind.planned, planned),
+        (EntryKind.extra, extras),
+        (EntryKind.cardBill, cardBills),
+      ])
+        for (final doc in docs)
+          if (trashed(doc))
+            if (entryFromFirestore(kind, doc.id, doc.data) case final entry?)
+              TrashedEntry(
+                entry: entry,
+                deletedAt: _time(doc.data['deletedAt']),
+                purgeAt: _time(doc.data['purgeAt']),
+              ),
+    ],
     plannedIds: {for (final doc in planned) doc.id},
   );
 }
+
+/// [kind] 종류의 Firestore 항목 문서를 항목으로 바꾼다. 계산에 쓰는 값이 없거나 잘못됐으면 null.
+LedgerEntry? entryFromFirestore(
+  EntryKind kind,
+  String id,
+  Map<String, dynamic> data,
+) => switch (kind) {
+  EntryKind.income => incomeFromFirestore(id, data),
+  EntryKind.planned => plannedExpenseFromFirestore(id, data),
+  EntryKind.extra => extraExpenseFromFirestore(id, data),
+  EntryKind.cardBill => cardBillFromFirestore(id, data),
+};
+
+DateTime? _time(Object? value) => value is Timestamp ? value.toDate() : null;
 
 /// 휴지통에 넣은 항목인지. `deletedAt`에 값이 있으면 휴지통이다.
 ///

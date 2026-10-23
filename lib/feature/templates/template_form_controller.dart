@@ -290,13 +290,16 @@ class TemplateFormController extends Notifier<TemplateFormState> {
   /// 고치는 고정 지출을 지운다. 이미 만든 달의 기본 월 지출은 남는다.
   Future<void> delete() async {
     final template = args.template;
+    final uid = ref.read(authUserProvider).value?.uid;
     final ledgerId = ref.read(currentLedgerProvider)?.id;
-    if (template == null || state.busy || ledgerId == null) return;
+    if (template == null || state.busy || uid == null || ledgerId == null) {
+      return;
+    }
     state = state.withStatus(pending: TemplateFormAction.delete);
     try {
       await ref
           .read(templatesRepositoryProvider)
-          .delete(ledgerId: ledgerId, id: template.id);
+          .delete(ledgerId: ledgerId, id: template.id, uid: uid);
       if (!ref.mounted) return;
       state = state.withStatus(outcome: TemplateFormOutcome.deleted);
     } on TemplateWriteException catch (e) {

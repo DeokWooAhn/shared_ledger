@@ -9,6 +9,7 @@ import '../../core/model/month_ledger.dart';
 import '../../core/model/payment_method.dart';
 import '../../core/model/year_month.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/widget/entry_kind_label.dart';
 import '../../core/widget/keep_all.dart';
 import '../../core/widget/member_avatar.dart';
 import '../../core/widget/month_header.dart';

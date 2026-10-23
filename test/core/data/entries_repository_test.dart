@@ -396,14 +396,28 @@ void main() {
       expect(data.keys, isNot(contains('paymentMethodId')));
     });
 
-    test('휴지통에 넣을 때는 deletedAt을 서버 시간으로, 꺼낼 때는 필드를 지운다', () {
+    test('휴지통에 넣을 때는 deletedAt을 서버 시간으로, 자동으로 지울 때를 시각으로 적는다', () {
+      final purgeAt = DateTime.utc(2026, 11, 14, 9);
+      expect(trashEntryUpdate(uid: 'me', purgeAt: purgeAt), {
+        'deletedAt': serverTime,
+        'purgeAt': Timestamp.fromDate(purgeAt),
+        'updatedBy': 'me',
+        'updatedAt': serverTime,
+      });
+    });
+
+    test('자동으로 지우지 않는 항목은 휴지통에 넣을 때 purgeAt을 적지 않는다', () {
       expect(trashEntryUpdate(uid: 'me'), {
         'deletedAt': serverTime,
         'updatedBy': 'me',
         'updatedAt': serverTime,
       });
+    });
+
+    test('꺼낼 때는 deletedAt과 purgeAt 필드를 지운다', () {
       expect(restoreEntryUpdate(uid: 'me'), {
         'deletedAt': delete,
+        'purgeAt': delete,
         'updatedBy': 'me',
         'updatedAt': serverTime,
       });
@@ -544,6 +558,78 @@ void main() {
 
       expect(ledger.plannedExpenses.map((e) => e.id), ['t-live']);
       expect(ledger.plannedIds, {'t-live', 't-trashed', 't-broken'});
+    });
+
+    test('휴지통 항목은 넣은 때·자동으로 지울 때와 함께 따로 모은다', () {
+      const owner = {'memberId': 'owner'};
+      final deletedAt = DateTime(2026, 10, 2, 9);
+      final purgeAt = DateTime(2026, 11, 1, 9);
+      final ledger = monthLedgerFromFirestore(
+        incomes: [
+          doc('i1', {...owner, 'amount': 1000}),
+        ],
+        planned: const [],
+        extras: [
+          doc('e1', {
+            ...owner,
+            'title': '점심',
+            'paymentMethodId': 'p1',
+            'amount': 12000,
+            'deletedAt': Timestamp.fromDate(deletedAt),
+            'purgeAt': Timestamp.fromDate(purgeAt),
+          }),
+        ],
+        cardBills: [
+          doc('b1', {
+            ...owner,
+            'cardId': 'card-1',
+            'amount': 300,
+            'deletedAt': Timestamp.fromDate(deletedAt),
+          }),
+        ],
+      );
+
+      expect(ledger.extraExpenses, isEmpty);
+      expect(ledger.trashed.map((t) => (t.entry.kind, t.entry.id, t.purgeAt)), [
+        (EntryKind.extra, 'e1', purgeAt),
+        (EntryKind.cardBill, 'b1', null),
+      ]);
+      expect(ledger.trashed.first.deletedAt, deletedAt);
+      expect(ledger.trashed.first.entry.amount, 12000);
+    });
+
+    test('방금 휴지통에 넣어 서버 시간이 없는 항목도 넣은 때 없이 휴지통에 모으고, 읽을 수 없는 문서는 뺀다', () {
+      const extra = {'memberId': 'owner', 'paymentMethodId': 'p1'};
+      final ledger = monthLedgerFromFirestore(
+        incomes: const [],
+        planned: const [],
+        extras: [
+          doc('pending', {
+            ...extra,
+            'amount': 1000,
+            'deletedAt': null,
+          }, hasPendingWrites: true),
+          doc('broken', {
+            ...extra,
+            'amount': -1,
+            'deletedAt': Timestamp.fromDate(DateTime(2026, 10, 2)),
+          }),
+        ],
+        cardBills: const [],
+      );
+
+      expect(ledger.trashed.map((t) => t.entry.id), ['pending']);
+      expect(ledger.trashed.single.deletedAt, isNull);
+    });
+
+    test('종류에 맞는 변환으로 항목 문서를 읽는다', () {
+      const data = {'memberId': 'owner', 'cardId': 'card-1', 'amount': 300};
+      expect(
+        entryFromFirestore(EntryKind.cardBill, 'b1', data),
+        isA<CardBill>(),
+      );
+      // 추가지출은 결제수단이 있어야 해서 카드대금 문서로는 읽지 못한다.
+      expect(entryFromFirestore(EntryKind.extra, 'b1', data), isNull);
     });
   });
 
