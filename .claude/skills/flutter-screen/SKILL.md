@@ -34,6 +34,10 @@ MVVM의 ViewModel 역할은 Riverpod `Notifier`를 상속한 컨트롤러가 맡
 - 두 사람 표시는 `MemberAvatar`, 이름은 `membersProvider`에서 꺼낸다.
 - 탭을 더하거나 빼면 `HomeTab`과 router.dart의 `Routes.of`·`_tabScreen`을 같이 고친다(`switch`라 빠뜨리면 컴파일 에러).
 - 폭 600 이상(`wideLayoutMinWidth`)에서는 아래 탭 막대 대신 옆 탭 막대(NavigationRail)가 나온다. 위젯 테스트는 두 배치를 다 본다.
+- Android 뒤로가기(버튼·스와이프 동작)는 탭 틀의 `PopScope`(`_HomeBackHandler`)가 받는다. 요약이 아닌 탭의 첫 화면에서는 요약 탭으로 가고,
+  요약 탭에서는 안내 뒤 2초(`homeExitWindow`) 안에 한 번 더 뒤로 가야 앱을 닫는다. 탭 안의 하위 화면과 탭 위로 연 화면은
+  go_router가 안쪽 Navigator부터 닫아서 평소처럼 닫힌다. 테스트는 `tester.binding.handlePopRoute()`(`test/feature/home/home_back_test.dart`).
+  뒤로가기는 스와이프 동작일 수도 있어서 문구에 '누르면'을 쓰지 않는다('한 번 더 뒤로 가면 앱이 종료돼요.').
 - 탭 안에서 더 들어가는 화면(설정 → 분류·결제수단 목록, 휴지통, 변경 기록)은 그 탭 `GoRoute`의 하위 경로로 둔다(router.dart의 `_tabRoutes`). 탭 막대가 그대로 보이고,
   탭을 다시 누르면 탭 첫 화면으로 돌아온다. 머리말은 뒤로 가기 단추가 있는 `SubPageTitle`(`lib/feature/settings/setting_list.dart`).
 - 탭 화면에서 여는 아래 시트는 `useRootNavigator: true`로 앱 맨 위에 띄운다. 기본값(탭의 navigator)이면 좁은 화면의 떠 있는 탭 막대가
