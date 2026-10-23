@@ -208,7 +208,9 @@ class _TotalCard extends StatelessWidget {
         children: [
           Text(
             '매달 나가는 돈',
-            style: theme.textTheme.labelMedium?.copyWith(color: scheme.primary),
+            style: theme.textTheme.labelMedium?.copyWith(
+              color: scheme.onPrimaryContainer,
+            ),
           ),
           Text(
             won(list.total),
@@ -326,7 +328,7 @@ class _TemplateRow extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w700,
-                        color: scheme.primary,
+                        color: scheme.onPrimaryContainer,
                       ),
                     ),
                   ),

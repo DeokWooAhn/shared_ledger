@@ -228,7 +228,7 @@ class _OptionCard extends StatelessWidget {
                 CircleAvatar(
                   radius: 20,
                   backgroundColor: scheme.primaryContainer,
-                  child: Icon(icon, size: 20, color: scheme.primary),
+                  child: Icon(icon, size: 20, color: scheme.onPrimaryContainer),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
