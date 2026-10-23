@@ -66,15 +66,25 @@ void main() {
       expect(redirectFor(AppGate.ready, Routes.start), Routes.home);
       expect(redirectFor(AppGate.ready, Routes.home), isNull);
       expect(redirectFor(AppGate.ready, Routes.settings), isNull);
+      expect(redirectFor(AppGate.ready, Routes.categories), isNull);
     });
 
     test('탭 화면에 있다가 로그아웃하면 로그인 화면으로 옮긴다', () {
       expect(redirectFor(AppGate.signedOut, Routes.settings), Routes.signIn);
+      expect(
+        redirectFor(AppGate.signedOut, Routes.paymentMethods),
+        Routes.signIn,
+      );
       expect(redirectFor(AppGate.noLedger, Routes.entries), Routes.start);
     });
   });
 
   group('탭 경로', () {
+    test('설정 탭의 목록 화면은 설정 탭 경로 아래에 있다', () {
+      expect(Routes.categories, '${Routes.settings}/categories');
+      expect(Routes.paymentMethods, '${Routes.settings}/payment-methods');
+    });
+
     test('탭마다 경로가 하나씩 있고, 홈은 요약 탭이다', () {
       final paths = [for (final tab in HomeTab.values) Routes.of(tab)];
       expect(paths.toSet(), hasLength(HomeTab.values.length));

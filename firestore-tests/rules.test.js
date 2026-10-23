@@ -269,6 +269,14 @@ describe('구성원 관리', () => {
     }
   });
 
+  // 앱의 ledgerRenameUpdate(lib/core/data/ledger_repository.dart)와 같은 필드로 바꾼다.
+  test('가계부 이름을 바꿀 때도 1~40자다', async () => {
+    const rename = (name) => updateDoc(ledgerRef(firestoreAs(OWNER)), { name, updatedAt: serverTimestamp() });
+    await assertSucceeds(rename('가'.repeat(40)));
+    await assertFails(rename('가'.repeat(41)));
+    await assertFails(rename(''));
+  });
+
   test('관리자만 가계부를 삭제할 수 있다', async () => {
     await assertFails(deleteDoc(ledgerRef(firestoreAs(EDITOR))));
     await assertSucceeds(deleteDoc(ledgerRef(firestoreAs(OWNER))));
@@ -694,11 +702,186 @@ describe('고정 지출 템플릿', () => {
   });
 });
 
+describe('분류와 결제수단', () => {
+  function settingRef(db, collectionName, { ledger = LEDGER, id = 'new' } = {}) {
+    return doc(db, 'ledgers', ledger, collectionName, id);
+  }
+
+  // 앱이 쓰는 필드(lib/core/data/settings_repository.dart의 newCategoryData·newPaymentMethodData).
+  // 숨김(hidden)은 숨기거나 다시 보이게 할 때만 쓴다.
+  function newCategory(uid, fields = {}) {
+    return {
+      name: '경조사',
+      countsAsSaving: false,
+      order: 4,
+      createdBy: uid,
+      updatedBy: uid,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+      ...fields,
+    };
+  }
+
+  function newMethod(uid, fields = {}) {
+    return {
+      name: '하늘 카드',
+      kind: 'card',
+      order: 2,
+      createdBy: uid,
+      updatedBy: uid,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+      ...fields,
+    };
+  }
+
+  // 두 가계부(편집자·보기 전용)에 분류 c1과 결제수단 p1을 넣어 둔다.
+  function seedSettings() {
+    return seed(async (db) => {
+      for (const ledger of [LEDGER, VIEWER_LEDGER]) {
+        const written = { createdAt: Timestamp.fromMillis(1000), updatedAt: Timestamp.fromMillis(1000) };
+        await setDoc(settingRef(db, 'categories', { ledger, id: 'c1' }), { ...newCategory(OWNER), ...written });
+        await setDoc(settingRef(db, 'paymentMethods', { ledger, id: 'p1' }), { ...newMethod(OWNER), ...written });
+      }
+    });
+  }
+
+  function edit(uid, collectionName, fields, { ledger = LEDGER, id } = {}) {
+    return updateDoc(settingRef(firestoreAs(uid), collectionName, { ledger, id }), {
+      ...fields,
+      updatedBy: uid,
+      updatedAt: serverTimestamp(),
+    });
+  }
+
+  test('편집자와 관리자는 앱이 쓰는 필드로 분류와 결제수단을 만들 수 있다', async () => {
+    const editor = firestoreAs(EDITOR);
+    await assertSucceeds(setDoc(settingRef(editor, 'categories'), newCategory(EDITOR, { countsAsSaving: true })));
+    await assertSucceeds(setDoc(settingRef(editor, 'paymentMethods'), newMethod(EDITOR)));
+    const owner = firestoreAs(OWNER);
+    await assertSucceeds(setDoc(settingRef(owner, 'categories', { ledger: VIEWER_LEDGER }), newCategory(OWNER)));
+    await assertSucceeds(
+      setDoc(settingRef(owner, 'paymentMethods', { ledger: VIEWER_LEDGER }), newMethod(OWNER, { kind: 'account' })),
+    );
+  });
+
+  test('보기 전용과 다른 가계부 사람은 분류와 결제수단을 만들 수 없다', async () => {
+    const viewer = firestoreAs(VIEWER);
+    await assertFails(setDoc(settingRef(viewer, 'categories', { ledger: VIEWER_LEDGER }), newCategory(VIEWER)));
+    await assertFails(setDoc(settingRef(viewer, 'paymentMethods', { ledger: VIEWER_LEDGER }), newMethod(VIEWER)));
+    const outsider = firestoreAs(OUTSIDER);
+    await assertFails(setDoc(settingRef(outsider, 'categories'), newCategory(OUTSIDER)));
+    await assertFails(setDoc(settingRef(outsider, 'paymentMethods'), newMethod(OUTSIDER)));
+  });
+
+  test('받지 않는 필드가 있으면 만들 수 없다', async () => {
+    const db = firestoreAs(EDITOR);
+    await assertFails(setDoc(settingRef(db, 'categories'), newCategory(EDITOR, { kind: 'card' })));
+    await assertFails(setDoc(settingRef(db, 'paymentMethods'), newMethod(EDITOR, { countsAsSaving: false })));
+  });
+
+  test('이름은 1~20자다', async () => {
+    const db = firestoreAs(EDITOR);
+    await assertSucceeds(setDoc(settingRef(db, 'categories', { id: 'a' }), newCategory(EDITOR, { name: '가'.repeat(20) })));
+    await assertSucceeds(setDoc(settingRef(db, 'paymentMethods', { id: 'a' }), newMethod(EDITOR, { name: '가'.repeat(20) })));
+    for (const [id, name] of [
+      ['b', '가'.repeat(21)],
+      ['c', ''],
+      ['d', 7],
+    ]) {
+      await assertFails(setDoc(settingRef(db, 'categories', { id }), newCategory(EDITOR, { name })));
+      await assertFails(setDoc(settingRef(db, 'paymentMethods', { id }), newMethod(EDITOR, { name })));
+    }
+  });
+
+  test('저축 집계는 참·거짓, 순서는 0 이상의 정수, 숨김은 참·거짓만 받는다', async () => {
+    const db = firestoreAs(EDITOR);
+    await assertSucceeds(setDoc(settingRef(db, 'categories', { id: 'a' }), newCategory(EDITOR, { hidden: true, order: 0 })));
+    await assertSucceeds(setDoc(settingRef(db, 'paymentMethods', { id: 'a' }), newMethod(EDITOR, { hidden: false })));
+    for (const [id, fields] of [
+      ['b', { countsAsSaving: 'true' }],
+      ['c', { countsAsSaving: null }],
+      ['d', { order: -1 }],
+      ['e', { order: '1' }],
+      ['f', { order: null }],
+      ['g', { hidden: 'true' }],
+      ['h', { hidden: null }],
+    ]) {
+      await assertFails(setDoc(settingRef(db, 'categories', { id }), newCategory(EDITOR, fields)));
+    }
+    await assertFails(setDoc(settingRef(db, 'paymentMethods', { id: 'i' }), newMethod(EDITOR, { order: 1.5 })));
+    await assertFails(setDoc(settingRef(db, 'paymentMethods', { id: 'j' }), newMethod(EDITOR, { hidden: 1 })));
+  });
+
+  test('결제수단 종류는 통장·자동이체·카드만 받는다', async () => {
+    const db = firestoreAs(EDITOR);
+    for (const [id, kind] of [
+      ['a', 'account'],
+      ['b', 'autoTransfer'],
+      ['c', 'card'],
+    ]) {
+      await assertSucceeds(setDoc(settingRef(db, 'paymentMethods', { id }), newMethod(EDITOR, { kind })));
+    }
+    await assertFails(setDoc(settingRef(db, 'paymentMethods', { id: 'd' }), newMethod(EDITOR, { kind: 'cash' })));
+    await assertFails(setDoc(settingRef(db, 'paymentMethods', { id: 'e' }), newMethod(EDITOR, { kind: null })));
+  });
+
+  test('편집자는 이름·저축 집계를 고치고 숨기거나 다시 보이게 할 수 있다', async () => {
+    await seedSettings();
+    await assertSucceeds(edit(EDITOR, 'categories', { name: '경조사비', countsAsSaving: true }, { id: 'c1' }));
+    await assertSucceeds(edit(EDITOR, 'categories', { hidden: true }, { id: 'c1' }));
+    await assertSucceeds(edit(EDITOR, 'categories', { hidden: false }, { id: 'c1' }));
+    await assertSucceeds(edit(EDITOR, 'paymentMethods', { name: '바다 카드' }, { id: 'p1' }));
+    await assertSucceeds(edit(EDITOR, 'paymentMethods', { hidden: true }, { id: 'p1' }));
+  });
+
+  test('고칠 때도 같은 기준으로 본다', async () => {
+    await seedSettings();
+    await assertFails(edit(EDITOR, 'categories', { name: '가'.repeat(21) }, { id: 'c1' }));
+    await assertFails(edit(EDITOR, 'categories', { countsAsSaving: deleteField() }, { id: 'c1' }));
+    await assertFails(edit(EDITOR, 'paymentMethods', { hidden: 'yes' }, { id: 'p1' }));
+  });
+
+  test('결제수단 종류는 바꿀 수 없다 (카드인지에 따라 지난 달 계산이 달라진다)', async () => {
+    await seedSettings();
+    await assertSucceeds(edit(EDITOR, 'paymentMethods', { name: '하늘 카드', kind: 'card' }, { id: 'p1' }));
+    await assertFails(edit(EDITOR, 'paymentMethods', { kind: 'account' }, { id: 'p1' }));
+  });
+
+  test('보기 전용은 분류와 결제수단을 고칠 수 없다', async () => {
+    await seedSettings();
+    await assertFails(edit(VIEWER, 'categories', { hidden: true }, { ledger: VIEWER_LEDGER, id: 'c1' }));
+    await assertFails(edit(VIEWER, 'paymentMethods', { hidden: true }, { ledger: VIEWER_LEDGER, id: 'p1' }));
+    await assertSucceeds(edit(OWNER, 'categories', { hidden: true }, { ledger: VIEWER_LEDGER, id: 'c1' }));
+    await assertSucceeds(edit(OWNER, 'paymentMethods', { hidden: true }, { ledger: VIEWER_LEDGER, id: 'p1' }));
+  });
+
+  test('이름표·분류·결제수단은 지울 수 없다 (숨기기만 한다)', async () => {
+    await seedSettings();
+    await seed((db) =>
+      setDoc(doc(db, 'ledgers', LEDGER, 'members', 'partner'), {
+        name: '바다',
+        createdBy: OWNER,
+        updatedBy: OWNER,
+        createdAt: Timestamp.fromMillis(0),
+        updatedAt: Timestamp.fromMillis(0),
+      }),
+    );
+    for (const uid of [OWNER, EDITOR]) {
+      const db = firestoreAs(uid);
+      await assertFails(deleteDoc(settingRef(db, 'categories', { id: 'c1' })));
+      await assertFails(deleteDoc(settingRef(db, 'paymentMethods', { id: 'p1' })));
+      await assertFails(deleteDoc(settingRef(db, 'members', { id: 'partner' })));
+    }
+  });
+});
+
 describe('가계부 설정과 변경 기록', () => {
   function category(uid) {
     return {
       name: '소비',
       countsAsSaving: false,
+      order: 0,
       createdBy: uid,
       updatedBy: uid,
       createdAt: serverTimestamp(),
@@ -801,6 +984,36 @@ describe('가계부 설정과 변경 기록', () => {
     await assertSucceeds(rename('가'.repeat(10)));
     await assertFails(rename(''));
     await assertFails(rename('가'.repeat(11)));
+  });
+
+  // 앱의 memberRenameUpdate(lib/core/data/settings_repository.dart)와 같은 필드로 바꾼다.
+  test('편집자는 두 이름표를 모두 고칠 수 있고, 보기 전용은 고칠 수 없다', async () => {
+    await seed(async (db) => {
+      for (const [ledger, slot] of [
+        [LEDGER, 'owner'],
+        [LEDGER, 'partner'],
+        [VIEWER_LEDGER, 'partner'],
+      ]) {
+        await setDoc(settingRef(db, ledger, 'members', slot), {
+          name: '하늘',
+          createdBy: OWNER,
+          updatedBy: OWNER,
+          createdAt: Timestamp.fromMillis(0),
+          updatedAt: Timestamp.fromMillis(0),
+        });
+      }
+    });
+    const rename = (uid, ledger, slot) =>
+      updateDoc(settingRef(firestoreAs(uid), ledger, 'members', slot), {
+        name: '바다',
+        updatedBy: uid,
+        updatedAt: serverTimestamp(),
+      });
+
+    await assertSucceeds(rename(EDITOR, LEDGER, 'owner'));
+    await assertSucceeds(rename(EDITOR, LEDGER, 'partner'));
+    await assertFails(rename(VIEWER, VIEWER_LEDGER, 'partner'));
+    await assertSucceeds(rename(OWNER, VIEWER_LEDGER, 'partner'));
   });
 
   test('변경 기록은 자기 이름으로 추가만 할 수 있다', async () => {

@@ -38,6 +38,9 @@ class FirebaseAuthRepository implements AuthRepository {
             uid: user.uid,
             displayName: user.displayName,
             email: user.email,
+            signInMethod: signInMethodOf([
+              for (final info in user.providerData) info.providerId,
+            ]),
           ),
   );
 
@@ -86,4 +89,17 @@ class FirebaseAuthRepository implements AuthRepository {
     }
     await _auth.signOut();
   }
+}
+
+/// Firebase 로그인 제공자 id(`google.com`, `apple.com`)로 로그인 방법을 정한다. 아는 것이 없으면 null.
+SignInMethod? signInMethodOf(List<String> providerIds) {
+  for (final id in providerIds) {
+    switch (id) {
+      case 'google.com':
+        return SignInMethod.google;
+      case 'apple.com':
+        return SignInMethod.apple;
+    }
+  }
+  return null;
 }

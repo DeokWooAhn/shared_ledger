@@ -167,7 +167,9 @@ class _EntriesContent extends ConsumerWidget {
       return _EmptyEntries(
         kind: kind,
         canWrite: canWrite,
-        hasCards: paymentMethods.any((m) => m.kind == PaymentKind.card),
+        hasCards: paymentMethods.any(
+          (m) => m.kind == PaymentKind.card && !m.hidden,
+        ),
       );
     }
     final methods = {for (final method in paymentMethods) method.id: method};

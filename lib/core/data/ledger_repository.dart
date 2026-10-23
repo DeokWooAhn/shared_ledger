@@ -50,6 +50,12 @@ abstract interface class LedgerRepository {
 
   /// 초대 코드로 가계부에 들어간다. 들어가지 못하면 [JoinLedgerException]을 던진다.
   Future<void> joinWithInvite({required String code, required String uid});
+
+  /// 가계부 이름을 [name]으로 바꾼다. 관리자만 할 수 있다(규칙의 ownerManages).
+  ///
+  /// 다른 설정처럼 온라인에서만 된다. 연결이 없으면 [SettingsWriteException]([SettingsWriteFailure.offline]),
+  /// 가계부가 없어졌으면 [SettingsWriteFailure.notFound]로 실패한다.
+  Future<void> rename({required String ledgerId, required String name});
 }
 
 class FirestoreLedgerRepository implements LedgerRepository {
@@ -152,6 +158,17 @@ class FirestoreLedgerRepository implements LedgerRepository {
     }
   }
 
+  @override
+  Future<void> rename({required String ledgerId, required String name}) {
+    final doc = _ledgers.doc(ledgerId);
+    return runSettingsWrite(_firestore, (transaction) async {
+      if (!(await transaction.get(doc)).exists) {
+        throw const SettingsWriteException(SettingsWriteFailure.notFound);
+      }
+      transaction.update(doc, ledgerRenameUpdate(name));
+    });
+  }
+
   // 방금 만든 가계부는 서버 시간이 아직 없어서(null) 맨 뒤로 보낸다.
   static int _byCreatedAt(
     QueryDocumentSnapshot<Map<String, dynamic>> a,
@@ -179,6 +196,12 @@ Map<String, Object> newLedgerData({
   'updatedAt': FieldValue.serverTimestamp(),
 };
 
+/// 가계부 이름을 바꿀 때 쓰는 값. 규칙의 ownerManages가 받는 필드(이름·고친 시간)와 같아야 한다.
+Map<String, Object> ledgerRenameUpdate(String name) => {
+  'name': name.trim(),
+  'updatedAt': FieldValue.serverTimestamp(),
+};
+
 /// Firestore 문서를 [Ledger]로 바꾼다. 알 수 없는 역할 값은 건너뛴다.
 Ledger ledgerFromFirestore(String id, Map<String, dynamic> data) {
   final rawRoles = data['roles'];
@@ -191,11 +214,13 @@ Ledger ledgerFromFirestore(String id, Map<String, dynamic> data) {
   }
   final name = data['name'];
   final ownerUid = data['ownerUid'];
+  final createdAt = data['createdAt'];
   return Ledger(
     id: id,
     name: name is String ? name : '',
     ownerUid: ownerUid is String ? ownerUid : '',
     roles: roles,
+    createdAt: createdAt is Timestamp ? createdAt.toDate() : null,
   );
 }
 

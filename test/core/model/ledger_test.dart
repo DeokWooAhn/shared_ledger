@@ -50,4 +50,17 @@ void main() {
     expect(shared.canInvite('partner'), isFalse);
     expect(solo.canInvite('stranger'), isFalse);
   });
+
+  test('가계부 이름은 관리자만 바꿀 수 있다 (규칙의 ownerManages)', () {
+    const edited = Ledger(
+      id: 'l3',
+      name: '우리 가계부',
+      ownerUid: 'owner',
+      roles: {'partner': MemberRole.editor},
+    );
+    expect(edited.canRename('owner'), isTrue);
+    expect(edited.canRename('partner'), isFalse);
+    expect(shared.canRename('partner'), isFalse);
+    expect(shared.canRename('stranger'), isFalse);
+  });
 }

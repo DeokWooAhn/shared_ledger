@@ -17,7 +17,7 @@ MVVM의 ViewModel 역할은 Riverpod `Notifier`를 상속한 컨트롤러가 맡
 | `<이름>_controller.dart` | 불변 State, `Notifier` 컨트롤러, `NotifierProvider.autoDispose`, 화면용 문제·실패 enum | `lib/feature/ledger/ledger_start_controller.dart` |
 | `<이름>_screen.dart` | View 위젯, enum → 화면 문구 함수, 화면에서만 쓰는 상태(입력란 컨트롤러·폼 키) | `lib/feature/ledger/ledger_start_screen.dart` |
 
-- 더 작은 예: 로그인(`lib/feature/auth/sign_in_*`), 시트(`lib/feature/settings/invite_*`)
+- 더 작은 예: 로그인(`lib/feature/auth/sign_in_*`), 시트(`lib/feature/settings/invite_*`, 입력란이 있는 시트는 `lib/feature/settings/category_sheet.dart` + `category_form_controller.dart`)
 - 무엇을 열지 인자를 받는 화면(새 항목·고칠 항목)은 `NotifierProvider.autoDispose.family`로, 컨트롤러가 생성자로 인자를 받는다.
   인자 클래스는 `==`를 구현한다: `lib/feature/entries/entry_form_controller.dart`(`EntryFormArgs`)
 - 저장소를 부르는 동작이 없는 화면은 컨트롤러 없이 공급자만 읽는다: `lib/feature/settings/settings_screen.dart`, `lib/feature/summary/summary_screen.dart`(계산한 요약 `monthSummaryProvider`를 그린다)
@@ -34,6 +34,10 @@ MVVM의 ViewModel 역할은 Riverpod `Notifier`를 상속한 컨트롤러가 맡
 - 두 사람 표시는 `MemberAvatar`, 이름은 `membersProvider`에서 꺼낸다.
 - 탭을 더하거나 빼면 `HomeTab`과 router.dart의 `Routes.of`·`_tabScreen`을 같이 고친다(`switch`라 빠뜨리면 컴파일 에러).
 - 폭 600 이상(`wideLayoutMinWidth`)에서는 아래 탭 막대 대신 옆 탭 막대(NavigationRail)가 나온다. 위젯 테스트는 두 배치를 다 본다.
+- 탭 안에서 더 들어가는 화면(설정 → 분류·결제수단 목록)은 그 탭 `GoRoute`의 하위 경로로 둔다(router.dart의 `_tabRoutes`). 탭 막대가 그대로 보이고,
+  탭을 다시 누르면 탭 첫 화면으로 돌아온다. 머리말은 뒤로 가기 단추가 있는 `SubPageTitle`(`lib/feature/settings/setting_list.dart`).
+- 탭 화면에서 여는 아래 시트는 `useRootNavigator: true`로 앱 맨 위에 띄운다. 기본값(탭의 navigator)이면 좁은 화면의 떠 있는 탭 막대가
+  시트 아래쪽을 가린다(PR ⑤에서 초대 시트로 겪음). 설정 시트는 `showSettingSheet`(넓은 화면 560폭)를 쓴다.
 
 ## 컨트롤러 뼈대
 

@@ -43,6 +43,29 @@ void main() {
     expect(broken.roles, isEmpty);
   });
 
+  test('만든 때는 서버 시간이 있을 때만 읽고, 방금 만들어 아직 없으면 null이다', () {
+    final createdAt = DateTime.utc(2026, 10, 1, 3);
+    expect(
+      ledgerFromFirestore('l1', {
+        'createdAt': Timestamp.fromDate(createdAt),
+      }).createdAt?.toUtc(),
+      createdAt,
+    );
+    expect(ledgerFromFirestore('l2', {'createdAt': null}).createdAt, isNull);
+    expect(
+      ledgerFromFirestore('l3', {'createdAt': '2026-10-01'}).createdAt,
+      isNull,
+    );
+  });
+
+  test('가계부 이름을 바꿀 때는 규칙(ownerManages)이 받는 이름과 고친 시간만 쓴다', () {
+    final update = ledgerRenameUpdate(' 하늘바다 가계부 ');
+
+    expect(update.keys.toSet(), {'name', 'updatedAt'});
+    expect(update['name'], '하늘바다 가계부');
+    expect(update['updatedAt'], FieldValue.serverTimestamp());
+  });
+
   test('새 초대 문서는 보안 규칙이 받는 필드만 담는다', () {
     final expiresAt = DateTime.utc(2026, 10, 28, 6);
     final data = newInviteData(

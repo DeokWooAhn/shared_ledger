@@ -45,6 +45,8 @@ invites/{code}
 
 `memberUids`는 항상 `ownerUid` + `roles`의 키와 같아야 하고, 규칙이 이를 확인한다.
 
+이름은 관리자만 바꾼다(규칙의 `ownerManages`, 앱의 `Ledger.canRename`). 앱은 이름과 `updatedAt`만 쓴다(`ledgerRenameUpdate`).
+
 ### `invites/{code}`
 
 문서 id가 초대 코드다. 앱이 추측하기 어려운 무작위 문자열로 만든다.
@@ -69,8 +71,14 @@ invites/{code}
 (`LedgerRepository.create`, 기본값은 `defaultSettingDocs`). 설정을 만드는 규칙은 `getAfter`로 일괄 쓰기가 끝난 뒤의
 가계부를 보고 권한을 확인한다. 그래서 아직 없는 가계부의 설정도 같은 일괄 쓰기 안에서는 만들 수 있고, 남의 가계부에는 만들 수 없다.
 
-규칙은 공통 기록 필드와 이름표의 id·이름 길이, 고정 지출(`templates`)의 필드를 확인한다. 분류·결제수단의 나머지 필드는
-앱의 모델([`lib/core/model`](../lib/core/model))과 변환 함수(`lib/core/data/settings_repository.dart`)를 따르고, 모르는 값은 앱이 건너뛴다.
+규칙은 공통 기록 필드와 이름표의 id·이름 길이, 분류(`validCategory`)·결제수단(`validPaymentMethod`)·고정 지출(`validTemplate`)의
+받는 필드와 값을 확인한다. 앱의 모델은 [`lib/core/model`](../lib/core/model), 읽기·쓰기 변환 함수는 `lib/core/data/settings_repository.dart`에 있고,
+읽을 때 모르는 값은 앱이 건너뛴다.
+
+- 이름표·분류·결제수단은 **지울 수 없다**(규칙이 `templates`만 지우게 한다). 지난 항목이 이 id를 가리키고 있어서, 지우면 카드로 쓴 돈이
+  현금 유출로 바뀌고 저축 분류의 합계가 빠져 지난 달 숫자가 바뀐다. 분류·결제수단은 대신 숨긴다(`hidden`).
+- 설정은 관리자·편집자가 바꾸고 온라인에서만 된다. 쓰기는 모두 트랜잭션이라 연결이 없으면 실패한다(`SettingsWriteFailure.offline`).
+- 같은 목록 안의 이름 겹침은 규칙이 다른 문서를 볼 수 없어서 앱이 막는다(숨긴 것 포함).
 
 **`members/{owner|partner}`**: 두 사람의 이름표
 
@@ -80,26 +88,31 @@ invites/{code}
 
 - 문서 id는 `owner`(관리자)와 `partner`(초대로 들어온 사람) 두 개뿐이다(규칙의 `validMember`, 앱의 `MemberSlot`).
 - 항목의 '누가'는 이 id로 적는다. 그래서 상대가 들어오기 전에도 상대 몫을 적을 수 있다.
+- 관리자·편집자가 두 장 모두 이름을 바꿀 수 있다(`memberRenameUpdate`). 이름표가 없는 옛 가계부는 이름을 처음 바꿀 때 만든다(`newMemberData`).
 
 **`categories/{id}`**: 지출 분류
 
 | 필드 | 타입 | 설명 |
 |---|---|---|
-| `name` | string | 분류 이름 |
+| `name` | string (1~20자) | 분류 이름. 같은 가계부 안에서 겹치지 않는다(앱이 막음) |
 | `countsAsSaving` | bool | 이 분류의 기본 지출을 월 요약의 '저축'에 넣을지 |
-| `order` | int | 보여줄 순서. 앱이 정렬한다(없으면 맨 뒤) |
+| `order` | int (0 이상) | 보여줄 순서. 앱이 정렬한다(없으면 맨 뒤). 새로 더하면 지금 개수(맨 뒤) |
+| `hidden` | bool (선택) | 숨긴 분류. 새 항목·고정 지출에서 고를 수 없고, 월 요약에는 그달에 쓴 항목이 있을 때만 보인다. 지난 항목과 합계에는 그대로 쓰인다 |
 
 기본값은 시트와 같은 4개다: 대출원금(저축), 대출이자, 저축/투자(저축), 소비.
+앱의 쓰기 데이터는 `newCategoryData`, `categoryUpdateData`(이름·저축 집계), `settingHiddenUpdate`(숨기기·다시 보이기)다.
 
 **`paymentMethods/{id}`**: 결제수단
 
 | 필드 | 타입 | 설명 |
 |---|---|---|
-| `name` | string | 결제수단 이름 |
-| `kind` | `'account'` \| `'autoTransfer'` \| `'card'` | 계산에서는 카드인지만 본다 |
-| `order` | int | 보여줄 순서 |
+| `name` | string (1~20자) | 결제수단 이름. 같은 가계부 안에서 겹치지 않는다(앱이 막음) |
+| `kind` | `'account'` \| `'autoTransfer'` \| `'card'` | 계산에서는 카드인지만 본다. 만든 뒤에는 바꿀 수 없다(규칙의 `keepsKind`) |
+| `order` | int (0 이상) | 보여줄 순서 |
+| `hidden` | bool (선택) | 숨긴 결제수단. 새 항목·고정 지출에서 고를 수 없지만, 그 결제수단으로 쓴 돈은 그대로 계산한다(숨긴 카드도 카드 사용분) |
 
-기본값은 공동 통장(`account`)과 자동이체(`autoTransfer`)다. 카드는 사람마다 달라 직접 추가한다.
+기본값은 공동 통장(`account`)과 자동이체(`autoTransfer`)다. 카드는 사람마다 달라 설정 탭에서 카드마다 하나씩 추가한다.
+앱의 쓰기 데이터는 `newPaymentMethodData`, `paymentMethodRenameUpdate`(이름만), `settingHiddenUpdate`다.
 
 **`templates/{id}`**: 고정 지출. 매달 나가는 돈이고, 이 목록으로 그달 기본 월 지출을 만든다
 
@@ -171,7 +184,7 @@ invites/{code}
   규칙으로도 이미 있는 문서를 새로 만드는 값(`createdNow`)으로 덮어쓸 수 없다.
 - 만든 기본 월 지출은 지급 전이고, 제목·금액·분류·결제수단·누가와 그달 예정일(`dueOn`)을 옮긴다.
 - 트랜잭션이라 오프라인에서는 만들지 못한다. 연결이 없으면 다음에 그달을 다시 볼 때 만든다.
-- 휴지통의 기본 월 지출을 완전히 지우면(설정 단계에서 만든다) 그 템플릿의 문서가 없어져 이번 달·다음 달이면 다시 만들어진다.
+- 휴지통의 기본 월 지출을 완전히 지우면(4단계에서 만든다) 그 템플릿의 문서가 없어져 이번 달·다음 달이면 다시 만들어진다.
 
 ### 공통 기록 필드 (설정·항목 모두)
 
