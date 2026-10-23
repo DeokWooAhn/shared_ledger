@@ -44,7 +44,9 @@ class MonthSummary {
       totals: totals,
       categories: [
         for (final category in categories)
-          (category: category, amount: byCategory[category.id] ?? 0),
+          // 숨긴 분류는 그달에 쓴 항목이 있을 때만 보인다.
+          if (!category.hidden || byCategory.containsKey(category.id))
+            (category: category, amount: byCategory[category.id] ?? 0),
         if (orphans.isNotEmpty)
           (category: null, amount: orphans.fold(0, (sum, v) => sum + v)),
       ],
@@ -54,7 +56,8 @@ class MonthSummary {
             (card: method, amount: amount),
       ],
       showsCards:
-          paymentMethods.any((m) => m.kind == PaymentKind.card) ||
+          paymentMethods.any((m) => m.kind == PaymentKind.card && !m.hidden) ||
+          byCard.isNotEmpty ||
           ledger.cardBills.isNotEmpty,
       cardBillCount: ledger.cardBills.length,
       unpricedPlannedCount: ledger.plannedExpenses
@@ -72,13 +75,13 @@ class MonthSummary {
   final BudgetSummary totals;
 
   /// 기본 월 지출의 분류별 소계. 설정의 분류 순서대로 모두 넣고(0원 포함),
-  /// 지워진 분류에 남은 지출이 있으면 맨 뒤에 하나로 모은다.
+  /// 지워진 분류에 남은 지출이 있으면 맨 뒤에 하나로 모은다. 숨긴 분류는 그달에 쓴 항목이 있을 때만 넣는다.
   final List<CategoryTotal> categories;
 
   /// 이번 달 카드 사용분의 카드별 소계. 쓴 카드만, 결제수단 순서대로.
   final List<CardTotal> cards;
 
-  /// 카드 영역을 보여줄지. 카드 결제수단도 그달 카드대금도 없으면 숨긴다.
+  /// 카드 영역을 보여줄지. 숨기지 않은 카드도, 그달 카드 사용분·카드대금도 없으면 숨긴다.
   final bool showsCards;
 
   /// 그달 카드대금 건수(저번 달 사용분).

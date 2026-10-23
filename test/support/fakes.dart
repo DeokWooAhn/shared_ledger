@@ -100,7 +100,29 @@ class FakeLedgerRepository implements LedgerRepository {
   bool failNextInvite = false;
   bool failNextJoin = false;
 
+  /// 가계부 이름을 바꾼 기록.
+  final renames = <({String ledgerId, String name})>[];
+
+  /// true면 연결이 없는 것처럼 이름 바꾸기가 [SettingsWriteFailure.offline]으로 실패한다.
+  bool offline = false;
+
+  /// true면 다음 이름 바꾸기가 [SettingsWriteException]이 아닌 오류로 실패한다.
+  bool failNextRename = false;
+
   static Never _fail(String what) => throw StateError('$what failed');
+
+  // 실제 가계부처럼 같은 id의 문서를 바꾼다.
+  static Ledger _copy(
+    Ledger ledger, {
+    String? name,
+    Map<String, MemberRole>? roles,
+  }) => Ledger(
+    id: ledger.id,
+    name: name ?? ledger.name,
+    ownerUid: ledger.ownerUid,
+    roles: roles ?? ledger.roles,
+    createdAt: ledger.createdAt,
+  );
 
   List<Ledger> _of(String uid) =>
       _ledgers.where((l) => l.memberUids.contains(uid)).toList();
@@ -171,12 +193,7 @@ class FakeLedgerRepository implements LedgerRepository {
     if (current.isFull || current.memberUids.contains(uid)) {
       throw const JoinLedgerException(JoinFailure.unavailable);
     }
-    final joined = Ledger(
-      id: current.id,
-      name: current.name,
-      ownerUid: current.ownerUid,
-      roles: {...current.roles, uid: target.role},
-    );
+    final joined = _copy(current, roles: {...current.roles, uid: target.role});
     if (index >= 0) {
       _ledgers[index] = joined;
     } else {
@@ -184,48 +201,314 @@ class FakeLedgerRepository implements LedgerRepository {
     }
     _changes.add(null);
   }
+
+  @override
+  Future<void> rename({required String ledgerId, required String name}) async {
+    if (failNextRename) {
+      failNextRename = false;
+      _fail('rename');
+    }
+    if (offline) {
+      throw const SettingsWriteException(SettingsWriteFailure.offline);
+    }
+    final index = _ledgers.indexWhere((l) => l.id == ledgerId);
+    if (index < 0) {
+      throw const SettingsWriteException(SettingsWriteFailure.notFound);
+    }
+    renames.add((ledgerId: ledgerId, name: name));
+    _ledgers[index] = _copy(_ledgers[index], name: name.trim());
+    _changes.add(null);
+  }
 }
 
 /// 화면 테스트용 가짜 설정 저장소. 어느 가계부를 물어도 같은 설정을 돌려준다.
+///
+/// 실제 저장소처럼 쓰기는 모두 [offline]이면 [SettingsWriteFailure.offline]으로 실패하고,
+/// 없는 분류·결제수단을 고치면 [SettingsWriteFailure.notFound]로 실패한다. 이름표는 없으면 새로 만든다.
+/// 쓴 값은 실제 저장소처럼 이름 앞뒤 공백을 빼고 목록에 들어가 구독 중인 곳에 다시 알린다.
 class FakeSettingsRepository implements SettingsRepository {
   FakeSettingsRepository({
-    this.members = const [
+    List<Member> members = const [
       Member(slot: MemberSlot.owner, name: '하늘'),
       Member(slot: MemberSlot.partner, name: '바다'),
     ],
-    this.categories = const [
+    List<Category> categories = const [
       Category(id: 'c-principal', name: '대출원금', countsAsSaving: true),
       Category(id: 'c-spending', name: '소비'),
     ],
-    this.paymentMethods = const [
+    List<PaymentMethod> paymentMethods = const [
       PaymentMethod(id: 'p-account', name: '공동 통장', kind: PaymentKind.account),
     ],
-  });
+  }) : _members = [...members],
+       _categories = [...categories],
+       _paymentMethods = [...paymentMethods];
 
-  final List<Member> members;
-  final List<Category> categories;
-  final List<PaymentMethod> paymentMethods;
+  final List<Member> _members;
+  final List<Category> _categories;
+  final List<PaymentMethod> _paymentMethods;
+  final _changes = StreamController<void>.broadcast();
 
   /// 구독한 가계부 id. 읽기 비용을 확인할 때 쓴다.
   final watched = <String>[];
 
-  @override
-  Stream<List<Member>> watchMembers(String ledgerId) {
+  /// 쓴 기록. 더한 분류·결제수단은 넘겨받은 순서(order)도 남긴다.
+  final renamedMembers =
+      <({String ledgerId, MemberSlot slot, String name, String uid})>[];
+  final addedCategories =
+      <({String ledgerId, CategoryDraft draft, int order, String uid})>[];
+  final updatedCategories =
+      <({String ledgerId, String id, CategoryDraft draft, String uid})>[];
+  final addedPaymentMethods =
+      <({String ledgerId, PaymentMethodDraft draft, int order, String uid})>[];
+  final renamedPaymentMethods =
+      <({String ledgerId, String id, String name, String uid})>[];
+
+  /// 숨기거나 다시 보이게 한 기록. [collection]은 `categories`·`paymentMethods`.
+  final hiddenChanges =
+      <({String collection, String id, bool hidden, String uid})>[];
+
+  /// true면 연결이 없는 것처럼 모든 쓰기가 실패한다.
+  bool offline = false;
+
+  /// true면 다음 쓰기가 [SettingsWriteException]이 아닌 오류(권한 등)로 실패한다.
+  bool failNextWrite = false;
+
+  List<Member> get members => List.unmodifiable(_members);
+  List<Category> get categories => List.unmodifiable(_categories);
+  List<PaymentMethod> get paymentMethods => List.unmodifiable(_paymentMethods);
+
+  /// 그사이 상대가 바꾼 것처럼 목록을 바꾼다. 넘긴 것만 바꾸고 구독 중인 곳에 다시 알린다.
+  void put({
+    List<Member>? members,
+    List<Category>? categories,
+    List<PaymentMethod>? paymentMethods,
+  }) {
+    if (members != null) _replace(_members, members);
+    if (categories != null) _replace(_categories, categories);
+    if (paymentMethods != null) _replace(_paymentMethods, paymentMethods);
+    _changes.add(null);
+  }
+
+  static void _replace<T>(List<T> target, List<T> values) => target
+    ..clear()
+    ..addAll(values);
+
+  // 구독을 시작하자마자 바뀜을 듣는다(FakeTemplatesRepository.watchTemplates와 같다).
+  Stream<T> _watch<T>(String ledgerId, T Function() current) {
     watched.add(ledgerId);
-    return Stream.value(members);
+    return Stream.multi((controller) {
+      controller.add(current());
+      final changes = _changes.stream.listen((_) => controller.add(current()));
+      controller.onCancel = changes.cancel;
+    });
   }
 
   @override
-  Stream<List<Category>> watchCategories(String ledgerId) {
-    watched.add(ledgerId);
-    return Stream.value(categories);
+  Stream<List<Member>> watchMembers(String ledgerId) =>
+      _watch(ledgerId, () => members);
+
+  @override
+  Stream<List<Category>> watchCategories(String ledgerId) =>
+      _watch(ledgerId, () => categories);
+
+  @override
+  Stream<List<PaymentMethod>> watchPaymentMethods(String ledgerId) =>
+      _watch(ledgerId, () => paymentMethods);
+
+  @override
+  Future<void> renameMember({
+    required String ledgerId,
+    required MemberSlot slot,
+    required String name,
+    required String uid,
+  }) async {
+    _checkOnline();
+    renamedMembers.add((ledgerId: ledgerId, slot: slot, name: name, uid: uid));
+    final renamed = Member(slot: slot, name: name.trim());
+    put(
+      members: [
+        for (final s in MemberSlot.values)
+          if (s == slot)
+            renamed
+          else if (_members.where((m) => m.slot == s).firstOrNull
+              case final member?)
+            member,
+      ],
+    );
   }
 
   @override
-  Stream<List<PaymentMethod>> watchPaymentMethods(String ledgerId) {
-    watched.add(ledgerId);
-    return Stream.value(paymentMethods);
+  Future<String> addCategory({
+    required String ledgerId,
+    required CategoryDraft draft,
+    required int order,
+    required String uid,
+  }) async {
+    _checkOnline();
+    addedCategories.add((
+      ledgerId: ledgerId,
+      draft: draft,
+      order: order,
+      uid: uid,
+    ));
+    final id = 'category-new-${addedCategories.length}';
+    put(
+      categories: [
+        ..._categories,
+        Category(
+          id: id,
+          name: draft.name.trim(),
+          countsAsSaving: draft.countsAsSaving,
+        ),
+      ],
+    );
+    return id;
   }
+
+  @override
+  Future<void> updateCategory({
+    required String ledgerId,
+    required String id,
+    required CategoryDraft draft,
+    required String uid,
+  }) async {
+    _checkOnline();
+    final old = _existing(_categories, (c) => c.id == id);
+    updatedCategories.add((ledgerId: ledgerId, id: id, draft: draft, uid: uid));
+    put(
+      categories: [
+        for (final category in _categories)
+          category.id == id
+              ? Category(
+                  id: id,
+                  name: draft.name.trim(),
+                  countsAsSaving: draft.countsAsSaving,
+                  hidden: old.hidden,
+                )
+              : category,
+      ],
+    );
+  }
+
+  @override
+  Future<void> setCategoryHidden({
+    required String ledgerId,
+    required String id,
+    required bool hidden,
+    required String uid,
+  }) async {
+    _checkOnline();
+    final old = _existing(_categories, (c) => c.id == id);
+    hiddenChanges.add((
+      collection: 'categories',
+      id: id,
+      hidden: hidden,
+      uid: uid,
+    ));
+    put(
+      categories: [
+        for (final category in _categories)
+          category.id == id
+              ? Category(
+                  id: id,
+                  name: old.name,
+                  countsAsSaving: old.countsAsSaving,
+                  hidden: hidden,
+                )
+              : category,
+      ],
+    );
+  }
+
+  @override
+  Future<String> addPaymentMethod({
+    required String ledgerId,
+    required PaymentMethodDraft draft,
+    required int order,
+    required String uid,
+  }) async {
+    _checkOnline();
+    addedPaymentMethods.add((
+      ledgerId: ledgerId,
+      draft: draft,
+      order: order,
+      uid: uid,
+    ));
+    final id = 'method-new-${addedPaymentMethods.length}';
+    put(
+      paymentMethods: [
+        ..._paymentMethods,
+        PaymentMethod(id: id, name: draft.name.trim(), kind: draft.kind),
+      ],
+    );
+    return id;
+  }
+
+  @override
+  Future<void> renamePaymentMethod({
+    required String ledgerId,
+    required String id,
+    required String name,
+    required String uid,
+  }) async {
+    _checkOnline();
+    final old = _existing(_paymentMethods, (m) => m.id == id);
+    renamedPaymentMethods.add((
+      ledgerId: ledgerId,
+      id: id,
+      name: name,
+      uid: uid,
+    ));
+    _putMethod(
+      PaymentMethod(
+        id: id,
+        name: name.trim(),
+        kind: old.kind,
+        hidden: old.hidden,
+      ),
+    );
+  }
+
+  @override
+  Future<void> setPaymentMethodHidden({
+    required String ledgerId,
+    required String id,
+    required bool hidden,
+    required String uid,
+  }) async {
+    _checkOnline();
+    final old = _existing(_paymentMethods, (m) => m.id == id);
+    hiddenChanges.add((
+      collection: 'paymentMethods',
+      id: id,
+      hidden: hidden,
+      uid: uid,
+    ));
+    _putMethod(
+      PaymentMethod(id: id, name: old.name, kind: old.kind, hidden: hidden),
+    );
+  }
+
+  void _putMethod(PaymentMethod changed) => put(
+    paymentMethods: [
+      for (final method in _paymentMethods)
+        method.id == changed.id ? changed : method,
+    ],
+  );
+
+  void _checkOnline() {
+    if (failNextWrite) {
+      failNextWrite = false;
+      throw StateError('write failed');
+    }
+    if (offline) {
+      throw const SettingsWriteException(SettingsWriteFailure.offline);
+    }
+  }
+
+  static T _existing<T>(List<T> items, bool Function(T) test) =>
+      items.where(test).firstOrNull ??
+      (throw const SettingsWriteException(SettingsWriteFailure.notFound));
 }
 
 /// 화면 테스트용 가짜 항목 저장소. 넣어 둔 달의 항목을 돌려주고, 없는 달은 빈 달이다.

@@ -16,6 +16,8 @@ import 'feature/entries/entry_form_controller.dart';
 import 'feature/entries/entry_form_screen.dart';
 import 'feature/home/home_shell.dart';
 import 'feature/ledger/ledger_start_screen.dart';
+import 'feature/settings/categories_screen.dart';
+import 'feature/settings/payment_methods_screen.dart';
 import 'feature/settings/settings_screen.dart';
 import 'feature/summary/summary_screen.dart';
 import 'feature/templates/template_form_controller.dart';
@@ -40,6 +42,10 @@ abstract final class Routes {
   /// 고정 지출 입력·수정. 항목 입력처럼 탭 막대를 가리는 전체 화면이고, [TemplateFormArgs]를 `extra`로 넘긴다.
   static const template = '/template';
 
+  /// 설정 탭 안의 분류·결제수단 목록. 탭 막대는 그대로 보인다.
+  static const categories = '$settings/categories';
+  static const paymentMethods = '$settings/payment-methods';
+
   /// [tab] 탭의 경로.
   static String of(HomeTab tab) => switch (tab) {
     HomeTab.summary => summary,
@@ -53,8 +59,36 @@ Widget _tabScreen(HomeTab tab) => switch (tab) {
   HomeTab.summary => const SummaryScreen(),
   HomeTab.entries => const EntriesScreen(openForm: _openEntryForm),
   HomeTab.templates => const TemplatesScreen(openForm: _openTemplateForm),
-  HomeTab.settings => const SettingsScreen(),
+  HomeTab.settings => const SettingsScreen(
+    openCategories: _openCategories,
+    openPaymentMethods: _openPaymentMethods,
+  ),
 };
+
+// 설정 탭의 하위 경로. 탭 막대를 다시 누르면 설정 첫 화면으로 돌아간다.
+List<RouteBase> _tabRoutes(HomeTab tab) => switch (tab) {
+  HomeTab.settings => [
+    GoRoute(
+      path: _subPath(Routes.categories),
+      builder: (_, _) => const CategoriesScreen(),
+    ),
+    GoRoute(
+      path: _subPath(Routes.paymentMethods),
+      builder: (_, _) => const PaymentMethodsScreen(),
+    ),
+  ],
+  HomeTab.summary || HomeTab.entries || HomeTab.templates => const [],
+};
+
+// 하위 GoRoute의 path는 앞의 탭 경로를 뺀 나머지다. 예: '/settings/categories' → 'categories'
+String _subPath(String location) =>
+    location.substring(location.lastIndexOf('/') + 1);
+
+void _openCategories(BuildContext context) =>
+    unawaited(context.push<void>(Routes.categories));
+
+void _openPaymentMethods(BuildContext context) =>
+    unawaited(context.push<void>(Routes.paymentMethods));
 
 // 항목 입력 화면을 열고, 닫힐 때의 결과(저장·휴지통)를 돌려준다.
 Future<EntryFormOutcome?> _openEntryForm(
@@ -137,6 +171,7 @@ final routerProvider = Provider<GoRouter>((ref) {
                 GoRoute(
                   path: Routes.of(tab),
                   builder: (_, _) => _tabScreen(tab),
+                  routes: _tabRoutes(tab),
                 ),
               ],
             ),

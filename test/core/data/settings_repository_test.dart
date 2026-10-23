@@ -100,6 +100,30 @@ void main() {
       expect(categoryFromFirestore('c3', {}), isNull);
     });
 
+    test('숨김은 true일 때만 숨긴 것으로 보고, 없거나 다른 값이면 보이는 것이다', () {
+      expect(
+        categoryFromFirestore('c1', {'name': '소비', 'hidden': true})?.hidden,
+        isTrue,
+      );
+      expect(categoryFromFirestore('c2', {'name': '소비'})?.hidden, isFalse);
+      expect(
+        paymentMethodFromFirestore('p1', {
+          'name': '카드',
+          'kind': 'card',
+          'hidden': true,
+        })?.hidden,
+        isTrue,
+      );
+      expect(
+        paymentMethodFromFirestore('p2', {
+          'name': '카드',
+          'kind': 'card',
+          'hidden': 'yes',
+        })?.hidden,
+        isFalse,
+      );
+    });
+
     test('결제수단은 모르는 종류면 건너뛴다', () {
       expect(
         paymentMethodFromFirestore('p1', {'name': '카드', 'kind': 'card'})?.kind,
@@ -115,6 +139,97 @@ void main() {
       expect(settingOrder({'order': 2}), 2);
       expect(settingOrder({}), greaterThan(1000));
       expect(settingOrder({'order': '1'}), greaterThan(1000));
+    });
+  });
+
+  group('설정 쓰기 데이터', () {
+    const audit = {'createdBy', 'updatedBy', 'createdAt', 'updatedAt'};
+    const edited = {'updatedBy', 'updatedAt'};
+
+    // 만들 때는 나와 서버 시간, 고칠 때는 고친 사람과 서버 시간만 쓴다(규칙의 createdNow·updatedNow).
+    void expectCreatedBy(Map<String, Object> data, String uid) {
+      expect(data['createdBy'], uid);
+      expect(data['updatedBy'], uid);
+      expect(data['createdAt'], FieldValue.serverTimestamp());
+      expect(data['updatedAt'], FieldValue.serverTimestamp());
+    }
+
+    void expectUpdatedBy(Map<String, Object> data, String uid) {
+      expect(data['updatedBy'], uid);
+      expect(data['updatedAt'], FieldValue.serverTimestamp());
+    }
+
+    test('새 이름표는 이름과 기록 필드만 담고, 이름 앞뒤 공백을 뺀다', () {
+      final data = newMemberData(' 바다 ', uid: 'me');
+
+      expect(data.keys.toSet(), {'name', ...audit});
+      expect(data['name'], '바다');
+      expectCreatedBy(data, 'me');
+    });
+
+    test('이름표 이름을 바꿀 때는 이름과 고친 기록만 쓴다', () {
+      final data = memberRenameUpdate(' 바다 ', uid: 'me');
+
+      expect(data.keys.toSet(), {'name', ...edited});
+      expect(data['name'], '바다');
+      expectUpdatedBy(data, 'me');
+    });
+
+    test('새 분류는 규칙이 받는 필드(이름·저축 집계·순서)만 담는다', () {
+      final data = newCategoryData(
+        (name: ' 경조사 ', countsAsSaving: true),
+        order: 4,
+        uid: 'me',
+      );
+
+      expect(data.keys.toSet(), {'name', 'countsAsSaving', 'order', ...audit});
+      expect(data['name'], '경조사');
+      expect(data['countsAsSaving'], isTrue);
+      expect(data['order'], 4);
+      expectCreatedBy(data, 'me');
+    });
+
+    test('분류를 고칠 때는 이름과 저축 집계만 바꾸고 순서·숨김은 그대로 둔다', () {
+      final data = categoryUpdateData((
+        name: '경조사비',
+        countsAsSaving: false,
+      ), uid: 'me');
+
+      expect(data.keys.toSet(), {'name', 'countsAsSaving', ...edited});
+      expect(data['countsAsSaving'], isFalse);
+      expectUpdatedBy(data, 'me');
+    });
+
+    test('새 결제수단은 규칙이 받는 필드(이름·종류·순서)만 담는다', () {
+      final data = newPaymentMethodData(
+        (name: ' 하늘 카드 ', kind: PaymentKind.card),
+        order: 2,
+        uid: 'me',
+      );
+
+      expect(data.keys.toSet(), {'name', 'kind', 'order', ...audit});
+      expect(data['name'], '하늘 카드');
+      expect(data['kind'], 'card');
+      expect(data['order'], 2);
+      expectCreatedBy(data, 'me');
+    });
+
+    test('결제수단 이름을 바꿀 때는 종류를 쓰지 않는다 (규칙이 종류 변경을 막는다)', () {
+      final data = paymentMethodRenameUpdate('바다 카드', uid: 'me');
+
+      expect(data.keys.toSet(), {'name', ...edited});
+      expect(data['name'], '바다 카드');
+      expectUpdatedBy(data, 'me');
+    });
+
+    test('숨기기와 다시 보이기는 숨김과 고친 기록만 쓴다', () {
+      for (final hidden in [true, false]) {
+        final data = settingHiddenUpdate(hidden: hidden, uid: 'me');
+
+        expect(data.keys.toSet(), {'hidden', ...edited});
+        expect(data['hidden'], hidden);
+        expectUpdatedBy(data, 'me');
+      }
     });
   });
 }

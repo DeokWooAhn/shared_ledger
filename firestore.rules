@@ -175,12 +175,57 @@ service cloud.firestore {
               && dueDay is int && dueDay >= 1 && dueDay <= 31);
         }
 
+        function validOrder() {
+          let order = request.resource.data.get('order', null);
+          return order is int && order >= 0;
+        }
+
+        // 숨긴 분류·결제수단은 새로 고를 수 없을 뿐, 지난 항목과 합계에는 그대로 쓰인다.
+        function validHidden() {
+          let data = request.resource.data;
+          return !('hidden' in data) || data.hidden is bool;
+        }
+
+        // 분류: 앱의 newCategoryData(lib/core/data/settings_repository.dart)와 같은 필드만 받는다. 이름은 1~20자.
+        function validCategory() {
+          let data = request.resource.data;
+          return settings != 'categories'
+            || (data.keys().hasOnly(['name', 'countsAsSaving', 'order', 'hidden',
+                  'createdBy', 'createdAt', 'updatedBy', 'updatedAt'])
+              && settingText('name', 20)
+              && data.get('countsAsSaving', null) is bool
+              && validOrder()
+              && validHidden());
+        }
+
+        // 결제수단: 앱의 newPaymentMethodData와 같은 필드만 받는다. 이름은 1~20자.
+        function validPaymentMethod() {
+          let data = request.resource.data;
+          return settings != 'paymentMethods'
+            || (data.keys().hasOnly(['name', 'kind', 'order', 'hidden',
+                  'createdBy', 'createdAt', 'updatedBy', 'updatedAt'])
+              && settingText('name', 20)
+              && data.get('kind', null) in ['account', 'autoTransfer', 'card']
+              && validOrder()
+              && validHidden());
+        }
+
+        // 결제수단 종류는 바꿀 수 없다. 카드인지에 따라 지난 달 계산이 달라진다.
+        function keepsKind() {
+          return settings != 'paymentMethods' || request.resource.data.kind == resource.data.kind;
+        }
+
+        function validSetting() {
+          return validMember() && validTemplate() && validCategory() && validPaymentMethod();
+        }
+
         allow read: if isSettings() && isMemberOf(ledgerData(ledgerId));
         allow create: if isSettings() && canWriteIn(ledgerDataAfter(ledgerId)) && createdNow()
-          && validMember() && validTemplate();
+          && validSetting();
         allow update: if isSettings() && canWriteIn(ledgerData(ledgerId)) && updatedNow()
-          && validMember() && validTemplate();
-        allow delete: if isSettings() && canWriteIn(ledgerData(ledgerId));
+          && validSetting() && keepsKind();
+        // 고정 지출만 지운다. 이름표·분류·결제수단은 지난 항목이 가리키고 있어서 숨기기만 한다.
+        allow delete: if settings == 'templates' && canWriteIn(ledgerData(ledgerId));
       }
 
       // ---------- 가계부 항목: months/{yyyy-MM}/{종류}/{id} ----------

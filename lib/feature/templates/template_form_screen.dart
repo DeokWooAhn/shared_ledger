@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/data/providers.dart';
+import '../../core/model/category.dart';
 import '../../core/model/expense_template.dart';
 import '../../core/model/ledger_entries.dart';
 import '../../core/model/member.dart';
@@ -101,8 +102,17 @@ class _TemplateFormScreenState extends ConsumerState<TemplateFormScreen> {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     final members = ref.watch(membersProvider).value ?? const [];
-    final categories = ref.watch(categoriesProvider).value ?? const [];
-    final methods = ref.watch(paymentMethodsProvider).value ?? const [];
+    // 숨긴 분류·결제수단은 고를 수 없지만, 고치는 고정 지출이 처음부터 쓰던 것은 그대로 보여준다.
+    final original = args.template;
+    final keep = {original?.categoryId, original?.paymentMethodId};
+    final categories = choosableCategories(
+      ref.watch(categoriesProvider).value ?? const [],
+      keep: keep,
+    );
+    final methods = choosablePaymentMethods(
+      ref.watch(paymentMethodsProvider).value ?? const [],
+      keep: keep,
+    );
     final problems = state.problems;
     String? errorOf(Set<TemplateProblem> fieldProblems) {
       final problem = problems.where(fieldProblems.contains).firstOrNull;

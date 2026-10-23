@@ -90,6 +90,54 @@ void main() {
     expect(summary.totals.plannedTotal, 3500);
   });
 
+  test('숨긴 분류는 그달에 쓴 기본 지출이 있을 때만 소계에 넣는다', () {
+    const hiddenPrincipal = Category(
+      id: 'c-principal',
+      name: '대출원금',
+      countsAsSaving: true,
+      hidden: true,
+    );
+    final unused = summarize(
+      MonthLedger(plannedExpenses: [planned('t1', amount: 1000)]),
+      categories: const [hiddenPrincipal, living],
+    );
+    expect(unused.categories, [(category: living, amount: 1000)]);
+
+    // 금액 미정(0원)이어도 쓴 항목이 있으면 보이고, 숨겨도 저축 집계는 그대로다.
+    final used = summarize(
+      MonthLedger(
+        plannedExpenses: [
+          planned('t1', categoryId: 'c-principal'),
+          planned('t2', categoryId: 'c-principal', amount: 500000),
+        ],
+      ),
+      categories: const [hiddenPrincipal, living],
+    );
+    expect(used.categories, [
+      (category: hiddenPrincipal, amount: 500000),
+      (category: living, amount: 0),
+    ]);
+    expect(used.totals.saving, 500000);
+  });
+
+  test('숨긴 카드로 쓴 돈도 카드 사용분으로 계산한다 (지난 달 숫자가 바뀌지 않는다)', () {
+    const hiddenCard = PaymentMethod(
+      id: 'p-sky-card',
+      name: '하늘 카드',
+      kind: PaymentKind.card,
+      hidden: true,
+    );
+    final summary = summarize(
+      MonthLedger(extraExpenses: [extra('e1', 'p-sky-card', 30000)]),
+      paymentMethods: const [account, hiddenCard],
+    );
+
+    expect(summary.cards, [(card: hiddenCard, amount: 30000)]);
+    expect(summary.totals.cardUsage, 30000);
+    expect(summary.totals.cashOut, 0);
+    expect(summary.showsCards, isTrue);
+  });
+
   test('카드별 소계는 이번 달에 쓴 카드만 결제수단 순서대로 넣는다', () {
     final summary = summarize(
       MonthLedger(
@@ -129,6 +177,22 @@ void main() {
     );
     expect(withBill.showsCards, isTrue);
     expect(withBill.cardBillCount, 1);
+  });
+
+  test('숨긴 카드만 있고 그달에 카드로 쓴 돈도 카드대금도 없으면 카드 영역을 숨긴다', () {
+    const hiddenCard = PaymentMethod(
+      id: 'p-sky-card',
+      name: '하늘 카드',
+      kind: PaymentKind.card,
+      hidden: true,
+    );
+    expect(
+      summarize(
+        const MonthLedger(),
+        paymentMethods: const [account, hiddenCard],
+      ).showsCards,
+      isFalse,
+    );
   });
 
   test('금액 미정 기본 지출은 건수를 세고 합계에서는 0원이다', () {

@@ -33,11 +33,15 @@ class Ledger {
     required this.name,
     required this.ownerUid,
     this.roles = const {},
+    this.createdAt,
   });
 
   final String id;
   final String name;
   final String ownerUid;
+
+  /// 가계부를 만든 때. 방금 만들어 서버 시간이 아직 없으면 null.
+  final DateTime? createdAt;
 
   /// 관리자를 뺀 구성원의 역할 (uid → 역할).
   final Map<String, MemberRole> roles;
@@ -51,6 +55,9 @@ class Ledger {
   /// 구성원이 아니면 null.
   MemberRole? roleOf(String uid) =>
       uid == ownerUid ? MemberRole.owner : roles[uid];
+
+  /// [uid]가 가계부 이름을 바꿀 수 있는지. 관리자만 된다(규칙의 ownerManages).
+  bool canRename(String uid) => roleOf(uid)?.canManageMembers ?? false;
 
   /// [uid]가 초대 코드를 만들 수 있는지. 관리자이고 자리가 남아 있어야 한다.
   bool canInvite(String uid) =>

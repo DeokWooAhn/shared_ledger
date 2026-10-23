@@ -412,7 +412,7 @@ void main() {
       await openTab(tester, HomeTab.settings);
 
       expect(find.text('우리 가계부'), findsOneWidget);
-      expect(find.text('구성원 2명'), findsOneWidget);
+      expect(findSentence('구성원 2명'), findsOneWidget);
       expect(find.text('하늘'), findsOneWidget);
       expect(find.text('관리자'), findsOneWidget);
       expect(find.text('바다 (나)'), findsOneWidget);
