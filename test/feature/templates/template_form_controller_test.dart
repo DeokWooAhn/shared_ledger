@@ -273,7 +273,7 @@ void main() {
 
       await controller.delete();
 
-      expect(templates.deleted.single, (ledgerId: 'l1', id: 'rent'));
+      expect(templates.deleted.single, (ledgerId: 'l1', id: 'rent', uid: 'me'));
       expect(templates.templates, isEmpty);
       expect(states.last.outcome, TemplateFormOutcome.deleted);
     });

@@ -84,9 +84,10 @@ test('…', () async {
   - 두 명이 찬 가계부·이미 구성원이면 참여를 `JoinFailure.unavailable`로 거부
   - 같은 id의 문서를 다시 쓰면 바꾸고, 새로 더하지 않는다
 - 호출 기록을 남긴다(`created`, `invites`, `joins`, `googleCalls`, 설정을 구독한 가계부 `watched`, 항목을 구독한 가계부·달 `watched`).
-- 항목은 휴지통 항목이 이미 빠진 `MonthLedger`를 달마다 넣는다(`FakeEntriesRepository.put`으로 바꾸면 구독 중인 곳에 다시 알린다).
-  쓰기도 실제 약속을 지킨다: 추가는 `offline`이어도 되고, 고치기·휴지통·꺼내기는 `offline`이면 `EntryWriteFailure.offline`,
-  없는 항목(휴지통에 든 항목을 고칠 때 포함)이면 `notFound`로 실패한다. 기록은 `added`·`updated`·`trashed`·`restored`, 지금 항목은 `monthOf(달)`.
+- 항목은 휴지통 항목을 목록에서 빼고 `MonthLedger.trashed`에 둔 `MonthLedger`를 달마다 넣는다(`FakeEntriesRepository.put`으로 바꾸면 구독 중인 곳에 다시 알린다).
+  쓰기도 실제 약속을 지킨다: 추가는 `offline`이어도 되고, 고치기·휴지통·꺼내기·완전 삭제는 `offline`이면 `EntryWriteFailure.offline`,
+  없는 항목(휴지통에 든 항목을 고치거나 휴지통 밖의 항목을 꺼내거나 지울 때 포함)이면 `notFound`로 실패한다.
+  휴지통에 넣으면 `now`(기본 `testNow`)로 넣은 때와 자동으로 지울 때를 적는다. 기록은 `added`·`updated`·`trashed`·`restored`·`purged`, 지금 항목은 `monthOf(달)`.
   서버가 새 항목을 나중에 거부하는 경우는 `rejectNextAdd`: 추가는 성공하고 목록에 들어갔다가 조금 뒤 빠지며 `rejectedAdds`로 알린다.
   고정 지출로 채우기(`fillPlanned`)도 `offline`이면 실패하고, 그 id의 기본 월 지출이 있으면(휴지통 포함, `monthOf(달).plannedIds`) 건너뛴다. 기록은 `filled`.
 - 설정(`FakeSettingsRepository`)도 쓰기가 모두 `offline`이면 `SettingsWriteFailure.offline`, 없는 분류·결제수단을 고치면 `notFound`로 실패하고,
@@ -94,6 +95,9 @@ test('…', () async {
   `addedPaymentMethods`·`renamedPaymentMethods`·`hiddenChanges`. 가계부 이름 바꾸기는 `FakeLedgerRepository`의 `renames`·`offline`.
 - 고정 지출(`FakeTemplatesRepository`)은 쓰기가 모두 `offline`이면 `TemplateWriteFailure.offline`, 없는 것을 고치거나 지우면 `notFound`로 실패한다.
   `put`으로 상대가 바꾼 것처럼 목록을 바꾼다. 기록은 `added`·`updated`·`deleted`·`restored`·`watched`.
+- 변경 기록(`FakeActivityRepository`)은 다른 가짜가 쓸 때 실제 저장소와 같은 요약으로 쌓인다(`LogsActivity.logActivity`).
+  `pumpApp`·`createContainer`가 `linkActivity`로 같은 기록 저장소를 이어 주고, `activity:`로 넘기면 테스트에서 `logged`(동작·요약)로 확인한다.
+  서버가 거부한 새 항목(`rejectNextAdd`)은 같은 일괄 쓰기의 기록도 빠진다. 구독은 새것부터 정한 개수만, '더 보기'는 `loadOlder`(`loads`, `failNextLoad`).
 - 구독은 시작하자마자 바뀜을 들어야 한다. `async*`로 첫 값을 낸 뒤 `await for`로 듣는 가짜는 그 사이에 바꾼 것을 놓친다
   (`FakeTemplatesRepository.watchTemplates`는 `Stream.multi`로 바로 듣는다).
 - 실패 스위치는 다음 한 번만 실패하고 스스로 꺼진다: 도메인 실패(`nextJoinFailure`), 예상 못 한 오류(`failNextCreate`, `failNextInvite`, `failNextJoin`, `failNextSignIn`, `failNextSignOut`, `failNextWatch`, `failNextWrite`).

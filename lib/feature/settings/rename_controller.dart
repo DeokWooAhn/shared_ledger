@@ -125,7 +125,7 @@ class RenameController extends Notifier<RenameState> {
         case LedgerNameTarget():
           await ref
               .read(ledgerRepositoryProvider)
-              .rename(ledgerId: ledger.id, name: name);
+              .rename(ledgerId: ledger.id, name: name, uid: uid);
         case MemberNameTarget(:final slot):
           await ref
               .read(settingsRepositoryProvider)

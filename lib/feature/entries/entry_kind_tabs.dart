@@ -2,14 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/model/ledger_entries.dart';
 import '../../core/theme/app_theme.dart';
-
-/// 화면에 보이는 항목 종류 이름.
-String entryKindLabel(EntryKind kind) => switch (kind) {
-  EntryKind.income => '수입',
-  EntryKind.planned => '기본 지출',
-  EntryKind.extra => '추가지출',
-  EntryKind.cardBill => '카드대금',
-};
+import '../../core/widget/entry_kind_label.dart';
 
 /// 네 종류 중 하나를 고르는 세그먼트. 항목 탭과 입력 화면 맨 위에 둔다.
 ///

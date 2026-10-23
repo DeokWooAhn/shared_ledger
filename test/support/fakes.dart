@@ -1,10 +1,13 @@
 import 'dart:async';
 
+import 'package:shared_ledger/core/data/activity_repository.dart';
+import 'package:shared_ledger/core/data/activity_summary.dart';
 import 'package:shared_ledger/core/data/auth_repository.dart';
 import 'package:shared_ledger/core/data/entries_repository.dart';
 import 'package:shared_ledger/core/data/ledger_repository.dart';
 import 'package:shared_ledger/core/data/settings_repository.dart';
 import 'package:shared_ledger/core/data/templates_repository.dart';
+import 'package:shared_ledger/core/model/activity.dart';
 import 'package:shared_ledger/core/model/auth_user.dart';
 import 'package:shared_ledger/core/model/category.dart';
 import 'package:shared_ledger/core/model/expense_template.dart';
@@ -14,7 +17,21 @@ import 'package:shared_ledger/core/model/ledger_entries.dart';
 import 'package:shared_ledger/core/model/member.dart';
 import 'package:shared_ledger/core/model/month_ledger.dart';
 import 'package:shared_ledger/core/model/payment_method.dart';
+import 'package:shared_ledger/core/model/trashed_entry.dart';
 import 'package:shared_ledger/core/model/year_month.dart';
+
+import 'provider_container.dart' show testNow;
+
+/// 쓸 때마다 변경 기록을 남기는 가짜 저장소. [activity]가 있으면 실제 저장소와 같은 요약으로 남긴다.
+///
+/// `pumpApp`·`createContainer`가 같은 [FakeActivityRepository]를 이어 준다.
+mixin LogsActivity {
+  FakeActivityRepository? activity;
+
+  /// 남긴 기록의 id. [activity]가 없으면 null.
+  String? logActivity(ActivityDraft draft, String uid) =>
+      activity?.log(draft, uid: uid);
+}
 
 /// 화면 테스트용 가짜 로그인. 로그인하면 [signInAs]로 바뀐다.
 class FakeAuthRepository implements AuthRepository {
@@ -79,7 +96,7 @@ class FakeAuthRepository implements AuthRepository {
 }
 
 /// 화면 테스트용 가짜 가계부 저장소.
-class FakeLedgerRepository implements LedgerRepository {
+class FakeLedgerRepository with LogsActivity implements LedgerRepository {
   FakeLedgerRepository([List<Ledger> initial = const []])
     : _ledgers = [...initial];
 
@@ -203,7 +220,11 @@ class FakeLedgerRepository implements LedgerRepository {
   }
 
   @override
-  Future<void> rename({required String ledgerId, required String name}) async {
+  Future<void> rename({
+    required String ledgerId,
+    required String name,
+    required String uid,
+  }) async {
     if (failNextRename) {
       failNextRename = false;
       _fail('rename');
@@ -216,8 +237,10 @@ class FakeLedgerRepository implements LedgerRepository {
       throw const SettingsWriteException(SettingsWriteFailure.notFound);
     }
     renames.add((ledgerId: ledgerId, name: name));
+    final before = _ledgers[index].name;
     _ledgers[index] = _copy(_ledgers[index], name: name.trim());
     _changes.add(null);
+    logActivity(ledgerRenameActivity(from: before, to: name), uid);
   }
 }
 
@@ -226,7 +249,7 @@ class FakeLedgerRepository implements LedgerRepository {
 /// 실제 저장소처럼 쓰기는 모두 [offline]이면 [SettingsWriteFailure.offline]으로 실패하고,
 /// 없는 분류·결제수단을 고치면 [SettingsWriteFailure.notFound]로 실패한다. 이름표는 없으면 새로 만든다.
 /// 쓴 값은 실제 저장소처럼 이름 앞뒤 공백을 빼고 목록에 들어가 구독 중인 곳에 다시 알린다.
-class FakeSettingsRepository implements SettingsRepository {
+class FakeSettingsRepository with LogsActivity implements SettingsRepository {
   FakeSettingsRepository({
     List<Member> members = const [
       Member(slot: MemberSlot.owner, name: '하늘'),
@@ -324,6 +347,8 @@ class FakeSettingsRepository implements SettingsRepository {
   }) async {
     _checkOnline();
     renamedMembers.add((ledgerId: ledgerId, slot: slot, name: name, uid: uid));
+    final before = _members.where((m) => m.slot == slot).firstOrNull?.name;
+    logActivity(memberRenameActivity(from: before, to: name), uid);
     final renamed = Member(slot: slot, name: name.trim());
     put(
       members: [
@@ -352,6 +377,10 @@ class FakeSettingsRepository implements SettingsRepository {
       uid: uid,
     ));
     final id = 'category-new-${addedCategories.length}';
+    logActivity(
+      categoryActivity(ActivityAction.categoryCreate, draft.name),
+      uid,
+    );
     put(
       categories: [
         ..._categories,
@@ -375,6 +404,15 @@ class FakeSettingsRepository implements SettingsRepository {
     _checkOnline();
     final old = _existing(_categories, (c) => c.id == id);
     updatedCategories.add((ledgerId: ledgerId, id: id, draft: draft, uid: uid));
+    logActivity(
+      categoryUpdateActivity(
+        fromName: old.name,
+        fromSaving: old.countsAsSaving,
+        name: draft.name,
+        countsAsSaving: draft.countsAsSaving,
+      ),
+      uid,
+    );
     put(
       categories: [
         for (final category in _categories)
@@ -405,6 +443,13 @@ class FakeSettingsRepository implements SettingsRepository {
       hidden: hidden,
       uid: uid,
     ));
+    logActivity(
+      categoryActivity(
+        hidden ? ActivityAction.categoryHide : ActivityAction.categoryShow,
+        old.name,
+      ),
+      uid,
+    );
     put(
       categories: [
         for (final category in _categories)
@@ -435,6 +480,14 @@ class FakeSettingsRepository implements SettingsRepository {
       uid: uid,
     ));
     final id = 'method-new-${addedPaymentMethods.length}';
+    logActivity(
+      paymentMethodActivity(
+        ActivityAction.paymentMethodCreate,
+        draft.name,
+        draft.kind,
+      ),
+      uid,
+    );
     put(
       paymentMethods: [
         ..._paymentMethods,
@@ -459,6 +512,10 @@ class FakeSettingsRepository implements SettingsRepository {
       name: name,
       uid: uid,
     ));
+    logActivity(
+      paymentMethodRenameActivity(from: old.name, to: name, kind: old.kind),
+      uid,
+    );
     _putMethod(
       PaymentMethod(
         id: id,
@@ -484,6 +541,16 @@ class FakeSettingsRepository implements SettingsRepository {
       hidden: hidden,
       uid: uid,
     ));
+    logActivity(
+      paymentMethodActivity(
+        hidden
+            ? ActivityAction.paymentMethodHide
+            : ActivityAction.paymentMethodShow,
+        old.name,
+        old.kind,
+      ),
+      uid,
+    );
     _putMethod(
       PaymentMethod(id: id, name: old.name, kind: old.kind, hidden: hidden),
     );
@@ -513,18 +580,21 @@ class FakeSettingsRepository implements SettingsRepository {
 
 /// 화면 테스트용 가짜 항목 저장소. 넣어 둔 달의 항목을 돌려주고, 없는 달은 빈 달이다.
 ///
-/// 실제 저장소처럼 휴지통 항목은 이미 빠진 [MonthLedger]를 넣는다. [put]으로 바꾸면 구독 중인 곳에 다시 알린다.
-/// [MonthLedger.plannedIds]에는 실제 저장소처럼 휴지통에 넣은 기본 월 지출의 id까지 들어간다.
-/// 쓰기도 실제 약속을 지킨다: 추가는 [offline]이어도 되고, 고치기·휴지통·꺼내기·고정 지출로 채우기는 [offline]이면
-/// [EntryWriteFailure.offline]으로, 없는 항목(휴지통에 든 항목을 고칠 때 포함)이면 [EntryWriteFailure.notFound]로 실패한다.
-/// 고정 지출로 채울 때는 그 id의 기본 월 지출이 있으면(휴지통 포함) 건너뛴다.
-class FakeEntriesRepository implements EntriesRepository {
+/// 실제 저장소처럼 휴지통 항목은 목록에서 빼고 [MonthLedger.trashed]에 둔 [MonthLedger]를 넣는다.
+/// [put]으로 바꾸면 구독 중인 곳에 다시 알린다. [MonthLedger.plannedIds]에는 휴지통에 든 기본 월 지출의 id까지 들어간다.
+/// 쓰기도 실제 약속을 지킨다: 추가는 [offline]이어도 되고, 고치기·휴지통·꺼내기·완전 삭제·고정 지출로 채우기는 [offline]이면
+/// [EntryWriteFailure.offline]으로, 없는 항목(휴지통에 든 항목을 고치거나 휴지통 밖의 항목을 꺼내거나 지울 때 포함)이면
+/// [EntryWriteFailure.notFound]로 실패한다. 고정 지출로 채울 때는 그 id의 기본 월 지출이 있으면(휴지통 포함) 건너뛴다.
+/// 휴지통에 넣으면 [now]로 넣은 때와 자동으로 지울 때를 적는다([staysInTrash]면 자동으로 지우지 않는다).
+class FakeEntriesRepository with LogsActivity implements EntriesRepository {
   FakeEntriesRepository([Map<YearMonth, MonthLedger> months = const {}])
     : _months = {...months};
 
   final Map<YearMonth, MonthLedger> _months;
-  final _trash = <(YearMonth, EntryKind, String), LedgerEntry>{};
   final _changes = StreamController<void>.broadcast();
+
+  /// 지금 시각. 휴지통에 넣은 때와 자동으로 지울 때를 정한다.
+  DateTime Function() now = () => testNow;
 
   /// 구독한 가계부와 달. 읽기 비용(그달만 구독하는지)을 확인할 때 쓴다.
   final watched = <({String ledgerId, YearMonth month})>[];
@@ -546,6 +616,8 @@ class FakeEntriesRepository implements EntriesRepository {
       <({String ledgerId, YearMonth month, EntryKind kind, String id})>[];
   final restored =
       <({String ledgerId, YearMonth month, EntryKind kind, String id})>[];
+  final purged =
+      <({String ledgerId, YearMonth month, EntryKind kind, String id})>[];
 
   /// 고정 지출로 채운 기록. 넘겨받은 고정 지출 id와 실제로 만든 개수를 남긴다.
   final filled =
@@ -562,14 +634,14 @@ class FakeEntriesRepository implements EntriesRepository {
   /// true면 다음 구독이 권한 오류처럼 실패한다.
   bool failNextWatch = false;
 
-  /// true면 연결이 없는 것처럼 고치기·휴지통·꺼내기가 실패한다. 추가는 된다.
+  /// true면 연결이 없는 것처럼 고치기·휴지통·꺼내기·완전 삭제가 실패한다. 추가는 된다.
   bool offline = false;
 
   /// true면 다음 쓰기가 [EntryWriteException]이 아닌 오류(권한 등)로 실패한다.
   bool failNextWrite = false;
 
   /// true면 다음 추가를 서버가 거부한 것처럼 한다. 실제 저장소처럼 [add]는 성공하고 목록에 들어갔다가,
-  /// 서버 응답이 온 뒤처럼 조금 뒤에 빠지며 [rejectedAdds]로 알린다.
+  /// 서버 응답이 온 뒤처럼 조금 뒤에 빠지며 [rejectedAdds]로 알린다. 같은 일괄 쓰기의 변경 기록도 빠진다.
   bool rejectNextAdd = false;
   final _rejected = StreamController<RejectedEntry>.broadcast();
 
@@ -582,22 +654,8 @@ class FakeEntriesRepository implements EntriesRepository {
     _changes.add(null);
   }
 
-  /// [month]의 지금 항목(휴지통 제외). [MonthLedger.plannedIds]에는 휴지통에 넣은 기본 월 지출까지 들어간다.
-  MonthLedger monthOf(YearMonth month) {
-    final ledger = _months[month] ?? const MonthLedger();
-    final trashedPlanned = {
-      for (final (trashedMonth, kind, id) in _trash.keys)
-        if (trashedMonth == month && kind == EntryKind.planned) id,
-    };
-    if (trashedPlanned.isEmpty) return ledger;
-    return MonthLedger(
-      incomes: ledger.incomes,
-      plannedExpenses: ledger.plannedExpenses,
-      extraExpenses: ledger.extraExpenses,
-      cardBills: ledger.cardBills,
-      plannedIds: {...ledger.plannedIds, ...trashedPlanned},
-    );
-  }
+  /// [month]의 지금 항목. 휴지통 항목은 [MonthLedger.trashed]에 있다.
+  MonthLedger monthOf(YearMonth month) => _months[month] ?? const MonthLedger();
 
   @override
   Stream<MonthLedger> watchMonth(String ledgerId, YearMonth month) async* {
@@ -623,6 +681,15 @@ class FakeEntriesRepository implements EntriesRepository {
     added.add((ledgerId: ledgerId, month: month, draft: draft, uid: uid));
     final id = 'entry-${added.length}';
     _edit(month, draft.kind, (entries) => [...entries, _entryOf(id, draft)]);
+    final activityId = logActivity(
+      entryActivity(
+        ActivityAction.entryCreate,
+        month: month,
+        kind: draft.kind,
+        entry: draft,
+      ),
+      uid,
+    );
     if (rejectNextAdd) {
       rejectNextAdd = false;
       scheduleMicrotask(() {
@@ -631,6 +698,7 @@ class FakeEntriesRepository implements EntriesRepository {
           draft.kind,
           (entries) => [...entries.where((e) => e.id != id)],
         );
+        if (activityId != null) activity?.drop(activityId);
         _rejected.add((id: id, month: month, kind: draft.kind));
       });
     }
@@ -646,7 +714,7 @@ class FakeEntriesRepository implements EntriesRepository {
     required String uid,
   }) async {
     _checkOnline();
-    _live(month, draft.kind, id);
+    final before = _live(month, draft.kind, id);
     updated.add((
       ledgerId: ledgerId,
       month: month,
@@ -662,6 +730,16 @@ class FakeEntriesRepository implements EntriesRepository {
           entry.id == id ? _entryOf(id, draft) : entry,
       ],
     );
+    logActivity(
+      entryActivity(
+        ActivityAction.entryUpdate,
+        month: month,
+        kind: draft.kind,
+        entry: draft,
+        before: EntryDraft.of(before),
+      ),
+      uid,
+    );
   }
 
   @override
@@ -675,8 +753,26 @@ class FakeEntriesRepository implements EntriesRepository {
     _checkOnline();
     final entry = _live(month, kind, id);
     trashed.add((ledgerId: ledgerId, month: month, kind: kind, id: id));
-    _trash[(month, kind, id)] = entry;
-    _edit(month, kind, (entries) => [...entries.where((e) => e.id != id)]);
+    final at = now();
+    final stays = staysInTrash(
+      entry,
+      month: month,
+      thisMonth: YearMonth.of(at),
+    );
+    _edit(
+      month,
+      kind,
+      (entries) => [...entries.where((e) => e.id != id)],
+      trash: (items) => [
+        ...items,
+        TrashedEntry(
+          entry: entry,
+          deletedAt: at,
+          purgeAt: stays ? null : at.add(trashRetention),
+        ),
+      ],
+    );
+    _logEntry(ActivityAction.entryTrash, month, entry, uid);
   }
 
   @override
@@ -688,12 +784,36 @@ class FakeEntriesRepository implements EntriesRepository {
     required String uid,
   }) async {
     _checkOnline();
-    final entry = _trash.remove((month, kind, id));
-    if (entry == null) {
-      throw const EntryWriteException(EntryWriteFailure.notFound);
-    }
+    final item = _inTrash(month, kind, id);
     restored.add((ledgerId: ledgerId, month: month, kind: kind, id: id));
-    _edit(month, kind, (entries) => [...entries, entry]);
+    _edit(
+      month,
+      kind,
+      (entries) => [...entries, item.entry],
+      trash: (items) => [...items.where((i) => i != item)],
+    );
+    _logEntry(ActivityAction.entryRestore, month, item.entry, uid);
+  }
+
+  @override
+  Future<void> purge({
+    required String ledgerId,
+    required YearMonth month,
+    required EntryKind kind,
+    required String id,
+    required String uid,
+  }) async {
+    _checkOnline();
+    final item = _inTrash(month, kind, id);
+    purged.add((ledgerId: ledgerId, month: month, kind: kind, id: id));
+    _edit(
+      month,
+      kind,
+      (entries) => entries,
+      trash: (items) => [...items.where((i) => i != item)],
+      forget: id,
+    );
+    _logEntry(ActivityAction.entryPurge, month, item.entry, uid);
   }
 
   @override
@@ -742,18 +862,44 @@ class FakeEntriesRepository implements EntriesRepository {
     if (offline) throw const EntryWriteException(EntryWriteFailure.offline);
   }
 
+  void _logEntry(
+    ActivityAction action,
+    YearMonth month,
+    LedgerEntry entry,
+    String uid,
+  ) => logActivity(
+    entryActivity(
+      action,
+      month: month,
+      kind: entry.kind,
+      entry: EntryDraft.of(entry),
+    ),
+    uid,
+  );
+
   // 휴지통 밖에 있는 [id] 항목. 없으면 실제 저장소처럼 notFound로 실패한다.
   LedgerEntry _live(YearMonth month, EntryKind kind, String id) =>
       _entriesOf(monthOf(month), kind).where((e) => e.id == id).firstOrNull ??
       (throw const EntryWriteException(EntryWriteFailure.notFound));
 
+  // 휴지통에 있는 [id] 항목. 없으면 실제 저장소처럼 notFound로 실패한다.
+  TrashedEntry _inTrash(YearMonth month, EntryKind kind, String id) =>
+      monthOf(month).trashed
+          .where((i) => i.entry.kind == kind && i.entry.id == id)
+          .firstOrNull ??
+      (throw const EntryWriteException(EntryWriteFailure.notFound));
+
+  // [kind] 목록과 휴지통을 바꾼다. 완전히 지운 문서([forget])는 실제처럼 기본 월 지출 id에서도 빠진다.
   void _edit(
     YearMonth month,
     EntryKind kind,
-    List<LedgerEntry> Function(List<LedgerEntry> entries) change,
-  ) {
+    List<LedgerEntry> Function(List<LedgerEntry> entries) change, {
+    List<TrashedEntry> Function(List<TrashedEntry> items)? trash,
+    String? forget,
+  }) {
     final ledger = monthOf(month);
     final entries = change(_entriesOf(ledger, kind));
+    final trashed = trash == null ? ledger.trashed : trash(ledger.trashed);
     put(
       month,
       MonthLedger(
@@ -769,7 +915,8 @@ class FakeEntriesRepository implements EntriesRepository {
         cardBills: kind == EntryKind.cardBill
             ? entries.whereType<CardBill>().toList()
             : ledger.cardBills,
-        plannedIds: ledger.plannedIds,
+        trashed: trashed,
+        plannedIds: {...ledger.plannedIds}..remove(forget),
       ),
     );
   }
@@ -832,7 +979,7 @@ class FakeEntriesRepository implements EntriesRepository {
 ///
 /// 실제 저장소처럼 쓰기는 모두 [offline]이면 [TemplateWriteFailure.offline]으로 실패하고,
 /// 없는 고정 지출을 고치거나 지우면 [TemplateWriteFailure.notFound]로 실패한다. 되돌리기는 같은 id가 있으면 그대로 둔다.
-class FakeTemplatesRepository implements TemplatesRepository {
+class FakeTemplatesRepository with LogsActivity implements TemplatesRepository {
   FakeTemplatesRepository([List<ExpenseTemplate> initial = const []])
     : _templates = [...initial];
 
@@ -843,7 +990,7 @@ class FakeTemplatesRepository implements TemplatesRepository {
   final added = <({String ledgerId, TemplateDraft draft, String uid})>[];
   final updated =
       <({String ledgerId, String id, TemplateDraft draft, String uid})>[];
-  final deleted = <({String ledgerId, String id})>[];
+  final deleted = <({String ledgerId, String id, String uid})>[];
   final restored = <({String ledgerId, String id, String uid})>[];
 
   /// 구독한 가계부 id.
@@ -887,6 +1034,7 @@ class FakeTemplatesRepository implements TemplatesRepository {
     added.add((ledgerId: ledgerId, draft: draft, uid: uid));
     final id = 'template-new-${added.length}';
     put([..._templates, _templateOf(id, draft)]);
+    logActivity(templateActivity(ActivityAction.templateCreate, draft), uid);
     return id;
   }
 
@@ -898,8 +1046,16 @@ class FakeTemplatesRepository implements TemplatesRepository {
     required String uid,
   }) async {
     _checkOnline();
-    _existing(id);
+    final before = _existing(id);
     updated.add((ledgerId: ledgerId, id: id, draft: draft, uid: uid));
+    logActivity(
+      templateActivity(
+        ActivityAction.templateUpdate,
+        draft,
+        before: TemplateDraft.of(before),
+      ),
+      uid,
+    );
     put([
       for (final template in _templates)
         template.id == id ? _templateOf(id, draft) : template,
@@ -907,11 +1063,22 @@ class FakeTemplatesRepository implements TemplatesRepository {
   }
 
   @override
-  Future<void> delete({required String ledgerId, required String id}) async {
+  Future<void> delete({
+    required String ledgerId,
+    required String id,
+    required String uid,
+  }) async {
     _checkOnline();
-    _existing(id);
-    deleted.add((ledgerId: ledgerId, id: id));
+    final template = _existing(id);
+    deleted.add((ledgerId: ledgerId, id: id, uid: uid));
     put([..._templates.where((t) => t.id != id)]);
+    logActivity(
+      templateActivity(
+        ActivityAction.templateDelete,
+        TemplateDraft.of(template),
+      ),
+      uid,
+    );
   }
 
   @override
@@ -924,6 +1091,13 @@ class FakeTemplatesRepository implements TemplatesRepository {
     restored.add((ledgerId: ledgerId, id: template.id, uid: uid));
     if (_templates.any((t) => t.id == template.id)) return;
     put([..._templates, template]);
+    logActivity(
+      templateActivity(
+        ActivityAction.templateRestore,
+        TemplateDraft.of(template),
+      ),
+      uid,
+    );
   }
 
   void _checkOnline() {
@@ -951,4 +1125,117 @@ class FakeTemplatesRepository implements TemplatesRepository {
         memberId: draft.memberId,
         dueDay: draft.dueDay ?? lastDueDay,
       );
+}
+
+/// 화면 테스트용 가짜 변경 기록 저장소. 다른 가짜 저장소가 쓸 때 [log]로 기록을 더한다([LogsActivity]).
+///
+/// 실제 저장소처럼 새것부터 [ActivityRepository.watchRecent]의 개수만 구독으로 알리고, 더 오래된 것은 [loadOlder]로 읽는다.
+/// 남기는 기록의 시간은 [now]에서 기록마다 1분씩 늦춘다(시간이 같은 기록이 없게).
+class FakeActivityRepository implements ActivityRepository {
+  FakeActivityRepository([List<Activity> initial = const []])
+    : _items = [...initial];
+
+  final List<Activity> _items;
+  final _changes = StreamController<void>.broadcast();
+
+  /// 처음 기록의 시간.
+  DateTime Function() now = () => testNow;
+
+  /// 구독한 가계부 id.
+  final watched = <String>[];
+
+  /// '더 보기'로 읽은 기록.
+  final loads = <({String ledgerId, DateTime before, int limit})>[];
+
+  /// true면 다음 구독이 권한 오류처럼 실패한다.
+  bool failNextWatch = false;
+
+  /// true면 다음 '더 보기'가 실패한다.
+  bool failNextLoad = false;
+
+  /// 남긴 기록. 남긴 순서(오래된 것부터)다.
+  List<Activity> get activities => List.unmodifiable(_items);
+
+  /// 남긴 기록의 동작과 요약. 남긴 순서다.
+  List<ActivityDraft> get logged => [
+    for (final item in _items)
+      if (item.action case final action?) ActivityDraft(action, item.summary),
+  ];
+
+  /// [uid]가 [draft]를 남긴 것처럼 기록을 더하고 id를 돌려준다. 실제 저장소처럼 요약을 규칙의 길이로 자른다.
+  String log(ActivityDraft draft, {required String uid}) {
+    final id = 'activity-${_items.length + 1}';
+    _items.add(
+      Activity(
+        id: id,
+        actorUid: uid,
+        action: draft.action,
+        summary: clampActivitySummary(draft.summary),
+        at: now().add(Duration(minutes: _items.length)),
+      ),
+    );
+    _changes.add(null);
+    return id;
+  }
+
+  /// 서버가 거부한 일괄 쓰기처럼 [id] 기록을 뺀다.
+  void drop(String id) {
+    _items.removeWhere((item) => item.id == id);
+    _changes.add(null);
+  }
+
+  /// 상대가 남긴 것처럼 기록을 바꾼다. 구독 중인 곳에 다시 알린다.
+  void put(List<Activity> items) {
+    _items
+      ..clear()
+      ..addAll(items);
+    _changes.add(null);
+  }
+
+  // 새것부터. 아직 서버에 닿지 않은 기록(시간 없음)이 맨 앞이다.
+  List<Activity> get _newestFirst => [..._items]
+    ..sort((a, b) {
+      final (aAt, bAt) = (a.at, b.at);
+      if (aAt == null || bAt == null) {
+        return (aAt == null ? 0 : 1) - (bAt == null ? 0 : 1);
+      }
+      return bAt.compareTo(aAt);
+    });
+
+  @override
+  Stream<List<Activity>> watchRecent(
+    String ledgerId, {
+    int limit = activityPageSize,
+  }) {
+    watched.add(ledgerId);
+    if (failNextWatch) {
+      failNextWatch = false;
+      return Stream.error(StateError('watchRecent failed'));
+    }
+    return Stream.multi((controller) {
+      controller.add([..._newestFirst.take(limit)]);
+      final changes = _changes.stream.listen(
+        (_) => controller.add([..._newestFirst.take(limit)]),
+      );
+      controller.onCancel = changes.cancel;
+    });
+  }
+
+  @override
+  Future<List<Activity>> loadOlder(
+    String ledgerId, {
+    required DateTime before,
+    int limit = activityPageSize,
+  }) async {
+    loads.add((ledgerId: ledgerId, before: before, limit: limit));
+    if (failNextLoad) {
+      failNextLoad = false;
+      throw StateError('loadOlder failed');
+    }
+    return [
+      ..._newestFirst
+          .where((item) => item.at?.isBefore(before) ?? false)
+          .take(limit),
+    ];
+  }
 }

@@ -1,8 +1,11 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import '../model/activity.dart';
 import '../model/category.dart';
 import '../model/member.dart';
 import '../model/payment_method.dart';
+import 'activity_repository.dart';
+import 'activity_summary.dart';
 
 /// 설정(가계부 이름·이름표·분류·결제수단)을 바꾸지 못한 이유.
 enum SettingsWriteFailure {
@@ -32,7 +35,7 @@ typedef PaymentMethodDraft = ({String name, PaymentKind kind});
 ///
 /// 분류·결제수단은 지우지 않고 숨긴다. 지난 항목이 가리키고 있어서 지우면 지난 달 합계가 바뀐다.
 /// 쓰기는 모두 서버에 바로 닿아야 하는 트랜잭션이라 연결이 없으면
-/// [SettingsWriteException]([SettingsWriteFailure.offline])으로 실패한다.
+/// [SettingsWriteException]([SettingsWriteFailure.offline])으로 실패한다. 쓸 때마다 변경 기록을 같은 트랜잭션으로 남긴다.
 abstract interface class SettingsRepository {
   /// 두 사람의 이름표. owner가 앞에 온다.
   Stream<List<Member>> watchMembers(String ledgerId);
@@ -101,9 +104,11 @@ abstract interface class SettingsRepository {
 }
 
 class FirestoreSettingsRepository implements SettingsRepository {
-  FirestoreSettingsRepository(this._firestore);
+  FirestoreSettingsRepository(this._firestore, {DateTime Function()? now})
+    : _now = now ?? DateTime.now;
 
   final FirebaseFirestore _firestore;
+  final DateTime Function() _now;
 
   CollectionReference<Map<String, dynamic>> _settings(
     String ledgerId,
@@ -145,12 +150,14 @@ class FirestoreSettingsRepository implements SettingsRepository {
     required String uid,
   }) {
     final doc = _settings(ledgerId, 'members').doc(slot.name);
-    return _writeOnline((transaction) async {
-      if ((await transaction.get(doc)).exists) {
+    return _writeOnline(ledgerId, uid, (transaction) async {
+      final current = (await transaction.get(doc)).data();
+      if (current != null) {
         transaction.update(doc, memberRenameUpdate(name, uid: uid));
       } else {
         transaction.set(doc, newMemberData(name, uid: uid));
       }
+      return memberRenameActivity(from: _name(current), to: name);
     });
   }
 
@@ -162,8 +169,9 @@ class FirestoreSettingsRepository implements SettingsRepository {
     required String uid,
   }) async {
     final doc = _settings(ledgerId, 'categories').doc();
-    await _writeOnline((transaction) async {
+    await _writeOnline(ledgerId, uid, (transaction) async {
       transaction.set(doc, newCategoryData(draft, order: order, uid: uid));
+      return categoryActivity(ActivityAction.categoryCreate, draft.name);
     });
     return doc.id;
   }
@@ -175,8 +183,19 @@ class FirestoreSettingsRepository implements SettingsRepository {
     required CategoryDraft draft,
     required String uid,
   }) => _updateExisting(
+    ledgerId,
+    uid,
     _settings(ledgerId, 'categories').doc(id),
     categoryUpdateData(draft, uid: uid),
+    (current) => categoryUpdateActivity(
+      fromName: _name(current),
+      fromSaving: switch (current['countsAsSaving']) {
+        final bool saving => saving,
+        _ => null,
+      },
+      name: draft.name,
+      countsAsSaving: draft.countsAsSaving,
+    ),
   );
 
   @override
@@ -186,8 +205,14 @@ class FirestoreSettingsRepository implements SettingsRepository {
     required bool hidden,
     required String uid,
   }) => _updateExisting(
+    ledgerId,
+    uid,
     _settings(ledgerId, 'categories').doc(id),
     settingHiddenUpdate(hidden: hidden, uid: uid),
+    (current) => categoryActivity(
+      hidden ? ActivityAction.categoryHide : ActivityAction.categoryShow,
+      _name(current) ?? '',
+    ),
   );
 
   @override
@@ -198,8 +223,13 @@ class FirestoreSettingsRepository implements SettingsRepository {
     required String uid,
   }) async {
     final doc = _settings(ledgerId, 'paymentMethods').doc();
-    await _writeOnline((transaction) async {
+    await _writeOnline(ledgerId, uid, (transaction) async {
       transaction.set(doc, newPaymentMethodData(draft, order: order, uid: uid));
+      return paymentMethodActivity(
+        ActivityAction.paymentMethodCreate,
+        draft.name,
+        draft.kind,
+      );
     });
     return doc.id;
   }
@@ -211,8 +241,15 @@ class FirestoreSettingsRepository implements SettingsRepository {
     required String name,
     required String uid,
   }) => _updateExisting(
+    ledgerId,
+    uid,
     _settings(ledgerId, 'paymentMethods').doc(id),
     paymentMethodRenameUpdate(name, uid: uid),
+    (current) => paymentMethodRenameActivity(
+      from: _name(current),
+      to: name,
+      kind: _kind(current),
+    ),
   );
 
   @override
@@ -222,24 +259,54 @@ class FirestoreSettingsRepository implements SettingsRepository {
     required bool hidden,
     required String uid,
   }) => _updateExisting(
+    ledgerId,
+    uid,
     _settings(ledgerId, 'paymentMethods').doc(id),
     settingHiddenUpdate(hidden: hidden, uid: uid),
+    (current) => paymentMethodActivity(
+      hidden
+          ? ActivityAction.paymentMethodHide
+          : ActivityAction.paymentMethodShow,
+      _name(current) ?? '',
+      _kind(current),
+    ),
   );
 
+  // 고칠 문서를 읽어 없으면 notFound로 실패한다. 읽은 값(고치기 전)으로 변경 기록을 만든다.
   Future<void> _updateExisting(
+    String ledgerId,
+    String uid,
     DocumentReference<Map<String, dynamic>> doc,
     Map<String, Object> update,
-  ) => _writeOnline((transaction) async {
-    if (!(await transaction.get(doc)).exists) {
+    ActivityDraft Function(Map<String, dynamic> current) activity,
+  ) => _writeOnline(ledgerId, uid, (transaction) async {
+    final current = (await transaction.get(doc)).data();
+    if (current == null) {
       throw const SettingsWriteException(SettingsWriteFailure.notFound);
     }
     transaction.update(doc, update);
+    return activity(current);
   });
 
-  // 트랜잭션은 서버에 닿아야 끝나서 오프라인이면 실패한다. 연결이 끊긴 채로 오래 기다리지 않게 10초만 기다린다.
   Future<void> _writeOnline(
-    Future<void> Function(Transaction transaction) write,
-  ) => runSettingsWrite(_firestore, write);
+    String ledgerId,
+    String uid,
+    Future<ActivityDraft> Function(Transaction transaction) write,
+  ) => runSettingsWrite(
+    _firestore,
+    ledgerId: ledgerId,
+    uid: uid,
+    now: _now(),
+    write: write,
+  );
+
+  static String? _name(Map<String, dynamic>? data) => switch (data?['name']) {
+    final String name => name,
+    _ => null,
+  };
+
+  static PaymentKind? _kind(Map<String, dynamic> data) =>
+      PaymentKind.values.asNameMap()[data['kind']];
 
   // 설정은 몇 개뿐이라 orderBy 대신 앱에서 정렬한다. orderBy는 order가 빠진 문서를 결과에서 빼 버린다.
   static List<QueryDocumentSnapshot<Map<String, dynamic>>> _inOrder(
@@ -253,12 +320,27 @@ class FirestoreSettingsRepository implements SettingsRepository {
 
 /// 설정 쓰기를 트랜잭션으로 한다. 연결이 없거나 10초 안에 서버가 답하지 않으면
 /// [SettingsWriteException]([SettingsWriteFailure.offline])으로 실패한다. 가계부 이름 바꾸기도 쓴다.
+///
+/// [write]가 돌려준 변경 기록을 [uid]의 이름으로 같은 트랜잭션에 남긴다.
 Future<void> runSettingsWrite(
-  FirebaseFirestore firestore,
-  Future<void> Function(Transaction transaction) write,
-) async {
+  FirebaseFirestore firestore, {
+  required String ledgerId,
+  required String uid,
+  required DateTime now,
+  required Future<ActivityDraft> Function(Transaction transaction) write,
+}) async {
   try {
-    await firestore.runTransaction(write, timeout: const Duration(seconds: 10));
+    await firestore.runTransaction((transaction) async {
+      final activity = await write(transaction);
+      addActivity(
+        transaction,
+        firestore,
+        ledgerId: ledgerId,
+        draft: activity,
+        uid: uid,
+        now: now,
+      );
+    }, timeout: const Duration(seconds: 10));
   } on FirebaseException catch (e) {
     if (e.code == 'unavailable' || e.code == 'deadline-exceeded') {
       throw const SettingsWriteException(SettingsWriteFailure.offline);

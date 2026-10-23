@@ -17,7 +17,7 @@ import 'rename_sheet.dart';
 import 'setting_list.dart';
 import 'setting_sheet.dart';
 
-/// 설정 탭 안의 목록 화면(분류, 결제수단·카드)을 연다. 화면 이동은 router.dart가 정해서 넘겨준다.
+/// 설정 탭 안의 화면(분류, 결제수단·카드, 휴지통, 변경 기록)을 연다. 화면 이동은 router.dart가 정해서 넘겨준다.
 typedef OpenSettingPage = void Function(BuildContext context);
 
 /// 화면에 보이는 로그인 방법 이름.
@@ -26,19 +26,24 @@ String signInMethodLabel(SignInMethod method) => switch (method) {
   SignInMethod.apple => 'Apple',
 };
 
-/// 설정 탭(design/app/07). 가계부 이름, 두 사람의 이름표·역할과 초대, 분류·결제수단, 로그인 방법·로그아웃.
+/// 설정 탭(design/app/07). 가계부 이름, 두 사람의 이름표·역할과 초대, 분류·결제수단, 휴지통·변경 기록,
+/// 로그인 방법·로그아웃.
 ///
 /// 가계부 이름은 관리자만, 이름표 이름은 관리자·편집자가 시트에서 바꾼다. 분류와 결제수단은 목록 화면에서 고친다.
-/// 휴지통·변경 기록은 4단계, 탈퇴는 6단계에서 넣는다(docs/plan.md).
+/// 휴지통 줄에는 보고 있는 달의 휴지통 건수를 보여준다(요약·항목 탭과 같은 그달 구독). 탈퇴는 6단계에서 넣는다(docs/plan.md).
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({
     required this.openCategories,
     required this.openPaymentMethods,
+    required this.openTrash,
+    required this.openActivity,
     super.key,
   });
 
   final OpenSettingPage openCategories;
   final OpenSettingPage openPaymentMethods;
+  final OpenSettingPage openTrash;
+  final OpenSettingPage openActivity;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -51,6 +56,8 @@ class SettingsScreen extends ConsumerWidget {
     final canWrite = ledger.roleOf(user.uid)?.canWrite ?? false;
     final categories = ref.watch(categoriesProvider).value;
     final methods = ref.watch(paymentMethodsProvider).value;
+    final month = ref.watch(selectedMonthProvider);
+    final trashed = ref.watch(monthLedgerProvider).value?.trashed;
     final signInMethod = user.signInMethod;
     return TabPage(
       header: const TabTitle('설정'),
@@ -84,6 +91,21 @@ class SettingsScreen extends ConsumerWidget {
                   ? null
                   : '${methods.where((m) => !m.hidden).length}개',
               onTap: () => openPaymentMethods(context),
+            ),
+            SettingRow(
+              key: const Key('open-trash'),
+              leading: const SettingIconTile(Icons.delete_outline),
+              title: '휴지통',
+              value: trashed == null
+                  ? null
+                  : '${month.month}월 ${trashed.length}건',
+              onTap: () => openTrash(context),
+            ),
+            SettingRow(
+              key: const Key('open-activity'),
+              leading: const SettingIconTile(Icons.history),
+              title: '변경 기록',
+              onTap: () => openActivity(context),
             ),
           ],
         ),
