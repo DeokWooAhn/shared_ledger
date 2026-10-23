@@ -321,6 +321,8 @@ service cloud.firestore {
 
       // 앱의 newActivityData(lib/core/data/activity_repository.dart)와 같은 필드만 받는다.
       // 앱은 항목·설정을 쓸 때 같은 일괄 쓰기·트랜잭션으로 남긴다. expireAt이 지나면(1년) TTL 정책이 지운다.
+      // expireAt은 지난 시각(바로 지워짐)이나 400일 넘게 먼 시각을 막는다. 앱은 기기 시각 + 365일을 적고,
+      // 오프라인에서 더한 항목은 나중에 서버에 닿으므로 하한은 '요청보다 뒤'로 넉넉히 둔다.
       match /activity/{activityId} {
         function validActivity() {
           let data = request.resource.data;
@@ -331,7 +333,9 @@ service cloud.firestore {
             && data.get('at', null) == request.time
             && action is string && action.size() <= 40 && action.matches('^[a-z][a-zA-Z]*[.][a-z][a-zA-Z]*$')
             && summary is string && summary.size() >= 1 && summary.size() <= 200
-            && data.get('expireAt', null) is timestamp;
+            && data.get('expireAt', null) is timestamp
+            && data.expireAt > request.time
+            && data.expireAt <= request.time + duration.value(400, 'd');
         }
 
         allow read: if isMemberOf(ledgerData(ledgerId));

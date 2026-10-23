@@ -221,7 +221,7 @@ invites/{code}
 | `at` | timestamp | 서버 시간 |
 | `action` | string | `entry.create` 형식(영문.영문, 40자까지). 앱의 `ActivityAction` |
 | `summary` | string (1~200자) | 무엇을 바꿨는지 한 줄. 예: `10월 추가지출 '점심' 12,000원`, `분류 '여행' → '휴가' · 저축 집계 켬` |
-| `expireAt` | timestamp | 지울 때(남긴 때부터 1년). TTL 정책이 지운다 |
+| `expireAt` | timestamp | 지울 때(남긴 때부터 1년). TTL 정책이 지운다. 규칙은 요청 시각보다 뒤이고 400일 이내만 받는다(오프라인에서 남겨 나중에 올라가는 기록도 받게 하한은 넉넉히 둔다) |
 
 - 추가만 가능하고 고치거나 지울 수 없다. 관리자·편집자만 남기고, 보기 전용을 포함한 구성원은 모두 읽는다.
 - 앱은 항목·고정 지출·설정을 쓰는 저장소에서 같은 일괄 쓰기·트랜잭션으로 남긴다(`newActivityData`, 요약은 `lib/core/data/activity_summary.dart`).

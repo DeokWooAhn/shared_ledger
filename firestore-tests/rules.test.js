@@ -1100,6 +1100,17 @@ describe('변경 기록', () => {
     await assertFails(setDoc(activityRef(db), newActivity(EDITOR, { at: Timestamp.fromMillis(0) })));
   });
 
+  // 앱은 기기 시각 + 365일을 적는다. 오프라인에서 더한 항목은 나중에 올라가므로 하한은 '요청보다 뒤'로 넉넉히 둔다.
+  test('사라질 때는 요청 시각보다 뒤이고 400일 이내여야 한다', async () => {
+    const db = firestoreAs(EDITOR);
+    const write = (id, millis) =>
+      setDoc(activityRef(db, { id }), newActivity(EDITOR, { expireAt: Timestamp.fromMillis(Date.now() + millis) }));
+    await assertSucceeds(write('log-1', DAY));
+    await assertSucceeds(write('log-2', 399 * DAY));
+    await assertFails(write('log-3', -DAY));
+    await assertFails(write('log-4', 401 * DAY));
+  });
+
   test('사라질 때(expireAt)가 꼭 있어야 하고 시각(timestamp)만 받는다', async () => {
     const db = firestoreAs(EDITOR);
     const { expireAt, ...withoutExpiry } = newActivity(EDITOR);

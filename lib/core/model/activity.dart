@@ -2,6 +2,7 @@
 const activityPageSize = 50;
 
 /// 변경 기록을 두는 기간. 지나면 Firestore TTL 정책이 지운다(`expireAt`).
+/// `firestore.rules`의 validActivity는 요청 시각보다 뒤이고 400일 이내인 값만 받는다.
 const activityRetention = Duration(days: 365);
 
 /// 변경 기록 요약의 최대 길이. `firestore.rules`의 validActivity와 같고, 규칙처럼 UTF-16 단위로 센다.
