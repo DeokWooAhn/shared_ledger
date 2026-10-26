@@ -24,7 +24,10 @@ const summaryTwoColumnMaxWidth = 960.0;
 ///
 /// 저장소를 부르는 동작이 없어 컨트롤러 없이 [monthSummaryProvider]만 읽는다.
 class SummaryScreen extends ConsumerWidget {
-  const SummaryScreen({super.key});
+  const SummaryScreen({required this.openCalendar, super.key});
+
+  /// 달 이름을 누르면 여는 달력. 화면 이동은 router.dart가 정해서 넘겨준다.
+  final void Function(BuildContext context) openCalendar;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -34,7 +37,7 @@ class SummaryScreen extends ConsumerWidget {
         final bodyWidth = constraints.maxWidth - tabPageSidePadding * 2;
         final twoColumns = bodyWidth >= summaryTwoColumnMinWidth;
         return TabPage(
-          header: const MonthHeader(),
+          header: MonthHeader(openCalendar: openCalendar),
           maxWidth: twoColumns ? summaryTwoColumnMaxWidth : tabPageMaxWidth,
           children: [
             switch (summary) {

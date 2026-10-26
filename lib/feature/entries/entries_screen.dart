@@ -7,48 +7,30 @@ import '../../core/model/ledger_entries.dart';
 import '../../core/model/member.dart';
 import '../../core/model/month_ledger.dart';
 import '../../core/model/payment_method.dart';
-import '../../core/model/year_month.dart';
-import '../../core/theme/app_theme.dart';
 import '../../core/widget/entry_kind_label.dart';
 import '../../core/widget/keep_all.dart';
-import '../../core/widget/member_avatar.dart';
 import '../../core/widget/month_header.dart';
 import '../../core/widget/tab_page.dart';
 import '../../core/widget/won.dart';
 import 'entries_controller.dart';
-import 'entry_form_controller.dart';
 import 'entry_kind_tabs.dart';
 import 'entry_list.dart';
-
-/// 입력 화면을 열고, 닫힐 때의 결과를 돌려준다. 화면 이동은 router.dart가 정해서 넘겨준다.
-typedef OpenEntryForm =
-    Future<EntryFormOutcome?> Function(
-      BuildContext context,
-      EntryFormArgs args,
-    );
-
-/// 목록에 보이는 짧은 날짜. 예: '10/25'
-String entryShortDate(DateTime date) => '${date.month}/${date.day}';
-
-/// 지급 전 기본 월 지출의 예정일. 그달 마지막 날이면 '말일', 아니면 짧은 날짜다. 예: '말일', '10/25'
-String entryDueDate(DateTime dueOn) =>
-    DateTime(dueOn.year, dueOn.month, dueOn.day + 1).month != dueOn.month
-    ? '말일'
-    : entryShortDate(dueOn);
-
-String entriesFailureMessage(EntriesFailure failure) => switch (failure) {
-  EntriesFailure.restoreOffline => '연결되지 않아 꺼내지 못했어요. 항목은 휴지통에 남아 있어요.',
-  EntriesFailure.restoreGone => '그사이 휴지통에서 꺼냈거나 지운 항목이에요.',
-  EntriesFailure.restore => '꺼내지 못했어요. 잠시 후 다시 시도해 주세요.',
-};
+import 'entry_row.dart';
 
 /// 항목 탭(design/app/04). 보고 있는 달의 항목을 네 종류로 나눠 보여준다.
 ///
 /// 기본 월 지출은 분류마다 묶고 지급 전 항목에 표시를 붙인다. 항목을 누르면 입력 화면에서 고친다(보기 전용은 못 고친다).
 class EntriesScreen extends ConsumerWidget {
-  const EntriesScreen({required this.openForm, super.key});
+  const EntriesScreen({
+    required this.openForm,
+    required this.openCalendar,
+    super.key,
+  });
 
   final OpenEntryForm openForm;
+
+  /// 달 이름을 누르면 여는 달력. 화면 이동은 router.dart가 정해서 넘겨준다.
+  final void Function(BuildContext context) openCalendar;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -64,7 +46,7 @@ class EntriesScreen extends ConsumerWidget {
       ref.read(entriesControllerProvider.notifier).failureShown();
     });
     return TabPage(
-      header: const MonthHeader(),
+      header: MonthHeader(openCalendar: openCalendar),
       children: [
         EntryKindTabs(
           selected: kind,
@@ -123,41 +105,6 @@ class _EntriesContent extends ConsumerWidget {
   final List<PaymentMethod> paymentMethods;
   final OpenEntryForm openForm;
 
-  // 고치기 화면을 열고, 휴지통에 넣고 돌아오면 '되돌리기'를 띄운다.
-  Future<void> _edit(
-    BuildContext context,
-    WidgetRef ref,
-    LedgerEntry entry,
-    YearMonth month,
-  ) async {
-    // await 뒤에는 context가 사라졌을 수 있어서 미리 잡아 둔다.
-    final messenger = ScaffoldMessenger.of(context);
-    final controller = ref.read(entriesControllerProvider.notifier);
-    final outcome = await openForm(
-      context,
-      EntryFormArgs.edit(entry: entry, month: month),
-    );
-    if (outcome != EntryFormOutcome.trashed) return;
-    messenger.showSnackBar(
-      SnackBar(
-        key: const Key('trashed-snack-bar'),
-        content: Text(keepAll('휴지통에 넣었어요.')),
-        // 동작이 있는 스낵바는 기본으로 계속 떠 있다. 되돌리기는 잠깐만 보여준다.
-        persist: false,
-        duration: const Duration(seconds: 5),
-        action: SnackBarAction(
-          key: const Key('restore-entry'),
-          label: '되돌리기',
-          onPressed: () => controller.restore(entry, month),
-        ),
-      ),
-    );
-  }
-
-  // 모르는 자리 값(규칙이 owner·partner 말고는 막는다)은 관리자로 그린다.
-  static MemberSlot _slotOf(String memberId) =>
-      MemberSlot.values.asNameMap()[memberId] ?? MemberSlot.owner;
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final month = ref.watch(selectedMonthProvider);
@@ -185,13 +132,19 @@ class _EntriesContent extends ConsumerWidget {
             group: group,
             children: [
               for (final entry in group.entries)
-                _EntryRow(
+                EntryRow(
                   key: ValueKey('entry-${entry.id}'),
                   entry: entry,
-                  member: memberIn(members, _slotOf(entry.memberId)),
+                  member: memberIn(members, entryMemberSlot(entry.memberId)),
                   methods: methods,
                   onTap: canWrite
-                      ? () => _edit(context, ref, entry, month)
+                      ? () => editEntryWithUndo(
+                          context,
+                          ref,
+                          openForm,
+                          entry,
+                          month,
+                        )
                       : null,
                 ),
             ],
@@ -232,7 +185,7 @@ class _ListSummary extends StatelessWidget {
                 ),
               ),
               if (list.unpaidCount > 0)
-                _StatusPill(
+                StatusPill(
                   '지급 전 ${list.unpaidCount}건',
                   key: const Key('entries-unpaid'),
                 ),
@@ -313,155 +266,6 @@ class _GroupCard extends StatelessWidget {
               child,
             ],
           ],
-        ),
-      ),
-    );
-  }
-}
-
-/// 항목 한 줄: 누구 몫인지, 제목과 결제수단·날짜, 금액과 지급 전 표시.
-class _EntryRow extends StatelessWidget {
-  const _EntryRow({
-    required this.entry,
-    required this.member,
-    required this.methods,
-    required this.onTap,
-    super.key,
-  });
-
-  final LedgerEntry entry;
-  final Member member;
-  final Map<String, PaymentMethod> methods;
-
-  /// null이면 누를 수 없다(보기 전용).
-  final VoidCallback? onTap;
-
-  String _methodName(String id) => methods[id]?.name ?? '결제수단 없음';
-
-  String get _title => switch (entry) {
-    Income(:final title) ||
-    PlannedExpense(:final title) ||
-    ExtraExpense(:final title) => title,
-    CardBill(:final cardId) => methods[cardId]?.name ?? '카드 없음',
-  };
-
-  // 제목 아래 한 줄: 결제수단, 날짜(지급 전이면 고정 지출의 예정일), 메모.
-  String get _meta {
-    final entry = this.entry;
-    final date = entry.date;
-    final day = date == null ? null : entryShortDate(date);
-    final parts = switch (entry) {
-      Income() => [if (day != null) '$day 입금'],
-      PlannedExpense(:final paymentMethodId, :final dueOn) => [
-        _methodName(paymentMethodId),
-        if (day != null)
-          methods[paymentMethodId]?.kind == PaymentKind.card
-              ? '$day 결제'
-              : '$day 지급'
-        else if (dueOn != null)
-          '${entryDueDate(dueOn)} 예정',
-      ],
-      ExtraExpense(:final paymentMethodId) => [
-        _methodName(paymentMethodId),
-        ?day,
-      ],
-      CardBill() => [if (day != null) '$day 출금'],
-    };
-    return [...parts, ?entry.memo].join(' · ');
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colors = context.appColors;
-    final amount = entry.amount;
-    final meta = _meta;
-    final unpaid = switch (entry) {
-      PlannedExpense(:final isPaid) => !isPaid,
-      _ => false,
-    };
-    return InkWell(
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 14),
-        child: Row(
-          spacing: 12,
-          children: [
-            MemberAvatar(member: member, size: 36),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                spacing: 2,
-                children: [
-                  Text(
-                    _title,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  if (meta.isNotEmpty)
-                    Text(
-                      meta,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.labelSmall?.copyWith(
-                        color: colors.textMuted,
-                      ),
-                    ),
-                ],
-              ),
-            ),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              spacing: 4,
-              children: [
-                if (amount == null)
-                  Text(
-                    '금액 미정',
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      fontWeight: FontWeight.w500,
-                      color: colors.textMuted,
-                    ),
-                  )
-                else
-                  Text(
-                    won(amount),
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                if (unpaid) const _StatusPill('지급 전'),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// 포인트 색 바탕의 작은 표시('지급 전'). 글자로 뜻을 전하므로 색만으로 구분하지 않는다.
-class _StatusPill extends StatelessWidget {
-  const _StatusPill(this.label, {super.key});
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-      decoration: BoxDecoration(
-        color: scheme.tertiary,
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.w700,
-          color: scheme.onTertiary,
         ),
       ),
     );

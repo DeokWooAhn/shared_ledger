@@ -126,6 +126,9 @@ class SelectedMonth extends Notifier<YearMonth> {
 
   /// 이전 달로 간다.
   void previous() => state = state.previous;
+
+  /// [month]로 바로 간다(달력의 '오늘', 달 고르기).
+  void select(YearMonth month) => state = month;
 }
 
 /// 항목 탭에서 보고 있는 종류. 처음에는 기본 월 지출이다.

@@ -9,10 +9,14 @@ import 'member_avatar.dart';
 String yearMonthLabel(YearMonth month) => '${month.year}년 ${month.month}월';
 
 /// 요약·항목 탭 맨 위의 머리말. 보고 있는 달을 앞뒤로 옮기고, 두 사람의 이름표를 보여준다.
+/// [openCalendar]를 주면 달 이름을 눌러 달력을 연다.
 ///
 /// 보고 있는 달은 [selectedMonthProvider]라서 두 탭이 같은 달을 본다.
 class MonthHeader extends ConsumerWidget {
-  const MonthHeader({super.key});
+  const MonthHeader({this.openCalendar, super.key});
+
+  /// 달력을 연다. 화면 이동은 router.dart가 정해서 넘겨준다. null이면 달 이름을 누를 수 없다.
+  final void Function(BuildContext context)? openCalendar;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -39,15 +43,25 @@ class MonthHeader extends ConsumerWidget {
                 child: FittedBox(
                   fit: BoxFit.scaleDown,
                   alignment: AlignmentDirectional.centerStart,
+                  // 따로 한 덩어리로 둬서 옆 이름표(두 사람 이름)와 합쳐 읽지 않게 한다.
                   child: Semantics(
+                    container: true,
                     header: true,
                     liveRegion: true,
-                    child: Text(
-                      yearMonthLabel(month),
-                      key: const Key('month-title'),
-                      maxLines: 1,
-                      style: theme.textTheme.headlineSmall?.copyWith(
-                        fontSize: 22,
+                    button: openCalendar != null,
+                    hint: openCalendar == null ? null : '달력 열기',
+                    child: _Tappable(
+                      onTap: switch (openCalendar) {
+                        final open? => () => open(context),
+                        null => null,
+                      },
+                      child: Text(
+                        yearMonthLabel(month),
+                        key: const Key('month-title'),
+                        maxLines: 1,
+                        style: theme.textTheme.headlineSmall?.copyWith(
+                          fontSize: 22,
+                        ),
                       ),
                     ),
                   ),
@@ -69,6 +83,29 @@ class MonthHeader extends ConsumerWidget {
             child: MemberAvatar(member: member),
           ),
       ],
+    );
+  }
+}
+
+/// 달 이름을 누를 수 있게 감싼다. 누를 곳이 없으면 그대로 둔다.
+class _Tappable extends StatelessWidget {
+  const _Tappable({required this.onTap, required this.child});
+
+  final VoidCallback? onTap;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final onTap = this.onTap;
+    if (onTap == null) return child;
+    return InkWell(
+      key: const Key('open-calendar'),
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+        child: child,
+      ),
     );
   }
 }
