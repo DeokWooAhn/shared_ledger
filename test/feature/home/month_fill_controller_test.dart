@@ -126,6 +126,29 @@ void main() {
       expect(container.read(plannedFillProvider), isNull);
     });
 
+    test('달 목록에 없는 다음 달은 보기만 해서는 채우지 않고, 목록에 있으면 채운다', () async {
+      Future<PlannedFill?> nextMonthFill(Set<YearMonth> months) async {
+        final container = await ready(
+          ledger: Ledger(
+            id: 'l1',
+            name: '우리 가계부',
+            ownerUid: 'me',
+            months: months,
+          ),
+        );
+        container.read(selectedMonthProvider.notifier).next();
+        await loaded(container);
+        return container.read(plannedFillProvider);
+      }
+
+      // 달력으로 11월을 지나가기만 해도 11월이 생기지 않게 한다.
+      expect(await nextMonthFill({october}), isNull);
+      expect(
+        (await nextMonthFill({october, const YearMonth(2026, 11)}))?.month,
+        const YearMonth(2026, 11),
+      );
+    });
+
     test('보기 전용은 채우지 않는다(규칙이 막는다)', () async {
       final container = await ready(
         ledger: const Ledger(

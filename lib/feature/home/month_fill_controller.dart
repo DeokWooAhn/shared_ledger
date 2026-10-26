@@ -41,6 +41,7 @@ class PlannedFill {
 /// 보고 있는 달에 고정 지출로 채울 것. 채울 것이 없거나 채울 수 없으면 null.
 ///
 /// 보기 전용이면(규칙이 막는다), 자동으로 채우지 않는 달이면(지난 달·다음 달보다 먼 달),
+/// 요약·항목 탭이 오가지 않는 달이면(달력으로 지나가는 다음 달 등. 그 달은 달력에서 가계부를 만들 때 채운다),
 /// 그달 항목이나 고정 지출을 아직 받지 못했으면 null이다. 달을 옮긴 직후에는 이전 달 항목으로 판단하지 않는다.
 /// 값이 바뀔 때만 알리므로, 홈 틀이 듣다가 [MonthFillController.fill]로 넘긴다.
 final plannedFillProvider = Provider<PlannedFill?>((ref) {
@@ -50,6 +51,9 @@ final plannedFillProvider = Provider<PlannedFill?>((ref) {
   if (!canWrite || ledger == null) return null;
   final thisMonth = YearMonth.of(ref.watch(clockProvider)());
   if (!fillsFromTemplates(month, thisMonth: thisMonth)) return null;
+  // 보기만 해서 그달이 생기지 않게 한다. 목록을 아직 모으지 않은 가계부(null)는 예전처럼 채운다.
+  final months = ref.watch(ledgerMonthsProvider);
+  if (months != null && !months.contains(month)) return null;
   if ((ref.watch(monthLedgerProvider), ref.watch(templatesProvider)) case (
     AsyncData(value: final entries),
     AsyncData(value: final templates),

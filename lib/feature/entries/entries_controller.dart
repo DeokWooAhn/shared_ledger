@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/data/entries_repository.dart';
 import '../../core/data/providers.dart';
+import '../../core/model/expense_template.dart';
 import '../../core/model/ledger_entries.dart';
 import '../../core/model/year_month.dart';
 
@@ -51,6 +52,10 @@ class EntriesState {
   int get hashCode => Object.hash(restoring, addingMonth, failure);
 }
 
+/// 달력에서 [month] 가계부를 만들 때 고정 지출로 채우는지. 이번 달과 앞으로의 달만 채우고, 지난 달은 달만 만든다.
+bool fillsTemplatesOnAdd(YearMonth month, {required YearMonth thisMonth}) =>
+    month.compareTo(thisMonth) >= 0;
+
 final entriesControllerProvider =
     NotifierProvider.autoDispose<EntriesController, EntriesState>(
       EntriesController.new,
@@ -96,6 +101,7 @@ class EntriesController extends Notifier<EntriesState> {
   }
 
   /// [month] 가계부를 새로 만든다. 그달을 항목 있는 달 목록에 더하고, 고정 지출이 있으면 그달 기본 월 지출(지급 전)로 채운다.
+  /// 지난 달은 고정 지출을 채우지 않고 달만 만든다([fillsTemplatesOnAdd]).
   ///
   /// 달력에서 가계부가 없는 달에 항목을 넣으려 할 때 부른다. 한 트랜잭션이라 온라인에서만 되고, 만들었으면 true다.
   /// 실패는 [EntriesState.failure]로 알린다.
@@ -107,7 +113,10 @@ class EntriesController extends Notifier<EntriesState> {
     // 아무도 듣지 않는 공급자는 멈춰 있어 값을 기다리면 끝나지 않는다. 받는 동안 직접 듣는다.
     final templates = ref.listen(templatesProvider.future, (_, _) {});
     try {
-      final current = await templates.read();
+      final thisMonth = YearMonth.of(ref.read(clockProvider)());
+      final current = fillsTemplatesOnAdd(month, thisMonth: thisMonth)
+          ? await templates.read()
+          : const <ExpenseTemplate>[];
       await ref
           .read(entriesRepositoryProvider)
           .fillPlanned(

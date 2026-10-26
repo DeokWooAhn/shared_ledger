@@ -110,6 +110,7 @@ void main() {
       dueDay: 25,
     );
     const september = YearMonth(2026, 9);
+    const december = YearMonth(2026, 12);
 
     Future<(ProviderContainer, FakeEntriesRepository)> ready({
       List<ExpenseTemplate> templates = const [rent],
@@ -129,13 +130,13 @@ void main() {
       return (container, entries);
     }
 
-    test('고정 지출로 그달 기본 월 지출을 채우고 그달을 달 목록에 더한다', () async {
+    test('이번 달 이후의 달이면 고정 지출로 그달 기본 월 지출을 채우고 그달을 달 목록에 더한다', () async {
       final (container, entries) = await ready();
       final states = recordStates(container, entriesControllerProvider);
 
       final added = await container
           .read(entriesControllerProvider.notifier)
-          .addMonth(september);
+          .addMonth(december);
       await pumpEventQueue();
 
       expect(added, isTrue);
@@ -143,18 +144,18 @@ void main() {
         const EntriesState(addingMonth: true),
         const EntriesState(),
       ]);
-      final planned = entries.monthOf(september).plannedExpenses.single;
+      final planned = entries.monthOf(december).plannedExpenses.single;
       expect(planned.id, 'rent');
-      expect(planned.dueOn, DateTime(2026, 9, 25));
+      expect(planned.dueOn, DateTime(2026, 12, 25));
       expect(planned.isPaid, isFalse);
       expect(container.read(currentLedgerProvider)?.months, {
-        september,
         october,
+        december,
       });
     });
 
-    test('고정 지출이 없어도 그달을 달 목록에 더한다', () async {
-      final (container, entries) = await ready(templates: const []);
+    test('지난 달이면 고정 지출은 채우지 않고 달만 만든다', () async {
+      final (container, entries) = await ready();
 
       final added = await container
           .read(entriesControllerProvider.notifier)
@@ -163,6 +164,18 @@ void main() {
       expect(added, isTrue);
       expect(entries.monthOf(september).plannedExpenses, isEmpty);
       expect(entries.recordedMonths, [september]);
+    });
+
+    test('고정 지출이 없어도 그달을 달 목록에 더한다', () async {
+      final (container, entries) = await ready(templates: const []);
+
+      final added = await container
+          .read(entriesControllerProvider.notifier)
+          .addMonth(december);
+
+      expect(added, isTrue);
+      expect(entries.monthOf(december).plannedExpenses, isEmpty);
+      expect(entries.recordedMonths, [december]);
     });
 
     test('연결이 없으면 만들지 않고 알릴 실패를 켠다', () async {
