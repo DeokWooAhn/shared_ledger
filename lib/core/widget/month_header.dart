@@ -12,8 +12,8 @@ String yearMonthLabel(YearMonth month) => '${month.year}년 ${month.month}월';
 String monthLabel(YearMonth month, {required YearMonth current}) =>
     month.year == current.year ? '${month.month}월' : yearMonthLabel(month);
 
-/// 요약·항목 탭(과 휴지통) 맨 위의 머리말. 달 이름을 좌우로 밀어 달을 옮기고, 두 사람의 이름표를 보여준다.
-/// [openCalendar]를 주면 달 이름을 눌러 달력을 연다.
+/// 요약·항목 탭(과 휴지통) 맨 위의 머리말. 달 이름 양옆의 화살표나 달 이름을 좌우로 밀어 달을 옮기고,
+/// 두 사람의 이름표를 보여준다. [openCalendar]를 주면 달 이름을 눌러 달력을 연다.
 ///
 /// 보고 있는 달은 [selectedMonthProvider]라서 두 탭이 같은 달을 본다.
 class MonthHeader extends ConsumerWidget {
@@ -29,24 +29,43 @@ class MonthHeader extends ConsumerWidget {
     final current = YearMonth.of(ref.watch(clockProvider)());
     final members = ref.watch(membersProvider).value ?? const [];
     final selectedMonth = ref.read(selectedMonthProvider.notifier);
+    final arrowColor = theme.colorScheme.onSurfaceVariant;
     return Row(
       children: [
-        // 이름표 앞까지 남는 폭이 모두 밀 수 있는 곳이다.
+        // 달 이름은 남는 폭을 다 쓸 수 있고, 다음 달 화살표는 이름 바로 뒤에 붙는다.
         Expanded(
-          child: MonthSwipeTitle(
-            month: month,
-            label: monthLabel(month, current: current),
-            onNext: selectedMonth.next,
-            onPrevious: selectedMonth.previous,
-            onTap: switch (openCalendar) {
-              final open? => () => open(context),
-              null => null,
-            },
-            tapHint: '달력 열기',
-            titleKey: const Key('month-title'),
-            tapKey: const Key('open-calendar'),
-            alignment: AlignmentDirectional.centerStart,
-            style: theme.textTheme.headlineSmall?.copyWith(fontSize: 22),
+          child: Row(
+            children: [
+              IconButton(
+                key: const Key('previous-month'),
+                tooltip: '이전 달',
+                onPressed: selectedMonth.previous,
+                icon: Icon(Icons.chevron_left, size: 22, color: arrowColor),
+              ),
+              Flexible(
+                child: MonthSwipeTitle(
+                  month: month,
+                  label: monthLabel(month, current: current),
+                  onNext: selectedMonth.next,
+                  onPrevious: selectedMonth.previous,
+                  onTap: switch (openCalendar) {
+                    final open? => () => open(context),
+                    null => null,
+                  },
+                  tapHint: '달력 열기',
+                  titleKey: const Key('month-title'),
+                  tapKey: const Key('open-calendar'),
+                  alignment: AlignmentDirectional.centerStart,
+                  style: theme.textTheme.headlineSmall?.copyWith(fontSize: 22),
+                ),
+              ),
+              IconButton(
+                key: const Key('next-month'),
+                tooltip: '다음 달',
+                onPressed: selectedMonth.next,
+                icon: Icon(Icons.chevron_right, size: 22, color: arrowColor),
+              ),
+            ],
           ),
         ),
         for (final member in members)
@@ -136,8 +155,10 @@ class _MonthSwipeTitleState extends State<MonthSwipeTitle> {
       onHorizontalDragStart: (_) => _dragged = 0,
       onHorizontalDragUpdate: (details) => _dragged += details.delta.dx,
       onHorizontalDragEnd: _onDragEnd,
+      // 남는 폭을 꼭 채워야 할 때(Expanded)만 넓어지고, 아니면 달 이름 폭만큼만 차지한다.
       child: Align(
         alignment: widget.alignment,
+        widthFactor: 1,
         // 따로 한 덩어리로 둬서 옆 이름표(두 사람 이름)와 합쳐 읽지 않게 한다.
         child: Semantics(
           container: true,

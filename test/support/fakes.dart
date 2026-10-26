@@ -657,17 +657,25 @@ class FakeEntriesRepository with LogsActivity implements EntriesRepository {
   /// [month]의 지금 항목. 휴지통 항목은 [MonthLedger.trashed]에 있다.
   MonthLedger monthOf(YearMonth month) => _months[month] ?? const MonthLedger();
 
+  /// 실제 구독처럼 첫 값을 보내기 전에 변경을 듣기 시작한다. 첫 값을 받자마자 쓴 것(고정 지출 채우기)도 놓치지 않는다.
   @override
-  Stream<MonthLedger> watchMonth(String ledgerId, YearMonth month) async* {
-    watched.add((ledgerId: ledgerId, month: month));
-    if (failNextWatch) {
-      failNextWatch = false;
-      throw StateError('watchMonth failed');
-    }
-    yield monthOf(month);
-    await for (final _ in _changes.stream) {
-      yield monthOf(month);
-    }
+  Stream<MonthLedger> watchMonth(String ledgerId, YearMonth month) {
+    StreamSubscription<void>? changes;
+    late final StreamController<MonthLedger> controller;
+    controller = StreamController<MonthLedger>(
+      onListen: () {
+        watched.add((ledgerId: ledgerId, month: month));
+        if (failNextWatch) {
+          failNextWatch = false;
+          controller.addError(StateError('watchMonth failed'));
+          return;
+        }
+        changes = _changes.stream.listen((_) => controller.add(monthOf(month)));
+        controller.add(monthOf(month));
+      },
+      onCancel: () => changes?.cancel(),
+    );
+    return controller.stream;
   }
 
   @override

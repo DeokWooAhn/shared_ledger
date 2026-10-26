@@ -65,7 +65,7 @@ void listenAll(ProviderContainer container) {
 
 /// 보는 달의 항목과 고정 지출을 받을 때까지 기다린다.
 Future<void> loaded(ProviderContainer container) async {
-  await container.read(monthLedgerProvider.future);
+  await selectedMonthLedger(container);
   await container.read(templatesProvider.future);
 }
 
@@ -96,7 +96,7 @@ void main() {
         october,
         const MonthLedger(plannedIds: {'rent', 'insurance'}),
       );
-      await container.read(monthLedgerProvider.future);
+      await selectedMonthLedger(container);
       await pumpEventQueue();
 
       expect(container.read(plannedFillProvider), isNull);

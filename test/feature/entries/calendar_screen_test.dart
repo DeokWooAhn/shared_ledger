@@ -201,6 +201,33 @@ void main() {
       );
       semantics.dispose();
     });
+
+    testWidgets('공휴일은 일요일처럼 빨간 숫자이고, 칸과 고른 날 제목에서 이름을 알린다', (tester) async {
+      final semantics = tester.ensureSemantics();
+      await openCalendar(tester);
+      final error = Theme.of(tester.element(day(3))).colorScheme.error;
+      Color? numberColor(int number) =>
+          tester.widget<Text>(inDay(number, find.text('$number'))).style?.color;
+
+      // 10월 3일은 토요일이지만 개천절, 5일은 대체공휴일, 9일은 한글날이다.
+      expect(numberColor(3), error);
+      expect(numberColor(5), error);
+      expect(numberColor(9), error);
+      expect(numberColor(10), isNot(error));
+      expect(numberColor(11), error);
+      expect(
+        tester.getSemantics(day(9)),
+        isSemantics(label: '10월 9일 금요일, 한글날', isButton: true),
+      );
+
+      await tester.tap(day(9));
+      await settle(tester);
+      expect(textOf(tester, const Key('calendar-day-holiday')), '한글날');
+      await tester.tap(day(8));
+      await settle(tester);
+      expect(find.byKey(const Key('calendar-day-holiday')), findsNothing);
+      semantics.dispose();
+    });
   });
 
   group('고른 날', () {
@@ -321,7 +348,8 @@ void main() {
         const Offset(-300, 0),
         800,
       );
-      await settle(tester);
+      // 판이 멈추는 모습(튕김)은 settle보다 길다.
+      await settleRoute(tester);
       expect(calendarTitle(tester), '11월');
       expect(dayTitle(tester), '11월 1일 일요일');
 
@@ -329,6 +357,55 @@ void main() {
       await settle(tester);
       expect(calendarTitle(tester), '10월');
       expect(dayTitle(tester), '10월 15일 목요일');
+    });
+
+    testWidgets('판은 손가락을 따라 다음 달과 함께 밀리고, 반이 안 되게 밀다 놓으면 그 달로 돌아온다', (
+      tester,
+    ) async {
+      await openCalendar(tester);
+      final grid = find.byKey(const Key('calendar-swipe'));
+      final width = tester.getSize(grid).width;
+      expect(day(30), findsOneWidget);
+
+      final gesture = await tester.startGesture(tester.getCenter(grid));
+      for (var i = 0; i < 4; i++) {
+        await gesture.moveBy(Offset(-width * 0.1, 0));
+        await tester.pump(const Duration(milliseconds: 16));
+      }
+      // 미는 동안에는 10월 30일과 오른쪽에서 들어오는 11월 30일이 같이 보이고, 달은 아직 그대로다.
+      expect(day(30), findsNWidgets(2));
+      expect(calendarTitle(tester), '10월');
+
+      // 멈췄다가 놓으면(튕기지 않으면) 반을 넘지 않았으니 10월로 돌아온다.
+      await tester.pump(const Duration(milliseconds: 300));
+      await gesture.up();
+      await settleRoute(tester);
+      expect(calendarTitle(tester), '10월');
+      expect(dayTitle(tester), '10월 15일 목요일');
+      expect(day(30), findsOneWidget);
+    });
+
+    testWidgets('앞뒤 달 항목도 미리 받아 두어, 넘기자마자 그달 목록을 보여준다', (tester) async {
+      final entries = await openCalendar(tester);
+
+      expect(
+        entries.watched.map((watch) => watch.month),
+        containsAll([
+          const YearMonth(2026, 9),
+          october,
+          const YearMonth(2026, 11),
+        ]),
+      );
+
+      await tester.fling(
+        find.byKey(const Key('calendar-swipe')),
+        const Offset(300, 0),
+        800,
+      );
+      await settleRoute(tester);
+      expect(calendarTitle(tester), '9월');
+      expect(find.byKey(const Key('calendar-loading')), findsNothing);
+      expect(find.byKey(const Key('calendar-day-empty')), findsOneWidget);
     });
 
     testWidgets('달 이름을 오른쪽으로 밀면 이전 달로 가고, 해가 바뀌면 연도를 붙인다', (tester) async {

@@ -342,6 +342,29 @@ void main() {
       expect(monthTitle(tester), '12월');
     });
 
+    testWidgets('달 이름 양옆의 화살표로도 달을 옮기고, 다음 달 화살표는 달 이름 바로 뒤에 있다', (
+      tester,
+    ) async {
+      await pumpApp(
+        tester,
+        auth: FakeAuthRepository(signedIn: me),
+        ledgers: FakeLedgerRepository([shared]),
+      );
+
+      final title = tester.getRect(find.byKey(const Key('month-title')));
+      final next = tester.getRect(find.byKey(const Key('next-month')));
+      expect(next.left - title.right, lessThan(16));
+
+      await tester.tap(find.byKey(const Key('next-month')));
+      await settle(tester);
+      expect(monthTitle(tester), '11월');
+      await tester.tap(find.byKey(const Key('previous-month')));
+      await settle(tester);
+      await tester.tap(find.byKey(const Key('previous-month')));
+      await settle(tester);
+      expect(monthTitle(tester), '9월');
+    });
+
     testWidgets('글자를 크게 해도 달 이름이 잘리지 않는다', (tester) async {
       // 달 이름과 오른쪽 여백(Spacer)이 남는 폭을 반씩 나눠 '2026…'으로 잘린 적이 있다.
       for (final scale in [1.0, 2.0]) {
