@@ -11,14 +11,30 @@ export type HolidayDays = Record<string, string>;
 /** 특일 API가 정상이 아닌 답을 줬다(인증키 오류, 호출 한도 초과 등). */
 export class HolidayApiError extends Error {}
 
-/** [year]년 [month]월 공휴일 조회 주소. [serviceKey]는 포털의 일반 인증키(Decoding)다. */
+/**
+ * 포털의 일반 인증키를 주소에 넣을 수 있는 원래 값(Decoding)으로 맞춘다. 앞뒤 공백은 자른다.
+ *
+ * 포털은 같은 키를 Encoding(`%2B`·`%3D`가 든 것)과 Decoding(`+`·`=`가 든 것)으로 보여주는데, 화면에 따라 Encoding만 보이기도 한다.
+ * Decoding 키에는 `%`가 없어서, `%`가 있으면 Encoding 키로 보고 풀어 둔다. [restDayUrl]이 주소에 넣을 때 다시 인코딩한다.
+ */
+export function normalizeServiceKey(serviceKey: string): string {
+  const key = serviceKey.trim();
+  if (!key.includes('%')) return key;
+  try {
+    return decodeURIComponent(key);
+  } catch {
+    return key;
+  }
+}
+
+/** [year]년 [month]월 공휴일 조회 주소. [serviceKey]는 포털의 일반 인증키(Encoding·Decoding 둘 다 된다)다. */
 export function restDayUrl(
   serviceKey: string,
   year: number,
   month: number,
 ): string {
   const params = new URLSearchParams({
-    ServiceKey: serviceKey,
+    ServiceKey: normalizeServiceKey(serviceKey),
     solYear: String(year),
     solMonth: String(month).padStart(2, '0'),
     numOfRows: '50',
@@ -42,12 +58,16 @@ export function holidaysFromResponse(text: string): HolidayDays {
   try {
     body = JSON.parse(text);
   } catch {
-    throw new HolidayApiError(`JSON이 아닌 응답: ${text.slice(0, 200)}`);
+    throw new HolidayApiError(`JSON이 아닌 응답: ${apiErrorMessage(text)}`);
   }
   const response = field(body, 'response');
-  const code = field(field(response, 'header'), 'resultCode');
+  const header = field(response, 'header');
+  const code = field(header, 'resultCode');
   if (code !== '00') {
-    throw new HolidayApiError(`결과 코드 ${String(code)}`);
+    const message = field(header, 'resultMsg');
+    throw new HolidayApiError(
+      `결과 코드 ${String(code)} ${typeof message === 'string' ? message : apiErrorMessage(text)}`,
+    );
   }
   const items = field(field(response, 'body'), 'items');
   const item = field(items, 'item');
@@ -65,6 +85,35 @@ export function holidaysFromResponse(text: string): HolidayDays {
     days[date] = names.join('·');
   }
   return days;
+}
+
+/**
+ * 특일 API가 거부한 응답(HTTP 401·403 등)에서 원인을 뽑는다. 로그에 남겨 키 문제인지 바로 알 수 있게 한다.
+ *
+ * 거부 응답은 `OpenAPI_ServiceResponse.cmmMsgHeader`의 `errMsg`·`returnAuthMsg`로 오고(JSON이나 XML), 인증키는 들어 있지 않다.
+ * 모양을 모르면 본문 앞부분만 돌려준다.
+ */
+export function apiErrorMessage(text: string): string {
+  let header: unknown;
+  try {
+    header = field(
+      field(JSON.parse(text), 'OpenAPI_ServiceResponse'),
+      'cmmMsgHeader',
+    );
+  } catch {
+    header = {
+      errMsg: /<errMsg>([^<]*)<\/errMsg>/.exec(text)?.[1],
+      returnAuthMsg: /<returnAuthMsg>([^<]*)<\/returnAuthMsg>/.exec(text)?.[1],
+    };
+  }
+  const code = field(header, 'errMsg');
+  const reason = field(header, 'returnAuthMsg');
+  if (typeof code === 'string' && code !== '') {
+    return typeof reason === 'string' && reason !== '' && reason !== code
+      ? `${code}(${reason})`
+      : code;
+  }
+  return text.replace(/\s+/g, ' ').trim().slice(0, 200);
 }
 
 /** 두 해 공휴일이 같은지. 바뀌지 않았으면 문서를 다시 쓰지 않는다(앱의 읽기가 늘지 않게). */

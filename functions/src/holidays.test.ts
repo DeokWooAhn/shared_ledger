@@ -3,7 +3,9 @@ import { describe, test } from 'node:test';
 
 import {
   HolidayApiError,
+  apiErrorMessage,
   holidaysFromResponse,
+  normalizeServiceKey,
   restDayUrl,
   sameDays,
   yearInKorea,
@@ -78,6 +80,13 @@ describe('holidaysFromResponse', () => {
     assert.deepEqual(days, { '2026-02-16': '설날' });
   });
 
+  test('결과 코드가 정상이 아니면 결과 메시지를 오류에 담는다', () => {
+    assert.throws(
+      () => holidaysFromResponse(response('', '22')),
+      /결과 코드 22 NORMAL SERVICE\./,
+    );
+  });
+
   test('결과 코드가 정상이 아니거나 JSON이 아니면 오류다', () => {
     assert.throws(() => holidaysFromResponse(response('', '30')), HolidayApiError);
     assert.throws(
@@ -99,6 +108,55 @@ test('조회 주소는 인증키를 인코딩하고 달을 두 자리로 쓴다'
   assert.equal(url.searchParams.get('solYear'), '2026');
   assert.equal(url.searchParams.get('solMonth'), '03');
   assert.equal(url.searchParams.get('_type'), 'json');
+});
+
+describe('normalizeServiceKey', () => {
+  test('포털의 Encoding 키는 풀고, Decoding 키는 그대로 둔다', () => {
+    assert.equal(normalizeServiceKey('a%2Bb%2Fc%3D%3D'), 'a+b/c==');
+    assert.equal(normalizeServiceKey('a+b/c=='), 'a+b/c==');
+  });
+
+  test('앞뒤 공백·줄바꿈은 자르고, 풀 수 없는 %는 그대로 둔다', () => {
+    assert.equal(normalizeServiceKey('  a+b/c==\n'), 'a+b/c==');
+    assert.equal(normalizeServiceKey('abc%zz'), 'abc%zz');
+  });
+
+  test('Encoding 키로 만든 주소도 원래 키 한 번만 인코딩된다', () => {
+    const url = new URL(restDayUrl('a%2Bb%2Fc%3D%3D', 2026, 10));
+
+    assert.equal(url.searchParams.get('ServiceKey'), 'a+b/c==');
+    assert.match(url.search, /ServiceKey=a%2Bb%2Fc%3D%3D&/);
+  });
+});
+
+describe('apiErrorMessage', () => {
+  test('거부 응답(JSON)에서 오류 코드와 사유를 뽑는다', () => {
+    // 등록되지 않은 키로 부르면 HTTP 403과 함께 오는 본문.
+    const body = JSON.stringify({
+      OpenAPI_ServiceResponse: {
+        cmmMsgHeader: {
+          errMsg: 'SERVICE_KEY_IS_NOT_REGISTERED_ERROR',
+          returnAuthMsg: '등록되지 않은 서비스키',
+          returnReasonCode: '30',
+        },
+      },
+    });
+
+    assert.equal(
+      apiErrorMessage(body),
+      'SERVICE_KEY_IS_NOT_REGISTERED_ERROR(등록되지 않은 서비스키)',
+    );
+  });
+
+  test('XML 거부 응답에서도 뽑고, 모르는 모양이면 본문 앞부분을 돌려준다', () => {
+    assert.equal(
+      apiErrorMessage(
+        '<OpenAPI_ServiceResponse><cmmMsgHeader><errMsg>SERVICE ERROR</errMsg><returnAuthMsg>LIMITED_NUMBER_OF_SERVICE_REQUESTS_EXCEEDS_ERROR</returnAuthMsg></cmmMsgHeader></OpenAPI_ServiceResponse>',
+      ),
+      'SERVICE ERROR(LIMITED_NUMBER_OF_SERVICE_REQUESTS_EXCEEDS_ERROR)',
+    );
+    assert.equal(apiErrorMessage('Forbidden\n  please retry'), 'Forbidden please retry');
+  });
 });
 
 test('sameDays는 날짜와 이름이 모두 같을 때만 같다', () => {

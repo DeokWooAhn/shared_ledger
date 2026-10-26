@@ -8,6 +8,7 @@ import { onSchedule } from 'firebase-functions/scheduler';
 import {
   type HolidayDays,
   HolidayApiError,
+  apiErrorMessage,
   holidaysFromResponse,
   restDayUrl,
   sameDays,
@@ -18,7 +19,10 @@ import {
 setGlobalOptions({ region: 'asia-northeast3', maxInstances: 1 });
 initializeApp();
 
-/** 공공데이터포털 일반 인증키(Decoding). `firebase functions:secrets:set HOLIDAY_API_KEY`로 넣는다. 저장소에 두지 않는다. */
+/**
+ * 공공데이터포털 일반 인증키(Encoding·Decoding 둘 다 된다). `firebase functions:secrets:set HOLIDAY_API_KEY`로 넣고,
+ * 넣은 뒤에는 함수를 다시 배포해야 새 버전을 쓴다. 저장소와 로그에 두지 않는다.
+ */
 const holidayApiKey = defineSecret('HOLIDAY_API_KEY');
 
 /**
@@ -59,7 +63,9 @@ async function syncYear(year: number, serviceKey: string): Promise<void> {
       signal: AbortSignal.timeout(10_000),
     });
     if (!response.ok) {
-      throw new HolidayApiError(`HTTP ${response.status}`);
+      throw new HolidayApiError(
+        `HTTP ${response.status} ${apiErrorMessage(await response.text())}`,
+      );
     }
     Object.assign(days, holidaysFromResponse(await response.text()));
   }
