@@ -3,13 +3,14 @@ import '../../core/model/month_ledger.dart';
 import '../../core/model/year_month.dart';
 import '../../core/widget/won.dart';
 
-/// 달력 한 칸(하루)에 모인 항목.
+/// 달력 한 칸(하루)에 모인 항목. 목록은 읽기 전용으로 감싸서, 받은 쪽이 고쳐 달력 데이터를 바꿀 수 없다.
 class CalendarDay {
-  const CalendarDay({
+  CalendarDay({
     required this.date,
-    this.entries = const [],
-    this.scheduled = const [],
-  });
+    List<LedgerEntry> entries = const [],
+    List<PlannedExpense> scheduled = const [],
+  }) : entries = List.unmodifiable(entries),
+       scheduled = List.unmodifiable(scheduled);
 
   final DateTime date;
 

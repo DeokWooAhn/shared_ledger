@@ -141,6 +141,29 @@ void main() {
       expect(calendar.dayOf(28).date, DateTime(2026, 2, 28));
       expect(calendar.dayOf(28).isEmpty, isTrue);
     });
+
+    test('하루의 목록은 고칠 수 없고, 넘긴 목록을 나중에 고쳐도 바뀌지 않는다', () {
+      final calendar = CalendarMonth.of(
+        MonthLedger(
+          incomes: [income('salary', 2700000, on: DateTime(2026, 10, 10))],
+          plannedExpenses: [planned('rent', dueOn: DateTime(2026, 10, 31))],
+        ),
+        october,
+      );
+      expect(
+        () => calendar.dayOf(10).entries.add(extra('snack', 5000)),
+        throwsUnsupportedError,
+      );
+      expect(
+        () => calendar.dayOf(31).scheduled.clear(),
+        throwsUnsupportedError,
+      );
+
+      final source = <LedgerEntry>[income('bonus', 100000)];
+      final day = CalendarDay(date: DateTime(2026, 10, 1), entries: source);
+      source.clear();
+      expect(day.entries, hasLength(1));
+    });
   });
 
   group('짧은 금액', () {
