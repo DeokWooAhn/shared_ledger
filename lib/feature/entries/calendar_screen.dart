@@ -33,7 +33,8 @@ String calendarDayTitle(DateTime date) =>
 
 /// 달력 화면(design/app/08). 보고 있는 달의 항목을 날짜별로 보여주고, 고른 날의 항목을 아래(넓으면 옆)에 둔다.
 ///
-/// 항목을 누르면 고치는 화면, 아래 단추는 고른 날로 새 항목(추가지출)을 연다. 달을 옮기면 요약·항목 탭의 달도 같이 옮긴다.
+/// 항목을 누르면 고치는 화면, 항목이 없는 날은 빈 칸 안내를 누르면 그날로 새 항목(추가지출)을 연다.
+/// 달을 옮기면 요약·항목 탭의 달도 같이 옮긴다. 닫기 단추 없이 뒤로가기로 닫는다.
 /// 저장소를 부르는 동작이 없어 컨트롤러 없이 공급자만 읽고, 고른 날은 이 화면에서만 쓰는 상태라 위젯에 둔다.
 class CalendarScreen extends ConsumerStatefulWidget {
   const CalendarScreen({required this.openForm, super.key});
@@ -135,7 +136,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
   }
 }
 
-/// 닫기, 달 옮기기(달 이름을 누르면 달 고르기), 오늘.
+/// 달 옮기기(달 이름을 누르면 달 고르기)와 오늘. 달은 가운데에 둔다.
 class _CalendarTopBar extends StatelessWidget {
   const _CalendarTopBar({
     required this.month,
@@ -156,20 +157,13 @@ class _CalendarTopBar extends StatelessWidget {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     final arrowColor = context.appColors.accentText;
+    // 오른쪽 '오늘' 단추만큼 왼쪽도 비워 달을 가운데에 둔다.
+    const sideWidth = 64.0;
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
       child: Row(
         children: [
-          IconButton(
-            key: const Key('calendar-close'),
-            tooltip: '닫기',
-            style: IconButton.styleFrom(
-              backgroundColor: scheme.surfaceContainerLowest,
-              fixedSize: const Size(40, 40),
-            ),
-            onPressed: () => Navigator.of(context).maybePop(),
-            icon: Icon(Icons.close, size: 20, color: scheme.onSurface),
-          ),
+          const SizedBox(width: sideWidth),
           Expanded(
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -220,21 +214,24 @@ class _CalendarTopBar extends StatelessWidget {
               ],
             ),
           ),
-          TextButton(
-            key: const Key('calendar-today'),
-            style: TextButton.styleFrom(
-              backgroundColor: scheme.primaryContainer,
-              foregroundColor: scheme.onPrimaryContainer,
-              textStyle: const TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
+          SizedBox(
+            width: sideWidth,
+            child: TextButton(
+              key: const Key('calendar-today'),
+              style: TextButton.styleFrom(
+                backgroundColor: scheme.primaryContainer,
+                foregroundColor: scheme.onPrimaryContainer,
+                textStyle: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                ),
+                minimumSize: const Size(0, 36),
+                padding: const EdgeInsets.symmetric(horizontal: 14),
+                shape: const StadiumBorder(),
               ),
-              minimumSize: const Size(0, 36),
-              padding: const EdgeInsets.symmetric(horizontal: 14),
-              shape: const StadiumBorder(),
+              onPressed: onToday,
+              child: const Text('오늘'),
             ),
-            onPressed: onToday,
-            child: const Text('오늘'),
           ),
         ],
       ),
@@ -595,7 +592,7 @@ class _Legend extends StatelessWidget {
   }
 }
 
-/// 고른 날의 항목 목록과 그날로 항목 추가.
+/// 고른 날의 항목 목록. 항목이 없는 날은 안내 전체가 그날로 항목을 추가하는 단추다.
 class _DayPanel extends ConsumerWidget {
   const _DayPanel({
     required this.day,
@@ -681,26 +678,20 @@ class _DayPanel extends ConsumerWidget {
             ),
             if (rows.isEmpty)
               Padding(
-                key: const Key('calendar-day-empty'),
-                padding: const EdgeInsets.fromLTRB(0, 20, 0, 4),
-                child: Column(
-                  spacing: 10,
-                  children: [
-                    CircleAvatar(
-                      radius: 26,
-                      backgroundColor: scheme.primaryContainer,
-                      child: Icon(
-                        Icons.edit_calendar_outlined,
-                        color: scheme.onPrimaryContainer,
-                      ),
-                    ),
-                    Text(
-                      keepAll('이 날 적은 항목이 없어요'),
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: scheme.onSurfaceVariant,
-                      ),
-                    ),
-                  ],
+                padding: const EdgeInsets.only(top: 12),
+                child: _EmptyDay(
+                  onAdd: canWrite
+                      ? () => unawaited(
+                          openForm(
+                            context,
+                            EntryFormArgs.add(
+                              kind: EntryKind.extra,
+                              month: month,
+                              date: date,
+                            ),
+                          ),
+                        )
+                      : null,
                 ),
               )
             else
@@ -733,25 +724,52 @@ class _DayPanel extends ConsumerWidget {
                   ),
                 ),
               ),
-            if (canWrite)
-              Padding(
-                padding: const EdgeInsets.only(top: 12),
-                child: FilledButton(
-                  key: const Key('calendar-add'),
-                  onPressed: () => unawaited(
-                    openForm(
-                      context,
-                      EntryFormArgs.add(
-                        kind: EntryKind.extra,
-                        month: month,
-                        date: date,
-                      ),
-                    ),
-                  ),
-                  child: Text('${date.month}월 ${date.day}일에 항목 추가'),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// 항목이 없는 날의 안내. 적을 수 있으면 안내 전체가 그날로 새 항목(추가지출)을 여는 단추다.
+class _EmptyDay extends StatelessWidget {
+  const _EmptyDay({required this.onAdd});
+
+  /// null이면 누를 수 없다(보기 전용).
+  final VoidCallback? onAdd;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    return Semantics(
+      button: onAdd != null,
+      hint: onAdd == null ? null : '이 날로 항목 추가',
+      child: InkWell(
+        key: const Key('calendar-day-empty'),
+        onTap: onAdd,
+        borderRadius: BorderRadius.circular(16),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          child: Column(
+            spacing: 10,
+            children: [
+              CircleAvatar(
+                radius: 26,
+                backgroundColor: scheme.primaryContainer,
+                child: Icon(
+                  Icons.edit_calendar_outlined,
+                  color: scheme.onPrimaryContainer,
                 ),
               ),
-          ],
+              Text(
+                keepAll('이 날 적은 항목이 없어요'),
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: scheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

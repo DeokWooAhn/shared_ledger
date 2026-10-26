@@ -46,6 +46,7 @@ abstract final class Routes {
   static const template = '/template';
 
   /// 달력. 요약·항목 탭 머리말의 달 이름으로 열고, 입력 화면처럼 탭 막대를 가리는 전체 화면이다.
+  /// 닫기 단추 없이 뒤로가기(iOS는 왼쪽 끝 밀기)로 닫는다.
   static const calendar = '/calendar';
 
   /// 설정 탭 안의 분류·결제수단 목록, 휴지통, 변경 기록. 탭 막대는 그대로 보인다.
@@ -221,11 +222,12 @@ final routerProvider = Provider<GoRouter>((ref) {
           },
         ),
       ),
+      // 닫기 단추가 없어서 보통 화면으로 연다. iOS는 왼쪽 끝을 밀어서, Android는 뒤로가기로 닫는다
+      // (fullscreenDialog면 iOS에서 밀어 닫을 수 없다).
       GoRoute(
         path: Routes.calendar,
         pageBuilder: (_, state) => MaterialPage(
           key: state.pageKey,
-          fullscreenDialog: true,
           child: const CalendarScreen(openForm: _openEntryForm),
         ),
       ),

@@ -5390,26 +5390,10 @@
               "children": [
                 {
                   "type": "frame",
-                  "id": "NyHRq",
-                  "name": "Close",
-                  "width": 40,
-                  "height": 40,
-                  "fill": "$card",
-                  "cornerRadius": 20,
-                  "justifyContent": "center",
-                  "alignItems": "center",
-                  "children": [
-                    {
-                      "type": "icon",
-                      "id": "dtRfj",
-                      "name": "X",
-                      "width": 20,
-                      "height": 20,
-                      "icon": "x",
-                      "library": "lucide",
-                      "fill": "$text-primary"
-                    }
-                  ]
+                  "id": "n50NK",
+                  "name": "Spacer",
+                  "width": 60,
+                  "height": 34
                 },
                 {
                   "type": "frame",
@@ -7293,33 +7277,6 @@
                       "content": "72,000원"
                     }
                   }
-                },
-                {
-                  "type": "frame",
-                  "id": "L5sstK",
-                  "name": "Add",
-                  "width": "fill_container",
-                  "layout": "vertical",
-                  "padding": [
-                    12,
-                    0,
-                    0,
-                    0
-                  ],
-                  "children": [
-                    {
-                      "id": "vfFFH",
-                      "type": "ref",
-                      "ref": "ggnyx",
-                      "name": "Button Add",
-                      "width": "fill_container",
-                      "descendants": {
-                        "E1BvU3": {
-                          "content": "10월 18일에 항목 추가"
-                        }
-                      }
-                    }
-                  ]
                 }
               ]
             }
@@ -7374,26 +7331,10 @@
               "children": [
                 {
                   "type": "frame",
-                  "id": "O0tHaH",
-                  "name": "Close",
-                  "width": 40,
-                  "height": 40,
-                  "fill": "$card",
-                  "cornerRadius": 20,
-                  "justifyContent": "center",
-                  "alignItems": "center",
-                  "children": [
-                    {
-                      "type": "icon",
-                      "id": "y3M1U",
-                      "name": "X",
-                      "width": 20,
-                      "height": 20,
-                      "icon": "x",
-                      "library": "lucide",
-                      "fill": "$text-primary"
-                    }
-                  ]
+                  "id": "I89etP",
+                  "name": "Spacer",
+                  "width": 60,
+                  "height": 34
                 },
                 {
                   "type": "frame",
@@ -9316,33 +9257,6 @@
                       "fontWeight": "normal"
                     }
                   ]
-                },
-                {
-                  "type": "frame",
-                  "id": "t81o2",
-                  "name": "Add",
-                  "width": "fill_container",
-                  "layout": "vertical",
-                  "padding": [
-                    12,
-                    0,
-                    0,
-                    0
-                  ],
-                  "children": [
-                    {
-                      "id": "XDx9u",
-                      "type": "ref",
-                      "ref": "ggnyx",
-                      "name": "Button Add",
-                      "width": "fill_container",
-                      "descendants": {
-                        "E1BvU3": {
-                          "content": "10월 25일에 항목 추가"
-                        }
-                      }
-                    }
-                  ]
                 }
               ]
             }
@@ -9397,26 +9311,10 @@
               "children": [
                 {
                   "type": "frame",
-                  "id": "lQpuS",
-                  "name": "Close",
-                  "width": 40,
-                  "height": 40,
-                  "fill": "$card",
-                  "cornerRadius": 20,
-                  "justifyContent": "center",
-                  "alignItems": "center",
-                  "children": [
-                    {
-                      "type": "icon",
-                      "id": "wIJMP",
-                      "name": "X",
-                      "width": 20,
-                      "height": 20,
-                      "icon": "x",
-                      "library": "lucide",
-                      "fill": "$text-primary"
-                    }
-                  ]
+                  "id": "SXxFp",
+                  "name": "Spacer",
+                  "width": 60,
+                  "height": 34
                 },
                 {
                   "type": "frame",
@@ -11273,33 +11171,6 @@
                       "fontFamily": "$font",
                       "fontSize": 15,
                       "fontWeight": "normal"
-                    }
-                  ]
-                },
-                {
-                  "type": "frame",
-                  "id": "j9joaK",
-                  "name": "Add",
-                  "width": "fill_container",
-                  "layout": "vertical",
-                  "padding": [
-                    12,
-                    0,
-                    0,
-                    0
-                  ],
-                  "children": [
-                    {
-                      "id": "L2TyZd",
-                      "type": "ref",
-                      "ref": "ggnyx",
-                      "name": "Button Add",
-                      "width": "fill_container",
-                      "descendants": {
-                        "E1BvU3": {
-                          "content": "10월 24일에 항목 추가"
-                        }
-                      }
                     }
                   ]
                 }

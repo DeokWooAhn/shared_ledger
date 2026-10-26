@@ -125,7 +125,7 @@ void main() {
       expect(find.byKey(const Key('calendar-day-empty')), findsOneWidget);
     });
 
-    testWidgets('항목 탭에서도 달 이름으로 달력을 열고, X를 누르면 닫힌다', (tester) async {
+    testWidgets('항목 탭에서도 달 이름으로 달력을 열고, 뒤로 가면 닫힌다', (tester) async {
       await pumpApp(
         tester,
         auth: FakeAuthRepository(signedIn: me),
@@ -137,8 +137,10 @@ void main() {
       await tester.tap(find.byKey(const Key('open-calendar')));
       await settleRoute(tester);
       expect(find.byType(CalendarScreen), findsOneWidget);
+      // 닫기 단추가 없다. Android 뒤로가기(iOS는 왼쪽 끝 밀기)로 닫는다.
+      expect(find.byKey(const Key('calendar-close')), findsNothing);
 
-      await tester.tap(find.byKey(const Key('calendar-close')));
+      await tester.binding.handlePopRoute();
       await settleRoute(tester);
 
       expect(find.byType(CalendarScreen), findsNothing);
@@ -246,15 +248,17 @@ void main() {
       expect(find.text('2026년 10월 18일'), findsOneWidget);
     });
 
-    testWidgets('그날로 항목 추가는 추가지출을 그 날짜로 열고, 저장하면 그날에 보인다', (tester) async {
+    testWidgets('항목이 없는 날은 안내를 누르면 그 날짜로 추가지출을 열고, 저장하면 그날에 보인다', (
+      tester,
+    ) async {
       final entries = await openCalendar(tester);
-      await tester.tap(day(18));
+      await tester.tap(day(16));
       await settle(tester);
 
-      await tapShown(tester, find.byKey(const Key('calendar-add')));
+      await tapShown(tester, find.byKey(const Key('calendar-day-empty')));
       await settleRoute(tester);
       expect(find.text('쓴 날'), findsOneWidget);
-      expect(find.text('2026년 10월 18일'), findsOneWidget);
+      expect(find.text('2026년 10월 16일'), findsOneWidget);
       await tester.enterText(find.byKey(const Key('entry-amount')), '5000');
       await tester.enterText(find.byKey(const Key('entry-title')), '간식');
       await tapShown(tester, find.byKey(const Key('entry-method-p-shared')));
@@ -264,12 +268,22 @@ void main() {
       final added = entries.added.single;
       expect(added.month, october);
       expect(added.draft.kind, EntryKind.extra);
-      expect(added.draft.date, DateTime(2026, 10, 18));
+      expect(added.draft.date, DateTime(2026, 10, 16));
       expect(find.byType(CalendarScreen), findsOneWidget);
-      expect(find.text('항목 3건'), findsOneWidget);
+      expect(find.text('항목 1건'), findsOneWidget);
+      expect(find.byKey(const Key('calendar-day-empty')), findsNothing);
     });
 
-    testWidgets('보기 전용은 항목 추가 단추가 없고 항목을 눌러도 열리지 않는다', (tester) async {
+    testWidgets('항목이 있는 날에는 따로 추가 단추가 없다', (tester) async {
+      await openCalendar(tester);
+      await tester.tap(day(18));
+      await settle(tester);
+
+      expect(find.byKey(const Key('calendar-day-empty')), findsNothing);
+      expect(find.byType(FilledButton), findsNothing);
+    });
+
+    testWidgets('보기 전용은 빈 날 안내와 항목을 눌러도 입력 화면이 열리지 않는다', (tester) async {
       await openCalendar(
         tester,
         ledger: const Ledger(
@@ -279,10 +293,14 @@ void main() {
           roles: {'me': MemberRole.viewer},
         ),
       );
+      await tester.tap(day(16));
+      await settle(tester);
+      await tapShown(tester, find.byKey(const Key('calendar-day-empty')));
+      await settleRoute(tester);
+      expect(find.byType(EntryFormScreen), findsNothing);
+
       await tester.tap(day(18));
       await settle(tester);
-
-      expect(find.byKey(const Key('calendar-add')), findsNothing);
       await tapShown(tester, find.byKey(const ValueKey('calendar-entry-mart')));
       await settleRoute(tester);
       expect(find.byType(EntryFormScreen), findsNothing);
@@ -315,7 +333,7 @@ void main() {
 
       expect(find.text('2026년 3월'), findsOneWidget);
       expect(dayTitle(tester), '3월 1일 일요일');
-      await tester.tap(find.byKey(const Key('calendar-close')));
+      await tester.binding.handlePopRoute();
       await settleRoute(tester);
       expect(textOf(tester, const Key('month-title')), '2026년 3월');
     });
