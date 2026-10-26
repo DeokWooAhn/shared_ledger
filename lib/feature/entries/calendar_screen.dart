@@ -10,6 +10,7 @@ import '../../core/model/month_ledger.dart';
 import '../../core/model/payment_method.dart';
 import '../../core/model/year_month.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/widget/back_circle_button.dart';
 import '../../core/widget/keep_all.dart';
 import '../../core/widget/month_header.dart';
 import '../../core/widget/month_picker_sheet.dart';
@@ -98,33 +99,38 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     });
     final ledger = ref.watch(monthLedgerProvider);
     final paymentMethods = ref.watch(paymentMethodsProvider);
-    final Widget body;
-    if (ledger.hasError || paymentMethods.hasError) {
-      body = const _CalendarFailed();
-    } else if ((ledger, paymentMethods) case (
-      AsyncData(value: final ledger),
-      AsyncData(value: final paymentMethods),
-    )) {
-      body = _CalendarBody(
-        month: month,
-        ledger: ledger,
-        paymentMethods: paymentMethods,
-        selected: _selectedDay(month),
-        today: _today,
-        onPick: _pick,
-        openForm: widget.openForm,
-      );
-    } else {
-      body = const _CalendarLoading();
-    }
+    final selectedMonth = ref.read(selectedMonthProvider.notifier);
+    // 달을 옮긴 직후 새 달 항목을 받는 동안에도 달력 칸은 바로 그려서 밀어 넘기기가 끊기지 않게 한다.
+    // (이전 달 값은 쓰지 않는다. AsyncData일 때만 새 달 값이다.)
+    final loaded = switch ((ledger, paymentMethods)) {
+      (AsyncData(value: final ledger), AsyncData(value: final methods)) => (
+        ledger,
+        methods,
+      ),
+      _ => null,
+    };
+    final Widget body = ledger.hasError || paymentMethods.hasError
+        ? const _CalendarFailed()
+        : _CalendarBody(
+            month: month,
+            ledger: loaded?.$1,
+            paymentMethods: loaded?.$2 ?? const [],
+            selected: _selectedDay(month),
+            today: _today,
+            onPick: _pick,
+            onNext: selectedMonth.next,
+            onPrevious: selectedMonth.previous,
+            openForm: widget.openForm,
+          );
     return Scaffold(
       body: SafeArea(
         child: Column(
           children: [
             _CalendarTopBar(
               month: month,
-              onPrevious: ref.read(selectedMonthProvider.notifier).previous,
-              onNext: ref.read(selectedMonthProvider.notifier).next,
+              current: YearMonth.of(_today),
+              onPrevious: selectedMonth.previous,
+              onNext: selectedMonth.next,
               onPickMonth: _pickMonth,
               onToday: _goToday,
             ),
@@ -136,10 +142,11 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
   }
 }
 
-/// 달 옮기기(달 이름을 누르면 달 고르기)와 오늘. 달은 가운데에 둔다.
+/// 뒤로, 달 이름(밀어서 달 옮기기, 누르면 연·월 고르기), 오늘. 달 이름은 가운데에 둔다.
 class _CalendarTopBar extends StatelessWidget {
   const _CalendarTopBar({
     required this.month,
+    required this.current,
     required this.onPrevious,
     required this.onNext,
     required this.onPickMonth,
@@ -147,6 +154,7 @@ class _CalendarTopBar extends StatelessWidget {
   });
 
   final YearMonth month;
+  final YearMonth current;
   final VoidCallback onPrevious;
   final VoidCallback onNext;
   final VoidCallback onPickMonth;
@@ -156,62 +164,33 @@ class _CalendarTopBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
-    final arrowColor = context.appColors.accentText;
-    // 오른쪽 '오늘' 단추만큼 왼쪽도 비워 달을 가운데에 둔다.
+    // 양옆을 같은 폭으로 둬서 달 이름을 가운데에 둔다.
     const sideWidth = 64.0;
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
       child: Row(
         children: [
-          const SizedBox(width: sideWidth),
+          SizedBox(
+            width: sideWidth,
+            child: Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: BackCircleButton(
+                key: const Key('calendar-back'),
+                background: scheme.surfaceContainerLowest,
+              ),
+            ),
+          ),
           Expanded(
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                IconButton(
-                  key: const Key('calendar-previous-month'),
-                  tooltip: '이전 달',
-                  onPressed: onPrevious,
-                  icon: Icon(Icons.chevron_left, color: arrowColor),
-                ),
-                // 글자를 크게 해도 잘리지 않게, 폭이 모자라면 줄인다.
-                Flexible(
-                  child: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    child: Semantics(
-                      container: true,
-                      header: true,
-                      liveRegion: true,
-                      button: true,
-                      hint: '달 고르기',
-                      child: InkWell(
-                        key: const Key('calendar-month'),
-                        onTap: onPickMonth,
-                        borderRadius: BorderRadius.circular(8),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 4,
-                            vertical: 6,
-                          ),
-                          child: Text(
-                            yearMonthLabel(month),
-                            maxLines: 1,
-                            style: theme.textTheme.titleMedium?.copyWith(
-                              fontSize: 19,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                IconButton(
-                  key: const Key('calendar-next-month'),
-                  tooltip: '다음 달',
-                  onPressed: onNext,
-                  icon: Icon(Icons.chevron_right, color: arrowColor),
-                ),
-              ],
+            child: MonthSwipeTitle(
+              month: month,
+              label: monthLabel(month, current: current),
+              onNext: onNext,
+              onPrevious: onPrevious,
+              onTap: onPickMonth,
+              tapHint: '연·월 고르기',
+              titleKey: const Key('calendar-month-title'),
+              tapKey: const Key('calendar-month'),
+              style: theme.textTheme.titleMedium?.copyWith(fontSize: 19),
             ),
           ),
           SizedBox(
@@ -248,33 +227,49 @@ class _CalendarBody extends ConsumerWidget {
     required this.selected,
     required this.today,
     required this.onPick,
+    required this.onNext,
+    required this.onPrevious,
     required this.openForm,
   });
 
   final YearMonth month;
-  final MonthLedger ledger;
+
+  /// 그달 항목. 아직 받지 못했으면 null이고, 달력 칸만 빈 채로 그리고 날 목록 자리에 불러오는 중을 둔다.
+  final MonthLedger? ledger;
   final List<PaymentMethod> paymentMethods;
   final DateTime selected;
   final DateTime today;
   final ValueChanged<DateTime> onPick;
+  final VoidCallback onNext;
+  final VoidCallback onPrevious;
   final OpenEntryForm openForm;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final calendar = CalendarMonth.of(ledger, month);
-    final grid = _CalendarCard(
-      calendar: calendar,
-      selected: selected,
-      today: today,
-      onPick: onPick,
+    final ledger = this.ledger;
+    final calendar = CalendarMonth.of(ledger ?? const MonthLedger(), month);
+    final grid = _SwipeMonth(
+      onNext: onNext,
+      onPrevious: onPrevious,
+      child: MonthSlide(
+        month: month,
+        child: _CalendarCard(
+          calendar: calendar,
+          selected: selected,
+          today: today,
+          onPick: onPick,
+        ),
+      ),
     );
-    final panel = _DayPanel(
-      key: ValueKey('calendar-panel-${selected.day}'),
-      day: calendar.dayOf(selected.day),
-      month: month,
-      methods: {for (final method in paymentMethods) method.id: method},
-      openForm: openForm,
-    );
+    final Widget panel = ledger == null
+        ? const _CalendarLoading()
+        : _DayPanel(
+            key: ValueKey('calendar-panel-${selected.day}'),
+            day: calendar.dayOf(selected.day),
+            month: month,
+            methods: {for (final method in paymentMethods) method.id: method},
+            openForm: openForm,
+          );
     const padding = EdgeInsets.fromLTRB(16, 0, 16, 24);
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -776,14 +771,55 @@ class _EmptyDay extends StatelessWidget {
   }
 }
 
+/// 달력을 좌우로 밀어 달을 옮긴다. 왼쪽으로 밀면 다음 달, 오른쪽으로 밀면 이전 달이다(달 이름과 같다).
+class _SwipeMonth extends StatefulWidget {
+  const _SwipeMonth({
+    required this.onNext,
+    required this.onPrevious,
+    required this.child,
+  });
+
+  final VoidCallback onNext;
+  final VoidCallback onPrevious;
+  final Widget child;
+
+  @override
+  State<_SwipeMonth> createState() => _SwipeMonthState();
+}
+
+class _SwipeMonthState extends State<_SwipeMonth> {
+  double _dragged = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      key: const Key('calendar-swipe'),
+      behavior: HitTestBehavior.opaque,
+      onHorizontalDragStart: (_) => _dragged = 0,
+      onHorizontalDragUpdate: (details) => _dragged += details.delta.dx,
+      onHorizontalDragEnd: (details) {
+        final velocity = details.primaryVelocity ?? 0;
+        if (velocity < -monthSwipeVelocity || _dragged < -monthSwipeDistance) {
+          widget.onNext();
+        } else if (velocity > monthSwipeVelocity ||
+            _dragged > monthSwipeDistance) {
+          widget.onPrevious();
+        }
+      },
+      child: widget.child,
+    );
+  }
+}
+
 class _CalendarLoading extends StatelessWidget {
   const _CalendarLoading();
 
   @override
   Widget build(BuildContext context) {
-    return const Center(
+    return const Padding(
       key: Key('calendar-loading'),
-      child: CircularProgressIndicator(),
+      padding: EdgeInsets.symmetric(vertical: 48),
+      child: Center(child: CircularProgressIndicator()),
     );
   }
 }

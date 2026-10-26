@@ -35,58 +35,63 @@ Future<void> pumpPicker(
   await tester.pumpAndSettle();
 }
 
+/// 휠을 [items]칸 굴린다. 양수면 아래 칸(다음 해·다음 달)으로 간다.
+Future<void> roll(WidgetTester tester, Key wheel, int items) async {
+  await tester.drag(
+    find.byKey(wheel),
+    Offset(0, -monthPickerItemExtent * items),
+  );
+  await tester.pumpAndSettle();
+}
+
+String? title(WidgetTester tester) =>
+    tester.widget<Text>(find.byKey(const Key('month-picker-title'))).data;
+
 void main() {
-  testWidgets('보고 있는 해로 열고, 해를 넘겨 달을 누르면 그 달을 돌려주며 닫힌다', (tester) async {
+  testWidgets('보고 있는 연·월로 열고, 휠을 굴려 완료하면 그 달을 돌려주며 닫힌다', (tester) async {
     YearMonth? result;
     await pumpPicker(tester, onResult: (month) => result = month);
-    expect(find.text('2026년'), findsOneWidget);
+    expect(title(tester), '2026년 10월');
 
-    await tester.tap(find.byKey(const Key('month-picker-next-year')));
-    await tester.pump();
-    expect(find.text('2027년'), findsOneWidget);
-    await tester.tap(find.byKey(const Key('month-picker-3')));
+    await roll(tester, const Key('month-picker-years'), 1);
+    await roll(tester, const Key('month-picker-months'), -7);
+    expect(title(tester), '2027년 3월');
+    await tester.tap(find.byKey(const Key('month-picker-done')));
     await tester.pumpAndSettle();
 
     expect(result, const YearMonth(2027, 3));
     expect(find.byType(MonthPickerSheet), findsNothing);
   });
 
-  testWidgets('고르지 않고 닫으면 null을 돌려준다', (tester) async {
+  testWidgets('휠을 굴렸어도 취소하면 null을 돌려준다', (tester) async {
     YearMonth? result = const YearMonth(2000, 1);
     await pumpPicker(tester, onResult: (month) => result = month);
 
-    await tester.tapAt(const Offset(10, 10));
+    await roll(tester, const Key('month-picker-months'), 2);
+    await tester.tap(find.byKey(const Key('month-picker-cancel')));
     await tester.pumpAndSettle();
 
     expect(result, isNull);
   });
 
-  testWidgets('화면 읽기 도구는 보고 있는 달을 골라진 것으로, 이번 달을 이번 달로 읽는다', (tester) async {
+  testWidgets('화면 읽기 도구는 휠을 연도·월 값으로 읽고 조절로 한 칸씩 옮길 수 있다', (tester) async {
     final semantics = tester.ensureSemantics();
-    await pumpPicker(
-      tester,
-      onResult: (_) {},
-      selected: const YearMonth(2026, 3),
-      current: const YearMonth(2026, 10),
-    );
+    await pumpPicker(tester, onResult: (_) {});
 
     expect(
-      tester.getSemantics(find.byKey(const Key('month-picker-3'))),
-      matchesSemantics(
-        label: '2026년 3월',
-        isSelected: true,
-        hasSelectedState: true,
-        isButton: true,
-        hasTapAction: true,
-        hasFocusAction: true,
-        isEnabled: true,
-        hasEnabledState: true,
-        isFocusable: true,
+      tester.getSemantics(find.byKey(const Key('month-picker-years'))),
+      isSemantics(
+        label: '연도',
+        value: '2026년',
+        increasedValue: '2027년',
+        decreasedValue: '2025년',
+        hasIncreaseAction: true,
+        hasDecreaseAction: true,
       ),
     );
     expect(
-      tester.getSemantics(find.byKey(const Key('month-picker-10'))).label,
-      '2026년 10월, 이번 달',
+      tester.getSemantics(find.byKey(const Key('month-picker-months'))),
+      isSemantics(label: '월', value: '10월', hasIncreaseAction: true),
     );
     semantics.dispose();
   });

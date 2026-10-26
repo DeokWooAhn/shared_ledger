@@ -331,8 +331,7 @@ void main() {
       await pumpLedger(tester, entries: entries);
       await openTab(tester, HomeTab.entries);
 
-      await tester.tap(find.byKey(const Key('next-month')));
-      await settle(tester);
+      await swipeMonth(tester);
       expect(
         entries.monthOf(const YearMonth(2026, 11)).plannedExpenses,
         hasLength(2),
@@ -340,10 +339,8 @@ void main() {
       expect(find.text('자동이체 · 11/25 예정'), findsOneWidget);
       expect(find.text('공동 통장 · 말일 예정'), findsOneWidget);
 
-      await tester.tap(find.byKey(const Key('previous-month')));
-      await settle(tester);
-      await tester.tap(find.byKey(const Key('previous-month')));
-      await settle(tester);
+      await swipeMonth(tester, next: false);
+      await swipeMonth(tester, next: false);
       expect(
         entries.monthOf(const YearMonth(2026, 9)).plannedExpenses,
         isEmpty,
@@ -369,10 +366,8 @@ void main() {
 
       // 다른 달에 갔다가 돌아와도 관리비는 휴지통에 그대로 있다.
       await openTab(tester, HomeTab.entries);
-      await tester.tap(find.byKey(const Key('next-month')));
-      await settle(tester);
-      await tester.tap(find.byKey(const Key('previous-month')));
-      await settle(tester);
+      await swipeMonth(tester);
+      await swipeMonth(tester, next: false);
 
       expect(entries.monthOf(october).plannedExpenses.map((e) => e.id), [
         'principal',

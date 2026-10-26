@@ -1,39 +1,30 @@
 import 'package:flutter/material.dart';
 
 import '../theme/app_theme.dart';
+import 'back_circle_button.dart';
 import 'keep_all.dart';
 import 'labeled_field.dart';
 import 'won_input.dart';
 
-// X로 닫는 전체 화면 입력(항목 입력·고정 지출 입력)이 같이 쓰는 부품. 디자인은 design/app/05.
+// 뒤로 단추로 닫는 전체 화면 입력(항목 입력·고정 지출 입력)이 같이 쓰는 부품. 디자인은 design/app/05.
 
-/// 입력 화면 맨 위의 닫기 버튼과 제목.
+/// 입력 화면 맨 위의 뒤로 단추와 제목.
 class FormNavBar extends StatelessWidget {
   const FormNavBar({required this.title, required this.closeKey, super.key});
 
   final String title;
 
-  /// 테스트에서 닫기 버튼을 찾을 키.
+  /// 테스트에서 뒤로 단추를 찾을 키.
   final Key closeKey;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
       child: Row(
         children: [
-          IconButton(
-            key: closeKey,
-            tooltip: '닫기',
-            style: IconButton.styleFrom(
-              backgroundColor: scheme.surface,
-              fixedSize: const Size(40, 40),
-            ),
-            onPressed: () => Navigator.of(context).maybePop(),
-            icon: Icon(Icons.close, size: 20, color: scheme.onSurface),
-          ),
+          BackCircleButton(key: closeKey),
           Expanded(
             child: Semantics(
               header: true,

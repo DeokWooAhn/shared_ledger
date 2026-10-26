@@ -104,6 +104,9 @@ Finder day(int day) => find.byKey(ValueKey('calendar-day-$day'));
 Finder inDay(int number, Finder finder) =>
     find.descendant(of: day(number), matching: finder);
 
+String? calendarTitle(WidgetTester tester) =>
+    textOf(tester, const Key('calendar-month-title'));
+
 String? dayTitle(WidgetTester tester) =>
     textOf(tester, const Key('calendar-day-title'));
 
@@ -120,12 +123,12 @@ void main() {
       await openCalendar(tester);
 
       expect(find.byType(CalendarScreen), findsOneWidget);
-      expect(find.text('2026년 10월'), findsOneWidget);
+      expect(calendarTitle(tester), '10월');
       expect(dayTitle(tester), '10월 15일 목요일');
       expect(find.byKey(const Key('calendar-day-empty')), findsOneWidget);
     });
 
-    testWidgets('항목 탭에서도 달 이름으로 달력을 열고, 뒤로 가면 닫힌다', (tester) async {
+    testWidgets('항목 탭에서도 달 이름으로 달력을 열고, 뒤로 단추로 닫는다', (tester) async {
       await pumpApp(
         tester,
         auth: FakeAuthRepository(signedIn: me),
@@ -137,10 +140,8 @@ void main() {
       await tester.tap(find.byKey(const Key('open-calendar')));
       await settleRoute(tester);
       expect(find.byType(CalendarScreen), findsOneWidget);
-      // 닫기 단추가 없다. Android 뒤로가기(iOS는 왼쪽 끝 밀기)로 닫는다.
-      expect(find.byKey(const Key('calendar-close')), findsNothing);
 
-      await tester.binding.handlePopRoute();
+      await tester.tap(find.byKey(const Key('calendar-back')));
       await settleRoute(tester);
 
       expect(find.byType(CalendarScreen), findsNothing);
@@ -158,11 +159,13 @@ void main() {
       expect(
         tester.getSemantics(find.byKey(const Key('open-calendar'))),
         isSemantics(
-          label: '2026년 10월',
+          label: '10월',
           hint: '달력 열기',
           isButton: true,
           isHeader: true,
           hasTapAction: true,
+          hasIncreaseAction: true,
+          hasDecreaseAction: true,
         ),
       );
       semantics.dispose();
@@ -308,34 +311,60 @@ void main() {
   });
 
   group('달 옮기기', () {
-    testWidgets('다음 달로 가면 1일을 고르고, 오늘을 누르면 이번 달 오늘로 돌아온다', (tester) async {
+    testWidgets('달력을 왼쪽으로 밀면 다음 달 1일을 고르고, 오늘을 누르면 이번 달 오늘로 돌아온다', (
+      tester,
+    ) async {
       await openCalendar(tester);
 
-      await tester.tap(find.byKey(const Key('calendar-next-month')));
+      await tester.fling(
+        find.byKey(const Key('calendar-swipe')),
+        const Offset(-300, 0),
+        800,
+      );
       await settle(tester);
-      expect(find.text('2026년 11월'), findsOneWidget);
+      expect(calendarTitle(tester), '11월');
       expect(dayTitle(tester), '11월 1일 일요일');
 
       await tester.tap(find.byKey(const Key('calendar-today')));
       await settle(tester);
-      expect(find.text('2026년 10월'), findsOneWidget);
+      expect(calendarTitle(tester), '10월');
       expect(dayTitle(tester), '10월 15일 목요일');
     });
 
-    testWidgets('달 이름을 누르면 달 고르기 시트로 다른 달로 가고, 탭도 그 달을 본다', (tester) async {
+    testWidgets('달 이름을 오른쪽으로 밀면 이전 달로 가고, 해가 바뀌면 연도를 붙인다', (tester) async {
+      await openCalendar(tester);
+
+      for (var i = 0; i < 10; i++) {
+        await tester.fling(
+          find.byKey(const Key('calendar-month-title')),
+          const Offset(200, 0),
+          800,
+        );
+        await settle(tester);
+      }
+
+      expect(calendarTitle(tester), '2025년 12월');
+    });
+
+    testWidgets('달 이름을 누르면 연·월 휠 시트로 다른 달로 가고, 탭도 그 달을 본다', (tester) async {
       await openCalendar(tester);
 
       await tester.tap(find.byKey(const Key('calendar-month')));
       await settleRoute(tester);
       expect(find.byType(MonthPickerSheet), findsOneWidget);
-      await tester.tap(find.byKey(const Key('month-picker-3')));
+      await tester.drag(
+        find.byKey(const Key('month-picker-months')),
+        const Offset(0, monthPickerItemExtent * 7),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('month-picker-done')));
       await settleRoute(tester);
 
-      expect(find.text('2026년 3월'), findsOneWidget);
+      expect(calendarTitle(tester), '3월');
       expect(dayTitle(tester), '3월 1일 일요일');
-      await tester.binding.handlePopRoute();
+      await tester.tap(find.byKey(const Key('calendar-back')));
       await settleRoute(tester);
-      expect(textOf(tester, const Key('month-title')), '2026년 3월');
+      expect(monthTitle(tester), '3월');
     });
   });
 

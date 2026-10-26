@@ -209,13 +209,13 @@ final routerProvider = Provider<GoRouter>((ref) {
         ],
       ),
       // 탭 밖(루트)에 둬서 탭 막대를 가린다. 열 항목 없이 들어오면 항목 탭으로 보낸다.
+      // 입력 화면은 왼쪽 위 뒤로 단추로 닫으니 보통 화면처럼 옆에서 들어오고, iOS는 왼쪽 끝을 밀어 닫는다.
       GoRoute(
         path: Routes.entry,
         redirect: (_, state) =>
             state.extra is EntryFormArgs ? null : Routes.entries,
         pageBuilder: (_, state) => MaterialPage(
           key: state.pageKey,
-          fullscreenDialog: true,
           child: switch (state.extra) {
             final EntryFormArgs args => EntryFormScreen(args: args),
             _ => const SizedBox.shrink(),
@@ -238,7 +238,6 @@ final routerProvider = Provider<GoRouter>((ref) {
             state.extra is TemplateFormArgs ? null : Routes.templates,
         pageBuilder: (_, state) => MaterialPage(
           key: state.pageKey,
-          fullscreenDialog: true,
           child: switch (state.extra) {
             final TemplateFormArgs args => TemplateFormScreen(args: args),
             _ => const SizedBox.shrink(),

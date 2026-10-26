@@ -258,8 +258,11 @@ void main() {
       await openTrash(tester);
       expect(inTrash(findSentence('10월 휴지통이 비어 있어요.')), findsOneWidget);
 
-      await tester.tap(inTrash(find.byKey(const Key('previous-month'))));
-      await settle(tester);
+      await swipeMonth(
+        tester,
+        next: false,
+        title: inTrash(find.byKey(const Key('month-title'))),
+      );
 
       expect(inTrash(find.text('관리비')), findsOneWidget);
       expect(
