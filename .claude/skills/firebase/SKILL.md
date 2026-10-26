@@ -93,10 +93,13 @@ firebase deploy --only functions --project simple-shared-ledger
 
 - Google Cloud 콘솔 → 결제 → 예산 및 알림(Budgets & alerts). 지금은 '알림만' 예산(₩5,000) 하나가 있다(`docs/plan.md`의 '출시 요건과 비용').
 - 지출 한도(spend cap) 예산: '예산 만들기' → **Spend cap enforcement** → 범위에 프로젝트 `simple-shared-ledger` 1개와 서비스 1개
-  → 금액 → 완료. 금액을 넘으면 그 서비스의 새 사용을 그달 끝까지 멈추고 다음 달 1일에 풀린다(수동으로도 풀 수 있다).
+  → 금액 → 완료. 추정 비용이 금액을 넘으면 그 서비스의 새 사용을 그달 끝까지 멈추고 다음 달 1일에 풀린다.
+  - 바로 멈추지는 않는다. 비용 보고가 늦어 멈추기 전까지 넘은 금액은 그대로 청구되니, 금액은 넘어도 괜찮은 선보다 낮게 잡는다.
+  - 수동으로 풀 수도 있다(예산 편집 → Lift spend cap). 풀고 나서 정상으로 돌아오기까지 최대 1시간 걸린다.
   - 한 예산에 프로젝트·서비스가 하나씩이다. 공휴일 함수는 서비스 **Cloud Run functions**로 건다.
   - Firestore, Cloud Build, Cloud Scheduler, Artifact Registry, Secret Manager는 한도 대상이 아니다(2026-10 기준). 알림 예산과 읽기 관리로 막는다.
-  - 결제 계정 관리자 권한이 필요하다. 예산은 사용자가 콘솔에서 직접 만든다.
+  - 권한: 결제 계정 관리자(또는 결제 계정 비용 관리자 + 프로젝트 편집자)이거나, 프로젝트 수준의
+    `billing.resourcebudgets.read`·`write`·`configureSpendCap` 권한이 있으면 된다. 예산은 사용자가 프로젝트 소유 계정으로 콘솔에서 직접 만든다.
 
 ## 로그인 제공자
 
