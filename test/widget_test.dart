@@ -128,7 +128,7 @@ void main() {
       expect(ledgers.created, [
         (name: '하늘바다 가계부', ownerUid: 'me', ownerName: '나'),
       ]);
-      expect(find.text('2026년 10월'), findsOneWidget);
+      expect(monthTitle(tester), '10월');
 
       await openTab(tester, HomeTab.settings);
       expect(find.text('하늘바다 가계부'), findsOneWidget);
@@ -166,7 +166,7 @@ void main() {
       await tapVisible(tester, const Key('join-ledger'));
 
       expect(ledgers.joins, [(code: 'ABCDEFGH23', uid: 'me')]);
-      expect(find.text('2026년 10월'), findsOneWidget);
+      expect(monthTitle(tester), '10월');
 
       await openTab(tester, HomeTab.settings);
       expect(find.text('바다네 가계부'), findsOneWidget);
@@ -316,7 +316,7 @@ void main() {
 
       expect(find.byType(HomeShell), findsOneWidget);
       expect(find.byType(NavigationRail), findsNothing);
-      expect(find.text('2026년 10월'), findsOneWidget);
+      expect(monthTitle(tester), '10월');
       expect(inMonthHeader(find.text('하')), findsOneWidget);
       expect(inMonthHeader(find.text('바')), findsOneWidget);
     });
@@ -329,18 +329,40 @@ void main() {
       );
 
       for (var i = 0; i < 3; i++) {
-        await tester.tap(find.byKey(const Key('next-month')));
-        await settle(tester);
+        await swipeMonth(tester);
       }
-      expect(find.text('2027년 1월'), findsOneWidget);
+      // 올해가 아닌 달은 연도를 붙인다.
+      expect(monthTitle(tester), '2027년 1월');
 
       await openTab(tester, HomeTab.entries);
-      expect(find.text('2027년 1월'), findsOneWidget);
-      await tester.tap(find.byKey(const Key('previous-month')));
-      await settle(tester);
+      expect(monthTitle(tester), '2027년 1월');
+      await swipeMonth(tester, next: false);
 
       await openTab(tester, HomeTab.summary);
-      expect(find.text('2026년 12월'), findsOneWidget);
+      expect(monthTitle(tester), '12월');
+    });
+
+    testWidgets('달 이름 양옆의 화살표로도 달을 옮기고, 다음 달 화살표는 달 이름 바로 뒤에 있다', (
+      tester,
+    ) async {
+      await pumpApp(
+        tester,
+        auth: FakeAuthRepository(signedIn: me),
+        ledgers: FakeLedgerRepository([shared]),
+      );
+
+      final title = tester.getRect(find.byKey(const Key('month-title')));
+      final next = tester.getRect(find.byKey(const Key('next-month')));
+      expect(next.left - title.right, lessThan(16));
+
+      await tester.tap(find.byKey(const Key('next-month')));
+      await settle(tester);
+      expect(monthTitle(tester), '11월');
+      await tester.tap(find.byKey(const Key('previous-month')));
+      await settle(tester);
+      await tester.tap(find.byKey(const Key('previous-month')));
+      await settle(tester);
+      expect(monthTitle(tester), '9월');
     });
 
     testWidgets('글자를 크게 해도 달 이름이 잘리지 않는다', (tester) async {
@@ -701,10 +723,9 @@ void main() {
         settings: settings,
       );
 
-      await tester.tap(find.byKey(const Key('next-month')));
-      await settle(tester);
+      await swipeMonth(tester);
 
-      expect(find.text('2026년 11월'), findsOneWidget);
+      expect(monthTitle(tester), '11월');
       expect(textOf(tester, const Key('remaining-cash')), '1,000원');
       expect(findSentence('이번 달 출금 · 카드대금 0건'), findsOneWidget);
     });

@@ -99,6 +99,25 @@ Finder findSentence(String text) => find.text(keepAll(text));
 Finder inMonthHeader(Finder finder) =>
     find.descendant(of: find.byType(MonthHeader), matching: finder);
 
+/// 머리말의 달 이름을 밀어 달을 옮긴다. 왼쪽으로 밀면 다음 달, 오른쪽으로 밀면 이전 달이다.
+/// 달 이름이 여러 개 그려진 화면이면 [title]로 고른다.
+Future<void> swipeMonth(
+  WidgetTester tester, {
+  bool next = true,
+  Finder? title,
+}) async {
+  await tester.fling(
+    title ?? find.byKey(const Key('month-title')),
+    Offset(next ? -200 : 200, 0),
+    800,
+  );
+  await settle(tester);
+}
+
+// 머리말에 보이는 달 이름.
+String? monthTitle(WidgetTester tester) =>
+    tester.widget<Text>(find.byKey(const Key('month-title'))).data;
+
 // 키를 단 금액 글자의 내용.
 String? textOf(WidgetTester tester, Key key) =>
     tester.widget<Text>(find.byKey(key)).data;

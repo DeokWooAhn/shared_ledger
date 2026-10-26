@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../core/widget/back_circle_button.dart';
 import '../../core/widget/keep_all.dart';
 import '../../core/widget/tab_page.dart';
 
@@ -19,15 +20,9 @@ class SubPageTitle extends StatelessWidget {
       children: [
         Padding(
           padding: const EdgeInsets.only(top: 4),
-          child: IconButton(
-            key: const Key('sub-page-back'),
+          child: const BackCircleButton(
+            key: Key('sub-page-back'),
             tooltip: '설정으로 돌아가기',
-            style: IconButton.styleFrom(
-              backgroundColor: Theme.of(context).colorScheme.surface,
-              fixedSize: const Size(40, 40),
-            ),
-            onPressed: () => Navigator.of(context).maybePop(),
-            icon: const Icon(Icons.arrow_back, size: 20),
           ),
         ),
         TabTitle(title, description: description),

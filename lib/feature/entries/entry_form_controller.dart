@@ -11,13 +11,14 @@ import '../../core/widget/won_input.dart';
 /// 입력 화면을 여는 값. 새 항목이면 [entry]가 null이다.
 @immutable
 class EntryFormArgs {
-  /// [month]에 [kind] 항목을 새로 더한다.
-  const EntryFormArgs.add({required this.kind, required this.month})
+  /// [month]에 [kind] 항목을 새로 더한다. [date]를 주면(달력에서 고른 날) 날짜를 그날로 채운다.
+  const EntryFormArgs.add({required this.kind, required this.month, this.date})
     : entry = null;
 
   /// [month]에 있는 [entry]를 고친다. 종류는 바꿀 수 없다.
   EntryFormArgs.edit({required LedgerEntry this.entry, required this.month})
-    : kind = entry.kind;
+    : kind = entry.kind,
+      date = null;
 
   final EntryKind kind;
 
@@ -25,16 +26,20 @@ class EntryFormArgs {
   final YearMonth month;
   final LedgerEntry? entry;
 
+  /// 새 항목의 처음 날짜. 기본 월 지출은 지급 전으로 시작해서 쓰지 않는다.
+  final DateTime? date;
+
   // 같은 항목을 고치는 화면이면 같은 값으로 본다. 항목 내용이 그사이 바뀌어도 화면은 처음 값으로 시작한다.
   @override
   bool operator ==(Object other) =>
       other is EntryFormArgs &&
       other.kind == kind &&
       other.month == month &&
-      other.entry?.id == entry?.id;
+      other.entry?.id == entry?.id &&
+      other.date == date;
 
   @override
-  int get hashCode => Object.hash(kind, month, entry?.id);
+  int get hashCode => Object.hash(kind, month, entry?.id, date);
 }
 
 /// 저장 전에 입력란 아래에 보여 줄 문제.
@@ -264,9 +269,12 @@ class EntryFormController extends Notifier<EntryFormState> {
     return DateTime(now.year, now.month, now.day);
   }
 
-  // 새 항목의 날짜: 보는 달이 이번 달이면 오늘, 아니면 비운다. 기본 월 지출은 지급 전으로 시작한다.
+  // 새 항목의 날짜: 달력에서 고른 날이 있으면 그날, 없으면 보는 달이 이번 달일 때 오늘, 아니면 비운다.
+  // 기본 월 지출은 지급 전으로 시작한다.
   DateTime? _defaultDate(EntryKind kind) {
     if (kind == EntryKind.planned) return null;
+    final picked = args.date;
+    if (picked != null) return DateTime(picked.year, picked.month, picked.day);
     final today = _today;
     return YearMonth.of(today) == args.month ? today : null;
   }

@@ -67,6 +67,24 @@ void main() {
       expect(nextMonth.date, isNull);
     });
 
+    test('달력에서 고른 날로 열면 그 날짜로 시작하고, 종류를 바꿔도 유지한다(기본 월 지출은 지급 전)', () async {
+      final container = await ready();
+      final provider = entryFormControllerProvider(
+        EntryFormArgs.add(
+          kind: EntryKind.extra,
+          month: october,
+          date: DateTime(2026, 10, 18, 21, 30),
+        ),
+      );
+      container.listen(provider, (_, _) {});
+
+      expect(container.read(provider).date, DateTime(2026, 10, 18));
+      container.read(provider.notifier).selectKind(EntryKind.planned);
+      expect(container.read(provider).date, isNull);
+      container.read(provider.notifier).selectKind(EntryKind.income);
+      expect(container.read(provider).date, DateTime(2026, 10, 18));
+    });
+
     test('초대로 들어온 사람의 새 항목은 상대 자리로 시작한다', () async {
       final container = await ready(
         ledger: const Ledger(

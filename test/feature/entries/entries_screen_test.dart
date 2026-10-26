@@ -246,8 +246,7 @@ void main() {
       final entries = FakeEntriesRepository();
       await pumpEntries(tester, entries: entries);
       await openTab(tester, HomeTab.summary);
-      await tester.tap(find.byKey(const Key('next-month')));
-      await settle(tester);
+      await swipeMonth(tester);
 
       await openAddForm(tester);
       expect(find.text('쓴 날'), findsOneWidget);

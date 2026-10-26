@@ -126,6 +126,9 @@ class SelectedMonth extends Notifier<YearMonth> {
 
   /// 이전 달로 간다.
   void previous() => state = state.previous;
+
+  /// [month]로 바로 간다(달력의 '오늘', 달 고르기).
+  void select(YearMonth month) => state = month;
 }
 
 /// 항목 탭에서 보고 있는 종류. 처음에는 기본 월 지출이다.
@@ -147,15 +150,24 @@ final rejectedEntriesProvider = StreamProvider<RejectedEntry>(
   (ref) => ref.watch(entriesRepositoryProvider).rejectedAdds,
 );
 
+/// 지금 가계부의 [YearMonth] 달 항목(휴지통 제외). 가계부가 없으면 빈 달이다.
+///
+/// 아무도 읽지 않으면 구독을 끊는다. 같은 달은 여러 화면이 읽어도 구독이 한 벌이라,
+/// 달력이 앞뒤 달을 미리 읽어 두면 달을 옮길 때 [monthLedgerProvider]가 기다리지 않고 바로 그 값을 쓴다.
+final monthLedgerOfProvider = StreamProvider.autoDispose
+    .family<MonthLedger, YearMonth>((ref, month) {
+      final ledgerId = ref.watch(currentLedgerProvider.select((l) => l?.id));
+      if (ledgerId == null) return Stream.value(const MonthLedger());
+      return ref.watch(entriesRepositoryProvider).watchMonth(ledgerId, month);
+    });
+
 /// 보고 있는 달의 항목(휴지통 제외). 가계부가 없으면 빈 달이다.
 ///
-/// 요약·항목 탭이 이 공급자 하나를 같이 읽어서 그달 구독은 한 벌뿐이다. 달을 옮기면 이전 달 구독을 끊는다.
-final monthLedgerProvider = StreamProvider<MonthLedger>((ref) {
-  final ledgerId = ref.watch(currentLedgerProvider.select((l) => l?.id));
-  final month = ref.watch(selectedMonthProvider);
-  if (ledgerId == null) return Stream.value(const MonthLedger());
-  return ref.watch(entriesRepositoryProvider).watchMonth(ledgerId, month);
-});
+/// 요약·항목 탭이 이 공급자 하나를 같이 읽어서 그달 구독은 한 벌뿐이다. 달을 옮기면 이전 달 구독을 끊는다
+/// (달력이 그 달을 아직 읽고 있으면 남는다). 새 달을 아직 받지 못했으면 이전 달 값 대신 불러오는 중이다.
+final monthLedgerProvider = Provider<AsyncValue<MonthLedger>>(
+  (ref) => ref.watch(monthLedgerOfProvider(ref.watch(selectedMonthProvider))),
+);
 
 /// 보고 있는 달의 요약. 항목·분류·결제수단으로 계산한다.
 ///

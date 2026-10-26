@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart' show ProviderListenable;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_ledger/core/data/providers.dart';
+import 'package:shared_ledger/core/model/month_ledger.dart';
 
 import 'fakes.dart';
 
@@ -76,6 +77,20 @@ ProviderContainer createContainer({
 Future<void> loadSignedInUser(ProviderContainer container) async {
   container.listen(authUserProvider, (_, _) {});
   await container.read(authUserProvider.future);
+}
+
+/// 보고 있는 달의 항목을 받을 때까지 기다린다. 기다리는 동안 그달 구독을 살려 둔다.
+Future<MonthLedger> selectedMonthLedger(ProviderContainer container) async {
+  final month = container.read(selectedMonthProvider);
+  final subscription = container.listen(
+    monthLedgerOfProvider(month).future,
+    (_, _) {},
+  );
+  try {
+    return await subscription.read();
+  } finally {
+    subscription.close();
+  }
 }
 
 /// autoDispose 컨트롤러를 테스트 동안 살려 두고, 지나간 상태를 모두 기록한다.

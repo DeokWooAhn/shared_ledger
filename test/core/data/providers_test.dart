@@ -181,9 +181,9 @@ void main() {
       final entries = FakeEntriesRepository({october: octoberLedger});
       final container = await signedIn(entries);
 
-      expect(await container.read(monthLedgerProvider.future), octoberLedger);
+      expect(await selectedMonthLedger(container), octoberLedger);
       container.read(selectedMonthProvider.notifier).next();
-      final next = await container.read(monthLedgerProvider.future);
+      final next = await selectedMonthLedger(container);
 
       expect(next.incomes, isEmpty);
       expect(entries.watched, [
@@ -196,7 +196,7 @@ void main() {
       final container = await signedIn(
         FakeEntriesRepository({october: octoberLedger}),
       );
-      await container.read(monthLedgerProvider.future);
+      await selectedMonthLedger(container);
       await container.read(categoriesProvider.future);
       await container.read(paymentMethodsProvider.future);
 
@@ -213,7 +213,7 @@ void main() {
       final container = await signedIn(
         FakeEntriesRepository({october: octoberLedger}),
       );
-      await container.read(monthLedgerProvider.future);
+      await selectedMonthLedger(container);
       await container.read(categoriesProvider.future);
       await container.read(paymentMethodsProvider.future);
       expect(container.read(monthSummaryProvider).hasValue, isTrue);
@@ -221,14 +221,14 @@ void main() {
       container.read(selectedMonthProvider.notifier).next();
 
       expect(container.read(monthSummaryProvider), isA<AsyncLoading<Object>>());
-      await container.read(monthLedgerProvider.future);
+      await selectedMonthLedger(container);
       expect(container.read(monthSummaryProvider).value?.isEmpty, isTrue);
     });
 
     test('항목을 바꾸면 요약도 바뀐다', () async {
       final entries = FakeEntriesRepository({october: octoberLedger});
       final container = await signedIn(entries);
-      await container.read(monthLedgerProvider.future);
+      await selectedMonthLedger(container);
       await container.read(categoriesProvider.future);
       await container.read(paymentMethodsProvider.future);
 
@@ -242,10 +242,7 @@ void main() {
       final container = await signedIn(
         FakeEntriesRepository()..failNextWatch = true,
       );
-      await expectLater(
-        container.read(monthLedgerProvider.future),
-        throwsStateError,
-      );
+      await expectLater(selectedMonthLedger(container), throwsStateError);
 
       expect(container.read(monthSummaryProvider).hasError, isTrue);
     });
@@ -260,7 +257,7 @@ void main() {
       container.listen(monthLedgerProvider, (_, _) {});
       await container.read(myLedgersProvider.future);
 
-      final month = await container.read(monthLedgerProvider.future);
+      final month = await selectedMonthLedger(container);
 
       expect(month.incomes, isEmpty);
       expect(entries.watched, isEmpty);

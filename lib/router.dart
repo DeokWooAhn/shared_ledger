@@ -11,6 +11,7 @@ import 'core/model/ledger_entries.dart';
 import 'core/model/year_month.dart';
 import 'core/widget/loading_screen.dart';
 import 'feature/auth/sign_in_screen.dart';
+import 'feature/entries/calendar_screen.dart';
 import 'feature/entries/entries_screen.dart';
 import 'feature/entries/entry_form_controller.dart';
 import 'feature/entries/entry_form_screen.dart';
@@ -44,6 +45,10 @@ abstract final class Routes {
   /// 고정 지출 입력·수정. 항목 입력처럼 탭 막대를 가리는 전체 화면이고, [TemplateFormArgs]를 `extra`로 넘긴다.
   static const template = '/template';
 
+  /// 달력. 요약·항목 탭 머리말의 달 이름으로 열고, 입력 화면처럼 탭 막대를 가리는 전체 화면이다.
+  /// 닫기 단추 없이 뒤로가기(iOS는 왼쪽 끝 밀기)로 닫는다.
+  static const calendar = '/calendar';
+
   /// 설정 탭 안의 분류·결제수단 목록, 휴지통, 변경 기록. 탭 막대는 그대로 보인다.
   static const categories = '$settings/categories';
   static const paymentMethods = '$settings/payment-methods';
@@ -60,8 +65,11 @@ abstract final class Routes {
 }
 
 Widget _tabScreen(HomeTab tab) => switch (tab) {
-  HomeTab.summary => const SummaryScreen(),
-  HomeTab.entries => const EntriesScreen(openForm: _openEntryForm),
+  HomeTab.summary => const SummaryScreen(openCalendar: _openCalendar),
+  HomeTab.entries => const EntriesScreen(
+    openForm: _openEntryForm,
+    openCalendar: _openCalendar,
+  ),
   HomeTab.templates => const TemplatesScreen(openForm: _openTemplateForm),
   HomeTab.settings => const SettingsScreen(
     openCategories: _openCategories,
@@ -109,6 +117,9 @@ void _openTrash(BuildContext context) =>
 
 void _openActivity(BuildContext context) =>
     unawaited(context.push<void>(Routes.activity));
+
+void _openCalendar(BuildContext context) =>
+    unawaited(context.push<void>(Routes.calendar));
 
 // 항목 입력 화면을 열고, 닫힐 때의 결과(저장·휴지통)를 돌려준다.
 Future<EntryFormOutcome?> _openEntryForm(
@@ -198,17 +209,26 @@ final routerProvider = Provider<GoRouter>((ref) {
         ],
       ),
       // 탭 밖(루트)에 둬서 탭 막대를 가린다. 열 항목 없이 들어오면 항목 탭으로 보낸다.
+      // 입력 화면은 왼쪽 위 뒤로 단추로 닫으니 보통 화면처럼 옆에서 들어오고, iOS는 왼쪽 끝을 밀어 닫는다.
       GoRoute(
         path: Routes.entry,
         redirect: (_, state) =>
             state.extra is EntryFormArgs ? null : Routes.entries,
         pageBuilder: (_, state) => MaterialPage(
           key: state.pageKey,
-          fullscreenDialog: true,
           child: switch (state.extra) {
             final EntryFormArgs args => EntryFormScreen(args: args),
             _ => const SizedBox.shrink(),
           },
+        ),
+      ),
+      // 닫기 단추가 없어서 보통 화면으로 연다. iOS는 왼쪽 끝을 밀어서, Android는 뒤로가기로 닫는다
+      // (fullscreenDialog면 iOS에서 밀어 닫을 수 없다).
+      GoRoute(
+        path: Routes.calendar,
+        pageBuilder: (_, state) => MaterialPage(
+          key: state.pageKey,
+          child: const CalendarScreen(openForm: _openEntryForm),
         ),
       ),
       // 열 고정 지출 없이 들어오면 고정 지출 탭으로 보낸다.
@@ -218,7 +238,6 @@ final routerProvider = Provider<GoRouter>((ref) {
             state.extra is TemplateFormArgs ? null : Routes.templates,
         pageBuilder: (_, state) => MaterialPage(
           key: state.pageKey,
-          fullscreenDialog: true,
           child: switch (state.extra) {
             final TemplateFormArgs args => TemplateFormScreen(args: args),
             _ => const SizedBox.shrink(),
