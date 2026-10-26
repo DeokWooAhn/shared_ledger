@@ -16,7 +16,7 @@ String monthLabel(YearMonth month, {required YearMonth current}) =>
 /// 두 사람의 이름표를 보여준다. [openCalendar]를 주면 달 이름을 눌러 달력을 연다.
 ///
 /// 보고 있는 달은 [selectedMonthProvider]라서 두 탭이 같은 달을 본다. 옮기는 달은 [ledgerMonthsProvider]의 달(항목 있는 달과
-/// 이번 달·다음 달)이라 사이의 빈 달은 건너뛰고, 끝 달에서는 그쪽 화살표를 누를 수 없다.
+/// 이번 달)이라 사이의 빈 달은 건너뛰고, 끝 달에서는 그쪽 화살표를 누를 수 없다.
 class MonthHeader extends ConsumerWidget {
   const MonthHeader({this.openCalendar, super.key});
 

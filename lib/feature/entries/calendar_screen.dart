@@ -46,8 +46,8 @@ String calendarDayTitle(DateTime date) =>
 ///
 /// 날짜 판은 손가락을 따라 밀리고 옆 달이 붙어 들어온다. 반 넘게 밀거나 빠르게 튕기면 그 달에 멈추고, 멈춘 달을 본다.
 /// 항목을 누르면 고치는 화면, 항목이 없는 날은 빈 칸 안내를 누르면 그날로 새 항목(추가지출)을 연다.
-/// 요약·항목 탭이 오가지 않는 달(항목이 없는 달)이면 그달 가계부를 새로 만들지 먼저 묻고, 그런 달을 보다가 닫으면
-/// 두 탭은 달력을 열었던 달로 돌아간다.
+/// 요약·항목 탭이 오가지 않는 달(항목이 없는 달)이면 그달 가계부를 새로 만들지 먼저 묻는다. 만들면 고정 지출이 그달에 채워진다.
+/// 그런 달을 보다가 닫으면 두 탭은 달력을 열었던 달로 돌아간다.
 /// 달을 옮기면 요약·항목 탭의 달도 같이 옮긴다. 공휴일은 일요일처럼 빨간색이다. 왼쪽 위 뒤로 단추로 닫는다.
 /// 저장소를 부르는 동작이 없어 컨트롤러 없이 공급자만 읽고, 고른 날과 판 위치는 이 화면에서만 쓰는 상태라 위젯에 둔다.
 class CalendarScreen extends ConsumerStatefulWidget {
@@ -732,6 +732,7 @@ class _DayPanel extends ConsumerWidget {
     // 요약·항목 탭이 오가지 않는 달이면 그달 가계부가 없는 것이라, 항목을 넣기 전에 만들지 묻는다.
     final months = ref.watch(ledgerMonthsProvider);
     final hasLedger = months == null || months.contains(month);
+    final templateCount = ref.watch(templatesProvider).value?.length ?? 0;
     final date = day.date;
     final holiday = ref
         .watch(holidaysOfYearProvider(date.year))
@@ -824,7 +825,12 @@ class _DayPanel extends ConsumerWidget {
                             openForm,
                             month,
                             date,
-                            askFirst: !hasLedger,
+                            addMonth: hasLedger
+                                ? null
+                                : () => ref
+                                      .read(entriesControllerProvider.notifier)
+                                      .addMonth(month),
+                            templateCount: templateCount,
                           ),
                         )
                       : null,
@@ -861,21 +867,23 @@ class _DayPanel extends ConsumerWidget {
   }
 }
 
-// 그날로 추가지출을 연다. [askFirst]면(그달 가계부가 없음) 새로 만들지 먼저 묻고, 취소하면 열지 않는다.
-// 저장하면 그달이 항목 있는 달이 되어 요약·항목 탭에서도 오간다.
+// 그날로 추가지출을 연다. [addMonth]가 있으면(그달 가계부가 없음) 새로 만들지 먼저 묻고, 만든다고 하면 그달 가계부를
+// 만든 뒤(고정 지출이 채워진다) 연다. 취소하거나 만들지 못하면(실패는 컨트롤러가 알린다) 열지 않는다.
 Future<void> _addOn(
   BuildContext context,
   OpenEntryForm openForm,
   YearMonth month,
   DateTime date, {
-  required bool askFirst,
+  required Future<bool> Function()? addMonth,
+  required int templateCount,
 }) async {
-  if (askFirst) {
+  if (addMonth != null) {
     final add = await showDialog<bool>(
       context: context,
-      builder: (context) => _AddMonthDialog(month: month),
+      builder: (context) =>
+          _AddMonthDialog(month: month, templateCount: templateCount),
     );
-    if (add != true || !context.mounted) return;
+    if (add != true || !await addMonth() || !context.mounted) return;
   }
   await openForm(
     context,
@@ -883,11 +891,12 @@ Future<void> _addOn(
   );
 }
 
-/// 그달 가계부가 없을 때 새로 만들지 묻는다. 만든다고 하면 true.
+/// 그달 가계부가 없을 때 새로 만들지 묻는다. 만든다고 하면 true. 고정 지출이 있으면 몇 개가 채워지는지 알린다.
 class _AddMonthDialog extends StatelessWidget {
-  const _AddMonthDialog({required this.month});
+  const _AddMonthDialog({required this.month, required this.templateCount});
 
   final YearMonth month;
+  final int templateCount;
 
   @override
   Widget build(BuildContext context) {
@@ -895,7 +904,11 @@ class _AddMonthDialog extends StatelessWidget {
       key: const Key('add-month-dialog'),
       title: Text(keepAll('${yearMonthLabel(month)}에는 가계부가 없어요')),
       content: Text(
-        keepAll('이 날에 항목을 추가하면 이 달 가계부가 새로 생겨서 요약·항목 탭에서도 볼 수 있어요. 추가할까요?'),
+        keepAll(
+          templateCount > 0
+              ? '추가하면 이 달 가계부가 생기고, 고정 지출 $templateCount개를 이 달 기본 월 지출로 채워요. 추가할까요?'
+              : '추가하면 이 달 가계부가 생겨서 요약·항목 탭에서도 볼 수 있어요. 추가할까요?',
+        ),
       ),
       actions: [
         TextButton(

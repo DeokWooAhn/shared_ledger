@@ -365,7 +365,7 @@ void main() {
       expect(monthTitle(tester), '9월');
     });
 
-    testWidgets('항목 있는 달과 이번 달·다음 달만 오가고, 사이의 빈 달은 건너뛰며 끝에서는 화살표를 누를 수 없다', (
+    testWidgets('항목 있는 달과 이번 달만 오가고, 사이의 빈 달은 건너뛰며 끝에서는 화살표를 누를 수 없다', (
       tester,
     ) async {
       await pumpApp(
@@ -390,12 +390,10 @@ void main() {
 
       await swipeMonth(tester);
       expect(monthTitle(tester), '10월');
-      await tester.tap(find.byKey(const Key('next-month')));
-      await settle(tester);
-      expect(monthTitle(tester), '11월');
+      // 다음 달은 항목이 없어서 오가지 않는다.
       expect(arrow('next-month'), isNull);
       await swipeMonth(tester);
-      expect(monthTitle(tester), '11월');
+      expect(monthTitle(tester), '10월');
     });
 
     testWidgets('글자를 크게 해도 달 이름이 잘리지 않는다', (tester) async {

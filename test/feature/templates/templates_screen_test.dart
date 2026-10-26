@@ -328,7 +328,7 @@ void main() {
 
     testWidgets('다음 달도 열면 만들고, 지난 달은 만들지 않는다', (tester) async {
       final entries = FakeEntriesRepository();
-      // 9월은 항목이 있었던 달이라 머리말로 갈 수 있다.
+      // 9월·11월은 항목이 있는 달이라 머리말로 갈 수 있다.
       await pumpLedger(
         tester,
         entries: entries,
@@ -336,7 +336,7 @@ void main() {
           id: 'l1',
           name: '우리 가계부',
           ownerUid: 'me',
-          months: {const YearMonth(2026, 9)},
+          months: {const YearMonth(2026, 9), const YearMonth(2026, 11)},
         ),
       );
       await openTab(tester, HomeTab.entries);

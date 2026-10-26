@@ -40,7 +40,7 @@ void main() {
       return container;
     }
 
-    test('항목 있는 달에 이번 달·다음 달을 더해 오래된 것부터 둔다', () async {
+    test('항목 있는 달에 이번 달을 더해 오래된 것부터 둔다(다음 달은 항목이 있을 때만)', () async {
       final container = await withLedger(
         Ledger(
           id: 'l1',
@@ -53,7 +53,6 @@ void main() {
       expect(container.read(ledgerMonthsProvider), const [
         YearMonth(2026, 8),
         YearMonth(2026, 10),
-        YearMonth(2026, 11),
         YearMonth(2026, 12),
       ]);
     });

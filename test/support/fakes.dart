@@ -910,8 +910,9 @@ class FakeEntriesRepository with LogsActivity implements EntriesRepository {
             _entryOf(template.id, template.draftFor(month)),
         ],
       );
-      if (recordMonth) _recordMonth(ledgerId, month);
     }
+    // 실제처럼 고정 지출이 없거나 다 있어도 그달을 달 목록에 더한다.
+    if (recordMonth) _recordMonth(ledgerId, month);
     return missing.length;
   }
 

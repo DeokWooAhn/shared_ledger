@@ -108,7 +108,8 @@ abstract interface class EntriesRepository {
   /// 문서 id가 템플릿 id라서 이미 있는 문서(휴지통에 넣은 것 포함)는 건드리지 않는다. 서버에서 읽고 없을 때만
   /// 만드는 트랜잭션이라 두 사람이 동시에 그달을 처음 열어도 하나만 생기고 덮어쓰지 않는다.
   /// 온라인에서만 되고, 연결이 없으면 [EntryWriteException]([EntryWriteFailure.offline])으로 실패한다.
-  /// 하나라도 만들고 [recordMonth]면 가계부의 항목 있는 달 목록에 그달을 같은 트랜잭션으로 더한다.
+  /// [recordMonth]면 가계부의 항목 있는 달 목록에 그달을 같은 트랜잭션으로 더한다. 고정 지출이 없거나 다 있어도 더해서,
+  /// 달력에서 그달 가계부를 새로 만들 때도 쓴다.
   Future<int> fillPlanned({
     required String ledgerId,
     required YearMonth month,
@@ -341,7 +342,7 @@ class FirestoreEntriesRepository implements EntriesRepository {
     required String uid,
     bool recordMonth = false,
   }) async {
-    if (templates.isEmpty) return 0;
+    if (templates.isEmpty && !recordMonth) return 0;
     final planned = _entries(ledgerId, month, EntryKind.planned);
     try {
       return await _firestore.runTransaction(timeout: _onlineTimeout, (
@@ -359,7 +360,7 @@ class FirestoreEntriesRepository implements EntriesRepository {
             newEntryData(template.draftFor(month), uid: uid),
           );
         }
-        if (recordMonth && missing.isNotEmpty) {
+        if (recordMonth) {
           transaction.update(_ledger(ledgerId), recordMonthUpdate(month));
         }
         return missing.length;

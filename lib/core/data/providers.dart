@@ -119,14 +119,15 @@ final templatesProvider = StreamProvider<List<ExpenseTemplate>>((ref) {
 
 /// 요약·항목 탭(과 휴지통)이 오가는 달. 오래된 것부터 정렬돼 있다.
 ///
-/// 항목이 들어간 적 있는 달([Ledger.months])에 이번 달과 다음 달을 더한 것이다. 다음 달은 고정 지출이 미리 채우는 달이라 늘 넣는다.
+/// 항목이 들어간 적 있는 달([Ledger.months])에 이번 달을 더한 것이다. 다음 달도 항목이 없으면 넣지 않는다
+/// (달력에서 그달 가계부를 만들면 고정 지출이 채워지며 들어온다).
 /// 목록을 아직 모으지 않은 가계부(months가 null)거나 가계부가 없으면 null이고, 그때는 달을 가리지 않는다.
 /// 달력은 이 목록과 상관없이 모든 달을 보여준다.
 final ledgerMonthsProvider = Provider<List<YearMonth>?>((ref) {
   final months = ref.watch(currentLedgerProvider.select((l) => l?.months));
   if (months == null) return null;
   final thisMonth = YearMonth.of(ref.watch(clockProvider)());
-  return {...months, thisMonth, thisMonth.next}.toList()..sort();
+  return {...months, thisMonth}.toList()..sort();
 });
 
 /// 요약·항목 탭이 같이 보는 달. 처음에는 이번 달이고, 탭을 옮겨도 유지된다.

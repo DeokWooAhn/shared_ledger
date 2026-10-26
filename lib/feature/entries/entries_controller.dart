@@ -14,15 +14,28 @@ enum EntriesFailure {
   /// 그사이 상대가 꺼냈거나 완전히 지웠다.
   restoreGone,
   restore,
+
+  /// 그달 가계부 만들기(고정 지출 채우기)는 온라인에서만 된다.
+  addMonthOffline,
+  addMonth,
 }
 
 /// 항목 탭 상태. 목록은 공급자(monthLedgerProvider)에서 그리고, 여기에는 동작의 진행 상태만 둔다.
 @immutable
 class EntriesState {
-  const EntriesState({this.restoring = false, this.failure});
+  const EntriesState({
+    this.restoring = false,
+    this.addingMonth = false,
+    this.failure,
+  });
 
   /// 휴지통에서 꺼내는 중이다.
   final bool restoring;
+
+  /// 달력에서 그달 가계부를 만드는 중이다.
+  final bool addingMonth;
+
+  bool get busy => restoring || addingMonth;
 
   /// 스낵바로 알릴 실패. 화면이 알린 뒤 [EntriesController.failureShown]으로 끈다.
   final EntriesFailure? failure;
@@ -31,10 +44,11 @@ class EntriesState {
   bool operator ==(Object other) =>
       other is EntriesState &&
       other.restoring == restoring &&
+      other.addingMonth == addingMonth &&
       other.failure == failure;
 
   @override
-  int get hashCode => Object.hash(restoring, failure);
+  int get hashCode => Object.hash(restoring, addingMonth, failure);
 }
 
 final entriesControllerProvider =
@@ -42,7 +56,8 @@ final entriesControllerProvider =
       EntriesController.new,
     );
 
-/// 항목 탭의 컨트롤러. 입력 화면에서 휴지통에 넣은 항목을 '되돌리기'로 꺼낸다.
+/// 항목 탭과 달력의 컨트롤러. 입력 화면에서 휴지통에 넣은 항목을 '되돌리기'로 꺼내고,
+/// 달력에서 가계부가 없는 달의 가계부를 만든다.
 class EntriesController extends Notifier<EntriesState> {
   @override
   EntriesState build() => const EntriesState();
@@ -51,7 +66,7 @@ class EntriesController extends Notifier<EntriesState> {
   Future<void> restore(LedgerEntry entry, YearMonth month) async {
     final uid = ref.read(authUserProvider).value?.uid;
     final ledgerId = ref.read(currentLedgerProvider)?.id;
-    if (state.restoring || uid == null || ledgerId == null) return;
+    if (state.busy || uid == null || ledgerId == null) return;
     state = const EntriesState(restoring: true);
     try {
       await ref
@@ -80,6 +95,52 @@ class EntriesController extends Notifier<EntriesState> {
     }
   }
 
+  /// [month] 가계부를 새로 만든다. 그달을 항목 있는 달 목록에 더하고, 고정 지출이 있으면 그달 기본 월 지출(지급 전)로 채운다.
+  ///
+  /// 달력에서 가계부가 없는 달에 항목을 넣으려 할 때 부른다. 한 트랜잭션이라 온라인에서만 되고, 만들었으면 true다.
+  /// 실패는 [EntriesState.failure]로 알린다.
+  Future<bool> addMonth(YearMonth month) async {
+    final uid = ref.read(authUserProvider).value?.uid;
+    final ledgerId = ref.read(currentLedgerProvider)?.id;
+    if (state.busy || uid == null || ledgerId == null) return false;
+    state = const EntriesState(addingMonth: true);
+    // 아무도 듣지 않는 공급자는 멈춰 있어 값을 기다리면 끝나지 않는다. 받는 동안 직접 듣는다.
+    final templates = ref.listen(templatesProvider.future, (_, _) {});
+    try {
+      final current = await templates.read();
+      await ref
+          .read(entriesRepositoryProvider)
+          .fillPlanned(
+            ledgerId: ledgerId,
+            month: month,
+            templates: current,
+            uid: uid,
+            recordMonth: true,
+          );
+      if (ref.mounted) state = const EntriesState();
+      return true;
+    } on EntryWriteException catch (e) {
+      if (!ref.mounted) return false;
+      state = EntriesState(
+        failure: switch (e.reason) {
+          EntryWriteFailure.offline => EntriesFailure.addMonthOffline,
+          EntryWriteFailure.notFound => EntriesFailure.addMonth,
+        },
+      );
+      return false;
+    } catch (e) {
+      debugPrint('그달 가계부 만들기 실패: $e');
+      if (!ref.mounted) return false;
+      state = const EntriesState(failure: EntriesFailure.addMonth);
+      return false;
+    } finally {
+      templates.close();
+    }
+  }
+
   /// 화면이 실패를 알린 뒤 부른다.
-  void failureShown() => state = EntriesState(restoring: state.restoring);
+  void failureShown() => state = EntriesState(
+    restoring: state.restoring,
+    addingMonth: state.addingMonth,
+  );
 }

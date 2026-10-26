@@ -244,7 +244,17 @@ void main() {
 
     testWidgets('요약 탭의 + 버튼은 추가지출로 열고 보고 있는 달에 넣는다', (tester) async {
       final entries = FakeEntriesRepository();
-      await pumpEntries(tester, entries: entries);
+      // 11월은 항목이 있는 달이라 머리말로 갈 수 있다.
+      await pumpEntries(
+        tester,
+        entries: entries,
+        ledger: Ledger(
+          id: 'l1',
+          name: '우리 가계부',
+          ownerUid: 'me',
+          months: {const YearMonth(2026, 11)},
+        ),
+      );
       await openTab(tester, HomeTab.summary);
       await swipeMonth(tester);
 
