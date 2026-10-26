@@ -4,6 +4,7 @@ import 'package:shared_ledger/core/data/activity_repository.dart';
 import 'package:shared_ledger/core/data/activity_summary.dart';
 import 'package:shared_ledger/core/data/auth_repository.dart';
 import 'package:shared_ledger/core/data/entries_repository.dart';
+import 'package:shared_ledger/core/data/holidays_repository.dart';
 import 'package:shared_ledger/core/data/ledger_repository.dart';
 import 'package:shared_ledger/core/data/settings_repository.dart';
 import 'package:shared_ledger/core/data/templates_repository.dart';
@@ -11,6 +12,7 @@ import 'package:shared_ledger/core/model/activity.dart';
 import 'package:shared_ledger/core/model/auth_user.dart';
 import 'package:shared_ledger/core/model/category.dart';
 import 'package:shared_ledger/core/model/expense_template.dart';
+import 'package:shared_ledger/core/model/holidays.dart';
 import 'package:shared_ledger/core/model/invite.dart';
 import 'package:shared_ledger/core/model/ledger.dart';
 import 'package:shared_ledger/core/model/ledger_entries.dart';
@@ -1245,5 +1247,20 @@ class FakeActivityRepository implements ActivityRepository {
           .where((item) => item.at?.isBefore(before) ?? false)
           .take(limit),
     ];
+  }
+}
+
+/// 공휴일 가짜. 해마다 정해 둔 공휴일을 내보내고, 구독한 해를 남긴다(읽기 횟수 확인용).
+class FakeHolidaysRepository implements HolidaysRepository {
+  FakeHolidaysRepository([Map<int, Holidays> years = const {}])
+    : _years = {...years};
+
+  final Map<int, Holidays> _years;
+  final watched = <int>[];
+
+  @override
+  Stream<Holidays> watchYear(int year) {
+    watched.add(year);
+    return Stream.value(_years[year] ?? const Holidays());
   }
 }

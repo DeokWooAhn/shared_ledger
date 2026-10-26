@@ -9,6 +9,7 @@ import '../model/activity.dart';
 import '../model/auth_user.dart';
 import '../model/category.dart';
 import '../model/expense_template.dart';
+import '../model/holidays.dart';
 import '../model/ledger.dart';
 import '../model/ledger_entries.dart';
 import '../model/member.dart';
@@ -18,6 +19,7 @@ import '../model/year_month.dart';
 import 'activity_repository.dart';
 import 'auth_repository.dart';
 import 'entries_repository.dart';
+import 'holidays_repository.dart';
 import 'ledger_repository.dart';
 import 'settings_repository.dart';
 import 'templates_repository.dart';
@@ -49,6 +51,10 @@ final templatesRepositoryProvider = Provider<TemplatesRepository>(
 
 final activityRepositoryProvider = Provider<ActivityRepository>(
   (ref) => FirestoreActivityRepository(FirebaseFirestore.instance),
+);
+
+final holidaysRepositoryProvider = Provider<HolidaysRepository>(
+  (ref) => FirestoreHolidaysRepository(FirebaseFirestore.instance),
 );
 
 /// 지금 시각. 테스트에서 날짜를 고정하려고 공급자로 둔다.
@@ -197,6 +203,15 @@ final monthSummaryProvider = Provider<AsyncValue<MonthSummary>>((ref) {
   }
   return const AsyncLoading();
 });
+
+/// [int]년 공휴일. 달력이 그해를 보는 동안만 구독한다(문서 하나). 로그인하지 않았으면(규칙이 막는다) 빈 해다.
+final holidaysOfYearProvider = StreamProvider.autoDispose.family<Holidays, int>(
+  (ref, year) {
+    final uid = ref.watch(authUserProvider.select((user) => user.value?.uid));
+    if (uid == null) return Stream.value(const Holidays());
+    return ref.watch(holidaysRepositoryProvider).watchYear(year);
+  },
+);
 
 /// 지금 가계부의 최근 변경 기록([activityPageSize]건, 새것부터). 가계부가 없으면 빈 목록.
 ///

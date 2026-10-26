@@ -373,5 +373,13 @@ service cloud.firestore {
       allow update: if false;
       allow delete: if signedIn() && ledgerData(resource.data.ledgerId).ownerUid == uid();
     }
+
+    // ---------- 공휴일 ----------
+
+    // 연도별 공휴일(holidays/2026). Cloud Functions(syncHolidays)가 관리자 권한으로 쓰고, 앱은 그해 문서 하나만 읽는다.
+    match /holidays/{year} {
+      allow get: if signedIn();
+      allow list, write: if false;
+    }
   }
 }

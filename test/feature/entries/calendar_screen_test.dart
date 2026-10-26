@@ -3,6 +3,7 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_ledger/core/model/auth_user.dart';
 import 'package:shared_ledger/core/model/category.dart';
+import 'package:shared_ledger/core/model/holidays.dart';
 import 'package:shared_ledger/core/model/ledger.dart';
 import 'package:shared_ledger/core/model/ledger_entries.dart';
 import 'package:shared_ledger/core/model/month_ledger.dart';
@@ -80,11 +81,19 @@ MonthLedger octoberLedger() => MonthLedger(
   ],
 );
 
+// 2026년 10월 공휴일. 3일은 토요일이지만 개천절, 5일은 대체공휴일, 9일은 한글날이다.
+const holidays2026 = Holidays({
+  '2026-10-03': '개천절',
+  '2026-10-05': '대체공휴일',
+  '2026-10-09': '한글날',
+});
+
 /// 요약 탭에서 달 이름을 눌러 달력을 연다.
 Future<FakeEntriesRepository> openCalendar(
   WidgetTester tester, {
   Ledger ledger = mine,
   Size size = phoneSize,
+  FakeHolidaysRepository? holidays,
 }) async {
   final entries = FakeEntriesRepository({october: octoberLedger()});
   await pumpApp(
@@ -93,6 +102,7 @@ Future<FakeEntriesRepository> openCalendar(
     ledgers: FakeLedgerRepository([ledger]),
     settings: settings,
     entries: entries,
+    holidays: holidays ?? FakeHolidaysRepository({2026: holidays2026}),
     size: size,
   );
   await tester.tap(find.byKey(const Key('open-calendar')));
@@ -247,7 +257,6 @@ void main() {
       Color? numberColor(int number) =>
           tester.widget<Text>(inDay(number, find.text('$number'))).style?.color;
 
-      // 10월 3일은 토요일이지만 개천절, 5일은 대체공휴일, 9일은 한글날이다.
       expect(numberColor(3), error);
       expect(numberColor(5), error);
       expect(numberColor(9), error);
@@ -265,6 +274,18 @@ void main() {
       await settle(tester);
       expect(find.byKey(const Key('calendar-day-holiday')), findsNothing);
       semantics.dispose();
+    });
+
+    testWidgets('그해 공휴일을 아직 받지 못했으면 일요일만 빨갛고, 그해 문서 하나만 구독한다', (tester) async {
+      final holidays = FakeHolidaysRepository();
+      await openCalendar(tester, holidays: holidays);
+      final error = Theme.of(tester.element(day(3))).colorScheme.error;
+      Color? numberColor(int number) =>
+          tester.widget<Text>(inDay(number, find.text('$number'))).style?.color;
+
+      expect(numberColor(3), isNot(error));
+      expect(numberColor(4), error);
+      expect(holidays.watched.toSet(), {2026});
     });
   });
 
