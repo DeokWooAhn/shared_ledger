@@ -145,7 +145,8 @@ class _MonthSwipeTitleState extends State<MonthSwipeTitle> {
         onTap: onTap,
         borderRadius: BorderRadius.circular(8),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+          // 누르는 곳이 높이 48 이상이 되게 위아래 여백을 둔다.
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 12),
           child: title,
         ),
       );

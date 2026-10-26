@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -44,22 +46,24 @@ MemberSlot entryMemberSlot(String memberId) =>
 /// 고치기 화면을 열고, 휴지통에 넣고 돌아오면 '되돌리기'를 띄운다.
 ///
 /// 되돌리기 실패는 [entriesControllerProvider]의 실패로 오니, 부르는 화면이 그 실패를 듣고 알린다.
+/// 되돌리기는 부른 화면이 닫힌 뒤에도(요약 탭에서 연 달력을 닫음) 누를 수 있어서, 스낵바가 떠 있는 동안
+/// autoDispose 컨트롤러를 살려 두고 누를 때 꺼낸다.
 Future<void> editEntryWithUndo(
   BuildContext context,
-  WidgetRef ref,
   OpenEntryForm openForm,
   LedgerEntry entry,
   YearMonth month,
 ) async {
   // await 뒤에는 context가 사라졌을 수 있어서 미리 잡아 둔다.
   final messenger = ScaffoldMessenger.of(context);
-  final controller = ref.read(entriesControllerProvider.notifier);
+  final container = ProviderScope.containerOf(context, listen: false);
   final outcome = await openForm(
     context,
     EntryFormArgs.edit(entry: entry, month: month),
   );
   if (outcome != EntryFormOutcome.trashed) return;
-  messenger.showSnackBar(
+  final keepController = container.listen(entriesControllerProvider, (_, _) {});
+  final snackBar = messenger.showSnackBar(
     SnackBar(
       key: const Key('trashed-snack-bar'),
       content: Text(keepAll('휴지통에 넣었어요.')),
@@ -69,10 +73,13 @@ Future<void> editEntryWithUndo(
       action: SnackBarAction(
         key: const Key('restore-entry'),
         label: '되돌리기',
-        onPressed: () => controller.restore(entry, month),
+        onPressed: () => container
+            .read(entriesControllerProvider.notifier)
+            .restore(entry, month),
       ),
     ),
   );
+  unawaited(snackBar.closed.whenComplete(keepController.close));
 }
 
 /// 항목 한 줄: 누구 몫인지, 제목과 결제수단·날짜, 금액과 지급 전 표시.

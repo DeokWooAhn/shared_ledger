@@ -138,13 +138,7 @@ class _EntriesContent extends ConsumerWidget {
                   member: memberIn(members, entryMemberSlot(entry.memberId)),
                   methods: methods,
                   onTap: canWrite
-                      ? () => editEntryWithUndo(
-                          context,
-                          ref,
-                          openForm,
-                          entry,
-                          month,
-                        )
+                      ? () => editEntryWithUndo(context, openForm, entry, month)
                       : null,
                 ),
             ],

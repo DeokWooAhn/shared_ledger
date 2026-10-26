@@ -276,7 +276,11 @@ class _CalendarTopBar extends StatelessWidget {
                 shape: const StadiumBorder(),
               ),
               onPressed: onToday,
-              child: const Text('오늘'),
+              // 글자를 키워도 '오/늘'로 줄이 갈리지 않게, 폭이 모자라면 줄여서 한 줄로 둔다.
+              child: const FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text('오늘', maxLines: 1),
+              ),
             ),
           ),
         ],
@@ -798,13 +802,7 @@ class _DayPanel extends ConsumerWidget {
                   methods: methods,
                   showKind: true,
                   onTap: canWrite
-                      ? () => editEntryWithUndo(
-                          context,
-                          ref,
-                          openForm,
-                          entry,
-                          month,
-                        )
+                      ? () => editEntryWithUndo(context, openForm, entry, month)
                       : null,
                 ),
               ],

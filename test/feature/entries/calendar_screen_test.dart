@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_ledger/core/model/auth_user.dart';
 import 'package:shared_ledger/core/model/category.dart';
@@ -146,6 +147,43 @@ void main() {
 
       expect(find.byType(CalendarScreen), findsNothing);
       expect(find.byKey(HomeTab.entries.key), findsOneWidget);
+    });
+
+    testWidgets('달 이름의 누르는 곳은 머리말과 달력 위 모두 높이 48 이상이다', (tester) async {
+      await openCalendar(tester);
+      expect(
+        tester.getSize(find.byKey(const Key('calendar-month'))).height,
+        greaterThanOrEqualTo(48),
+      );
+
+      await tester.tap(find.byKey(const Key('calendar-back')));
+      await settleRoute(tester);
+      expect(
+        tester.getSize(find.byKey(const Key('open-calendar'))).height,
+        greaterThanOrEqualTo(48),
+      );
+    });
+
+    testWidgets('글자를 두 배로 키워도 오늘 단추의 글자가 한 줄이다', (tester) async {
+      tester.platformDispatcher.textScaleFactorTestValue = 2;
+      addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+      await openCalendar(tester);
+
+      final today = tester.renderObject<RenderParagraph>(
+        find.descendant(
+          of: find.byKey(const Key('calendar-today')),
+          matching: find.text('오늘'),
+        ),
+      );
+      // 두 글자의 줄 위치가 같아야 한다('오/늘'로 갈리지 않음).
+      final lines = today
+          .getBoxesForSelection(
+            const TextSelection(baseOffset: 0, extentOffset: 2),
+          )
+          .map((box) => box.top)
+          .toSet();
+      expect(lines, hasLength(1));
+      expect(today.didExceedMaxLines, isFalse);
     });
 
     testWidgets('머리말의 달 이름은 화면 읽기 도구가 달력 열기 단추로 읽는다', (tester) async {
@@ -302,6 +340,26 @@ void main() {
       expect(find.byType(CalendarScreen), findsOneWidget);
       expect(find.text('항목 1건'), findsOneWidget);
       expect(find.byKey(const Key('calendar-day-empty')), findsNothing);
+    });
+
+    testWidgets('휴지통에 넣고 돌아온 뒤 달력을 닫아도 되돌리기로 다시 꺼낸다', (tester) async {
+      // 요약 탭에서 연 달력이라, 달력을 닫으면 항목 컨트롤러를 듣는 화면이 없다.
+      final entries = await openCalendar(tester);
+      await tester.tap(day(18));
+      await settle(tester);
+      await tapShown(tester, find.byKey(const ValueKey('calendar-entry-mart')));
+      await settleRoute(tester);
+      await tapShown(tester, find.byKey(const Key('entry-trash')));
+      await settleRoute(tester);
+      expect(entries.trashed.single.id, 'mart');
+
+      await tester.tap(find.byKey(const Key('calendar-back')));
+      await settleRoute(tester);
+      expect(find.byType(CalendarScreen), findsNothing);
+      await tester.tap(find.byKey(const Key('restore-entry')));
+      await settle(tester);
+
+      expect(entries.restored.single.id, 'mart');
     });
 
     testWidgets('항목이 있는 날에는 따로 추가 단추가 없다', (tester) async {
