@@ -30,6 +30,7 @@ class MonthHeader extends ConsumerWidget {
     final current = YearMonth.of(ref.watch(clockProvider)());
     final members = ref.watch(membersProvider).value ?? const [];
     final selectedMonth = ref.read(selectedMonthProvider.notifier);
+    // 누를 수 없는 화살표(끝 달)는 IconButton이 흐리게 그린다. 아이콘에 색을 따로 주면 흐려지지 않는다.
     final arrowColor = theme.colorScheme.onSurfaceVariant;
     // 목록을 아직 모으지 않은 가계부면 바로 앞뒤 달로 간다.
     final months = ref.watch(ledgerMonthsProvider);
@@ -50,8 +51,9 @@ class MonthHeader extends ConsumerWidget {
               IconButton(
                 key: const Key('previous-month'),
                 tooltip: '이전 달',
+                color: arrowColor,
                 onPressed: goPrevious,
-                icon: Icon(Icons.chevron_left, size: 22, color: arrowColor),
+                icon: const Icon(Icons.chevron_left, size: 22),
               ),
               Flexible(
                 child: MonthSwipeTitle(
@@ -73,8 +75,9 @@ class MonthHeader extends ConsumerWidget {
               IconButton(
                 key: const Key('next-month'),
                 tooltip: '다음 달',
+                color: arrowColor,
                 onPressed: goNext,
-                icon: Icon(Icons.chevron_right, size: 22, color: arrowColor),
+                icon: const Icon(Icons.chevron_right, size: 22),
               ),
             ],
           ),
