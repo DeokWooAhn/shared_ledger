@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_ledger/core/data/providers.dart';
 import 'package:shared_ledger/core/model/auth_user.dart';
 import 'package:shared_ledger/core/model/expense_template.dart';
+import 'package:shared_ledger/core/model/holidays.dart';
 import 'package:shared_ledger/core/model/ledger.dart';
 import 'package:shared_ledger/core/model/ledger_entries.dart';
 import 'package:shared_ledger/core/model/month_ledger.dart';
@@ -261,6 +262,47 @@ void main() {
 
       expect(month.incomes, isEmpty);
       expect(entries.watched, isEmpty);
+    });
+  });
+
+  group('공휴일', () {
+    Future<Holidays> holidaysOf(ProviderContainer container, int year) async {
+      final subscription = container.listen(
+        holidaysOfYearProvider(year).future,
+        (_, _) {},
+      );
+      try {
+        return await subscription.read();
+      } finally {
+        subscription.close();
+      }
+    }
+
+    test('로그인했으면 그해 공휴일 문서를 구독한다', () async {
+      final holidays = FakeHolidaysRepository({
+        2026: const Holidays({'2026-10-03': '개천절'}),
+      });
+      final container = createContainer(
+        auth: FakeAuthRepository(signedIn: me),
+        holidays: holidays,
+      );
+      await loadSignedInUser(container);
+
+      final year = await holidaysOf(container, 2026);
+
+      expect(year.nameOf(DateTime(2026, 10, 3)), '개천절');
+      expect(holidays.watched, [2026]);
+    });
+
+    test('로그인하지 않았으면 구독하지 않고 빈 해다', () async {
+      final holidays = FakeHolidaysRepository({
+        2026: const Holidays({'2026-10-03': '개천절'}),
+      });
+      final container = createContainer(holidays: holidays);
+      await loadSignedInUser(container);
+
+      expect(await holidaysOf(container, 2026), const Holidays());
+      expect(holidays.watched, isEmpty);
     });
   });
 }

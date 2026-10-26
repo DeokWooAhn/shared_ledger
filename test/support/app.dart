@@ -24,6 +24,7 @@ Future<void> pumpApp(
   FakeEntriesRepository? entries,
   FakeTemplatesRepository? templates,
   FakeActivityRepository? activity,
+  FakeHolidaysRepository? holidays,
   Size size = phoneSize,
 }) async {
   tester.view.physicalSize = size * tester.view.devicePixelRatio;
@@ -44,6 +45,9 @@ Future<void> pumpApp(
         entriesRepositoryProvider.overrideWithValue(fakes.entries),
         templatesRepositoryProvider.overrideWithValue(fakes.templates),
         activityRepositoryProvider.overrideWithValue(fakes.activity),
+        holidaysRepositoryProvider.overrideWithValue(
+          holidays ?? FakeHolidaysRepository(),
+        ),
         clockProvider.overrideWithValue(() => testNow),
       ],
       child: const SharedLedgerApp(),

@@ -48,6 +48,7 @@ ProviderContainer createContainer({
   FakeEntriesRepository? entries,
   FakeTemplatesRepository? templates,
   FakeActivityRepository? activity,
+  FakeHolidaysRepository? holidays,
   DateTime? now,
 }) {
   final ledgerFake = ledgers ?? FakeLedgerRepository();
@@ -66,6 +67,9 @@ ProviderContainer createContainer({
       entriesRepositoryProvider.overrideWithValue(fakes.entries),
       templatesRepositoryProvider.overrideWithValue(fakes.templates),
       activityRepositoryProvider.overrideWithValue(fakes.activity),
+      holidaysRepositoryProvider.overrideWithValue(
+        holidays ?? FakeHolidaysRepository(),
+      ),
       clockProvider.overrideWithValue(() => now ?? testNow),
     ],
   );

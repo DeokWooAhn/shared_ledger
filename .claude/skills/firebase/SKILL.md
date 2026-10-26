@@ -61,6 +61,29 @@ firebase deploy --only firestore:rules --project simple-shared-ledger
 
 색인을 바꿨으면 `--only firestore:indexes`도 배포한다.
 
+## Cloud Functions
+
+`functions/`(TypeScript, Node 22, 서울 지역). 지금은 공휴일을 받아 두는 `syncHolidays` 하나다(`docs/firestore.md`의 holidays).
+
+- 검사: `npm --prefix functions test`(타입 검사·빌드 + 응답 해석 테스트). CI의 'Cloud Functions 빌드·테스트' job과 같다.
+- 공공데이터포털 인증키는 Secret Manager의 `HOLIDAY_API_KEY`에 있다. 저장소·로그에 남기지 않는다. 처음이나 키를 바꿀 때 사용자가 직접 넣는다
+  (포털 마이페이지의 '일반 인증키(Decoding)'. 함수가 주소에 넣을 때 인코딩한다).
+
+```bash
+firebase functions:secrets:set HOLIDAY_API_KEY --project simple-shared-ledger
+```
+
+- 배포는 PR이 `main`에 합쳐진 뒤 한다. 비밀을 먼저 넣어야 배포가 된다. 처음 배포할 때 필요한 Google Cloud API(Functions, Cloud Build,
+  Artifact Registry, Cloud Scheduler, Secret Manager 등)를 켜겠냐고 물으면 켠다.
+
+```bash
+firebase deploy --only functions --project simple-shared-ledger
+```
+
+- 배포 직후에는 다음 날 새벽 4시 전까지 공휴일이 없다. 바로 채우려면 Google Cloud 콘솔 → Cloud Scheduler에서
+  `firebase-schedule-syncHolidays-asia-northeast3` 작업을 '강제 실행'한다. 결과는 Firebase 콘솔 → Functions → 로그에서 본다.
+- 특일 API 개발계정은 하루 10,000건이다. 함수는 하루 24건(두 해 × 12달)을 부른다.
+
 ## 로그인 제공자
 
 | 제공자 | Android | iOS | 설정 |

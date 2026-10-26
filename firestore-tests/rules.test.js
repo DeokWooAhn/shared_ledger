@@ -1184,3 +1184,28 @@ describe('변경 기록', () => {
     await assertFails(add(VIEWER));
   });
 });
+
+describe('공휴일', () => {
+  function holidayRef(db, year = '2026') {
+    return doc(db, 'holidays', year);
+  }
+
+  // 공휴일은 Cloud Functions(syncHolidays)가 관리자 권한으로 쓴다. 앱은 읽기만 한다.
+  test('로그인한 사람은 누구나 읽고, 로그인하지 않으면 읽을 수 없다', async () => {
+    await seed((db) => setDoc(holidayRef(db), { days: { '2026-10-03': '개천절' } }));
+
+    await assertSucceeds(getDoc(holidayRef(firestoreAs(OUTSIDER))));
+    await assertSucceeds(getDoc(holidayRef(firestoreAs(VIEWER))));
+    await assertFails(getDoc(holidayRef(firestoreAs(null))));
+  });
+
+  test('앱에서는 관리자도 공휴일을 쓰거나 지울 수 없고, 목록도 읽을 수 없다', async () => {
+    await seed((db) => setDoc(holidayRef(db), { days: { '2026-10-03': '개천절' } }));
+    const db = firestoreAs(OWNER);
+
+    await assertFails(setDoc(holidayRef(db, '2027'), { days: { '2027-01-01': '신정' } }));
+    await assertFails(updateDoc(holidayRef(db), { days: {} }));
+    await assertFails(deleteDoc(holidayRef(db)));
+    await assertFails(getDocs(collection(db, 'holidays')));
+  });
+});

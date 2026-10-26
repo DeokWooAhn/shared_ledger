@@ -93,6 +93,32 @@ jobs:
           --project demo-shared-ledger
           "npm --prefix firestore-tests test"
 
+  # 공휴일을 받아 두는 Cloud Functions(functions/). 타입 검사·빌드와 응답 해석 테스트만 하고 배포는 하지 않는다.
+  functions:
+    name: Cloud Functions 빌드·테스트
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      # 배포되는 런타임(package.json의 engines)과 같은 Node 22로 검사한다.
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: functions/package-lock.json
+
+      - name: Install packages
+        run: npm --prefix functions ci
+
+      - name: Build and test
+        run: npm --prefix functions test
+
   android-build:
     name: Android 디버그 빌드
     runs-on: ubuntu-latest

@@ -45,6 +45,7 @@ lib/
   feature/<기능>/        기능별 화면: View(*_screen.dart) + 컨트롤러(*_controller.dart, Riverpod Notifier)
 firestore.rules         보안 규칙
 firestore-tests/        보안 규칙 테스트 (Firestore 에뮬레이터)
+functions/              Cloud Functions (공휴일을 특일 API에서 받아 Firestore에 둔다)
 design/                 화면 디자인(Pencil)과 내보낸 이미지
 ```
 

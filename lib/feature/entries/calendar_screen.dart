@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/data/providers.dart';
+import '../../core/model/holidays.dart';
 import '../../core/model/ledger_entries.dart';
 import '../../core/model/member.dart';
 import '../../core/model/month_ledger.dart';
@@ -19,7 +20,6 @@ import 'calendar_days.dart';
 import 'entries_controller.dart';
 import 'entry_form_controller.dart';
 import 'entry_row.dart';
-import 'korean_holidays.dart';
 
 /// 화면 폭이 이 폭 이상이면 달력과 고른 날 목록을 두 칸으로 놓는다.
 const calendarTwoColumnMinWidth = 720.0;
@@ -425,8 +425,8 @@ class _CalendarCard extends StatelessWidget {
   }
 }
 
-/// 한 달의 날짜 칸. 쪽마다 그달 항목을 따로 읽어서, 판을 미는 동안 옆 달도 금액이 보인다.
-/// 그달 항목을 아직 받지 못했으면 날짜만 그린다.
+/// 한 달의 날짜 칸. 쪽마다 그달 항목과 그해 공휴일을 따로 읽어서, 판을 미는 동안 옆 달도 금액·공휴일이 보인다.
+/// 아직 받지 못했으면 날짜만(공휴일은 일요일만 빨갛게) 그린다.
 class _MonthGrid extends ConsumerWidget {
   const _MonthGrid({
     required this.month,
@@ -444,6 +444,8 @@ class _MonthGrid extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final ledger =
         ref.watch(monthLedgerOfProvider(month)).value ?? const MonthLedger();
+    final holidays =
+        ref.watch(holidaysOfYearProvider(month.year)).value ?? const Holidays();
     final calendar = CalendarMonth.of(ledger, month);
     // 일요일이 첫 칸이다. DateTime.weekday는 월요일이 1, 일요일이 7이다.
     final leading = DateTime(month.year, month.month).weekday % 7;
@@ -464,6 +466,7 @@ class _MonthGrid extends ConsumerWidget {
                         _DayCell(
                           key: ValueKey('calendar-day-$day'),
                           day: calendar.dayOf(day),
+                          holiday: holidays.nameOf(calendar.dayOf(day).date),
                           selected: isSelectedMonth && selected.day == day,
                           today: isTodayMonth && today.day == day,
                           onTap: () => onPick(calendar.dayOf(day).date),
@@ -493,6 +496,7 @@ Color _weekdayColor(BuildContext context, int index, {Color? fallback}) =>
 class _DayCell extends StatelessWidget {
   const _DayCell({
     required this.day,
+    required this.holiday,
     required this.selected,
     required this.today,
     required this.onTap,
@@ -500,6 +504,9 @@ class _DayCell extends StatelessWidget {
   });
 
   final CalendarDay day;
+
+  /// 그날이 공휴일이면 그 이름.
+  final String? holiday;
   final bool selected;
   final bool today;
   final VoidCallback onTap;
@@ -509,7 +516,7 @@ class _DayCell extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final colors = context.appColors;
     final date = day.date;
-    final holiday = koreanHoliday(date);
+    final holiday = this.holiday;
     final numberColor = selected
         ? scheme.onPrimary
         : today
@@ -697,7 +704,10 @@ class _DayPanel extends ConsumerWidget {
     final members = ref.watch(membersProvider).value ?? const [];
     final canWrite = ref.watch(myRoleProvider)?.canWrite ?? false;
     final date = day.date;
-    final holiday = koreanHoliday(date);
+    final holiday = ref
+        .watch(holidaysOfYearProvider(date.year))
+        .value
+        ?.nameOf(date);
     final rows = <LedgerEntry>[...day.entries, ...day.scheduled];
     final counts = [
       if (day.entries.isNotEmpty) '항목 ${day.entries.length}건',
