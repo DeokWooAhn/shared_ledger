@@ -31,6 +31,8 @@ MVVM의 ViewModel 역할은 Riverpod `Notifier`를 상속한 컨트롤러가 맡
   두 칸으로 놓는 탭은 `LayoutBuilder`로 칸 수를 정하고 `TabPage(maxWidth:)`를 넓힌다(월 요약: 본문 폭 840 이상이면 두 칸).
 - 머리말은 달을 보는 탭이면 `MonthHeader`, 아니면 `TabTitle`이다. 예: `lib/feature/summary/summary_screen.dart`, `lib/feature/templates/templates_screen.dart`
 - 보고 있는 달은 `selectedMonthProvider`를 읽는다(탭을 옮겨도 같은 달). 오늘 날짜가 필요하면 `clockProvider`.
+  머리말로 오가는 달은 `ledgerMonthsProvider`(항목 있는 달 + 이번 달·다음 달, 목록을 아직 모으지 않았으면 null)이고, 달력은 모든 달을 보여준다.
+  새 항목을 더하는 쓰기는 `Ledger.needsToRecord(month)`로 그달을 가계부의 달 목록에 같이 더한다(`docs/firestore.md`의 `months`).
 - 두 사람 표시는 `MemberAvatar`, 이름은 `membersProvider`에서 꺼낸다.
 - 탭을 더하거나 빼면 `HomeTab`과 router.dart의 `Routes.of`·`_tabScreen`을 같이 고친다(`switch`라 빠뜨리면 컴파일 에러).
 - 폭 600 이상(`wideLayoutMinWidth`)에서는 아래 탭 막대 대신 옆 탭 막대(NavigationRail)가 나온다. 위젯 테스트는 두 배치를 다 본다.

@@ -49,6 +49,8 @@ void main() {
         const RenameState(saving: true),
         const RenameState(done: true),
       ]);
+      // 바뀐 이름은 실제처럼 가계부 구독으로 조금 뒤에 들어온다.
+      await pumpEventQueue();
       expect(container.read(currentLedgerProvider)?.name, '하늘바다 가계부');
     });
 

@@ -212,8 +212,9 @@ void main() {
           isButton: true,
           isHeader: true,
           hasTapAction: true,
+          // 항목 있는 달이 아직 없어서 이번 달이 첫 달이다. 다음 달로만 옮길 수 있다.
           hasIncreaseAction: true,
-          hasDecreaseAction: true,
+          hasDecreaseAction: false,
         ),
       );
       semantics.dispose();
@@ -383,6 +384,73 @@ void main() {
       expect(entries.restored.single.id, 'mart');
     });
 
+    testWidgets('가계부가 없는 달의 빈 날을 누르면 새로 만들지 묻고, 취소하면 입력 화면을 열지 않는다', (
+      tester,
+    ) async {
+      await openCalendar(
+        tester,
+        ledger: Ledger(
+          id: 'l1',
+          name: '우리 가계부',
+          ownerUid: 'me',
+          months: {october},
+        ),
+      );
+      await tester.fling(
+        find.byKey(const Key('calendar-swipe')),
+        const Offset(300, 0),
+        800,
+      );
+      await settleRoute(tester);
+      expect(calendarTitle(tester), '9월');
+
+      await tapShown(tester, find.byKey(const Key('calendar-day-empty')));
+      expect(find.byKey(const Key('add-month-dialog')), findsOneWidget);
+      expect(findSentence('2026년 9월에는 가계부가 없어요'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('add-month-cancel')));
+      await settleRoute(tester);
+
+      expect(find.byKey(const Key('add-month-dialog')), findsNothing);
+      expect(find.byType(EntryFormScreen), findsNothing);
+    });
+
+    testWidgets('추가를 고르면 그날로 입력 화면을 열고, 저장하면 그달이 탭에서도 오가는 달이 된다', (
+      tester,
+    ) async {
+      final entries = await openCalendar(
+        tester,
+        ledger: Ledger(
+          id: 'l1',
+          name: '우리 가계부',
+          ownerUid: 'me',
+          months: {october},
+        ),
+      );
+      await tester.fling(
+        find.byKey(const Key('calendar-swipe')),
+        const Offset(300, 0),
+        800,
+      );
+      await settleRoute(tester);
+
+      await tapShown(tester, find.byKey(const Key('calendar-day-empty')));
+      await tester.tap(find.byKey(const Key('add-month-confirm')));
+      await settleRoute(tester);
+      expect(find.text('2026년 9월 1일'), findsOneWidget);
+      await tester.enterText(find.byKey(const Key('entry-amount')), '5000');
+      await tester.enterText(find.byKey(const Key('entry-title')), '간식');
+      await tapShown(tester, find.byKey(const Key('entry-method-p-shared')));
+      await tapShown(tester, find.byKey(const Key('entry-save')));
+      await settleRoute(tester);
+
+      expect(entries.added.single.month, const YearMonth(2026, 9));
+      expect(entries.recordedMonths, [const YearMonth(2026, 9)]);
+      // 이제 9월은 항목 있는 달이라, 닫아도 탭이 9월에 머문다.
+      await tester.tap(find.byKey(const Key('calendar-back')));
+      await settleRoute(tester);
+      expect(monthTitle(tester), '9월');
+    });
+
     testWidgets('항목이 있는 날에는 따로 추가 단추가 없다', (tester) async {
       await openCalendar(tester);
       await tester.tap(day(18));
@@ -502,7 +570,9 @@ void main() {
       expect(calendarTitle(tester), '2025년 12월');
     });
 
-    testWidgets('달 이름을 누르면 연·월 휠 시트로 다른 달로 가고, 탭도 그 달을 본다', (tester) async {
+    testWidgets('달 이름을 누르면 연·월 휠 시트로 다른 달로 가고, 항목 없는 달이면 닫을 때 탭은 연 달로 돌아온다', (
+      tester,
+    ) async {
       await openCalendar(tester);
 
       await tester.tap(find.byKey(const Key('calendar-month')));
@@ -520,7 +590,23 @@ void main() {
       expect(dayTitle(tester), '3월 1일 일요일');
       await tester.tap(find.byKey(const Key('calendar-back')));
       await settleRoute(tester);
-      expect(monthTitle(tester), '3월');
+      expect(monthTitle(tester), '10월');
+    });
+
+    testWidgets('요약·항목 탭이 오가는 달로 옮기고 닫으면 탭도 그 달을 본다', (tester) async {
+      await openCalendar(tester);
+
+      await tester.fling(
+        find.byKey(const Key('calendar-swipe')),
+        const Offset(-300, 0),
+        800,
+      );
+      await settleRoute(tester);
+      expect(calendarTitle(tester), '11월');
+      await tester.tap(find.byKey(const Key('calendar-back')));
+      await settleRoute(tester);
+
+      expect(monthTitle(tester), '11월');
     });
   });
 

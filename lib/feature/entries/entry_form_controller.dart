@@ -375,8 +375,9 @@ class EntryFormController extends Notifier<EntryFormState> {
     required String memo,
   }) async {
     final uid = ref.read(authUserProvider).value?.uid;
-    final ledgerId = ref.read(currentLedgerProvider)?.id;
-    if (state.busy || uid == null || ledgerId == null) return;
+    final ledger = ref.read(currentLedgerProvider);
+    if (state.busy || uid == null || ledger == null) return;
+    final ledgerId = ledger.id;
     final trimmedMemo = memo.trim();
     final draft = EntryDraft(
       kind: state.kind,
@@ -409,6 +410,8 @@ class EntryFormController extends Notifier<EntryFormState> {
           month: args.month,
           draft: draft,
           uid: uid,
+          // 그달에 처음 넣는 항목이면 가계부의 항목 있는 달 목록에 그달을 더한다.
+          recordMonth: ledger.needsToRecord(args.month),
         );
       } else {
         await repository.update(

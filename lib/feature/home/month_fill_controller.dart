@@ -13,6 +13,7 @@ class PlannedFill {
     required this.ledgerId,
     required this.month,
     required this.templates,
+    this.recordMonth = false,
   });
 
   final String ledgerId;
@@ -21,15 +22,20 @@ class PlannedFill {
   /// 그달에 아직 기본 월 지출이 없는 고정 지출.
   final List<ExpenseTemplate> templates;
 
+  /// 채우면서 가계부의 항목 있는 달 목록에 그달을 더할지([Ledger.needsToRecord]).
+  final bool recordMonth;
+
   @override
   bool operator ==(Object other) =>
       other is PlannedFill &&
       other.ledgerId == ledgerId &&
       other.month == month &&
-      listEquals(other.templates, templates);
+      listEquals(other.templates, templates) &&
+      other.recordMonth == recordMonth;
 
   @override
-  int get hashCode => Object.hash(ledgerId, month, Object.hashAll(templates));
+  int get hashCode =>
+      Object.hash(ledgerId, month, Object.hashAll(templates), recordMonth);
 }
 
 /// 보고 있는 달에 고정 지출로 채울 것. 채울 것이 없거나 채울 수 없으면 null.
@@ -39,18 +45,23 @@ class PlannedFill {
 /// 값이 바뀔 때만 알리므로, 홈 틀이 듣다가 [MonthFillController.fill]로 넘긴다.
 final plannedFillProvider = Provider<PlannedFill?>((ref) {
   final canWrite = ref.watch(myRoleProvider)?.canWrite ?? false;
-  final ledgerId = ref.watch(currentLedgerProvider.select((l) => l?.id));
+  final ledger = ref.watch(currentLedgerProvider);
   final month = ref.watch(selectedMonthProvider);
-  if (!canWrite || ledgerId == null) return null;
+  if (!canWrite || ledger == null) return null;
   final thisMonth = YearMonth.of(ref.watch(clockProvider)());
   if (!fillsFromTemplates(month, thisMonth: thisMonth)) return null;
   if ((ref.watch(monthLedgerProvider), ref.watch(templatesProvider)) case (
-    AsyncData(value: final ledger),
+    AsyncData(value: final entries),
     AsyncData(value: final templates),
   )) {
-    final missing = templatesMissingIn(ledger, templates);
+    final missing = templatesMissingIn(entries, templates);
     if (missing.isEmpty) return null;
-    return PlannedFill(ledgerId: ledgerId, month: month, templates: missing);
+    return PlannedFill(
+      ledgerId: ledger.id,
+      month: month,
+      templates: missing,
+      recordMonth: ledger.needsToRecord(month),
+    );
   }
   return null;
 });
@@ -107,6 +118,7 @@ class MonthFillController extends Notifier<bool> {
             month: fill.month,
             templates: fill.templates,
             uid: uid,
+            recordMonth: fill.recordMonth,
           );
     } on EntryWriteException catch (e) {
       debugPrint('그달 기본 월 지출을 채우지 못해 다음에 다시 열 때 채움: ${e.reason}');

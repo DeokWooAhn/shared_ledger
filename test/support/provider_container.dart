@@ -37,6 +37,8 @@ linkActivity({
   ]) {
     fake.activity ??= linked.activity;
   }
+  // 항목을 더하면 가계부의 항목 있는 달 목록도 같이 바뀐다(실제는 같은 일괄 쓰기).
+  linked.entries.ledgers ??= ledgers;
   return linked;
 }
 

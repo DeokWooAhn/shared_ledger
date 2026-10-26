@@ -190,6 +190,39 @@ void main() {
       expect(container.read(plannedFillProvider), isNull);
     });
 
+    test('달 목록에 없는 달을 채우면 그달을 달 목록에 같이 더한다', () async {
+      final entries = FakeEntriesRepository();
+      final container = await ready(
+        entries: entries,
+        ledger: Ledger(
+          id: 'l1',
+          name: '우리 가계부',
+          ownerUid: 'me',
+          months: {const YearMonth(2026, 9)},
+        ),
+      );
+      final fill = container.read(plannedFillProvider);
+      expect(fill?.recordMonth, isTrue);
+
+      await container.read(monthFillControllerProvider.notifier).fill(fill!);
+      await pumpEventQueue();
+
+      expect(entries.recordedMonths, [october]);
+      expect(container.read(currentLedgerProvider)?.months, contains(october));
+    });
+
+    test('달 목록을 아직 모으지 않은 가계부면 채워도 달 목록에 더하지 않는다', () async {
+      final entries = FakeEntriesRepository();
+      final container = await ready(entries: entries);
+      final fill = container.read(plannedFillProvider);
+      expect(fill?.recordMonth, isFalse);
+
+      await container.read(monthFillControllerProvider.notifier).fill(fill!);
+
+      expect(entries.filled, hasLength(1));
+      expect(entries.recordedMonths, isEmpty);
+    });
+
     test('채우는 중에 같은 요청으로 다시 불러도 한 번만 채운다', () async {
       final entries = FakeEntriesRepository();
       final container = await ready(entries: entries);

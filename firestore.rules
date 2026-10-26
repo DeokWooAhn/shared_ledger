@@ -81,7 +81,8 @@ service cloud.firestore {
       allow list: if signedIn() && uid() in resource.data.memberUids;
 
       allow create: if signedIn()
-        && request.resource.data.keys().hasOnly(['name', 'ownerUid', 'roles', 'memberUids', 'createdAt', 'updatedAt'])
+        && request.resource.data.keys().hasOnly(['name', 'ownerUid', 'roles', 'memberUids', 'months', 'createdAt', 'updatedAt'])
+        && request.resource.data.get('months', []) == []
         && validName(request.resource.data.name)
         && request.resource.data.ownerUid == uid()
         && request.resource.data.roles == {}
@@ -136,7 +137,22 @@ service cloud.firestore {
           && after.updatedAt == request.time;
       }
 
-      allow update: if ownerManages() || leavesSelf() || joinsWithInvite();
+      // 관리자·편집자: 항목 있는 달 목록(months)에 달을 더한다. 빼거나 다른 칸을 같이 고칠 수는 없다.
+      // 그달에 처음 항목을 넣을 때 arrayUnion으로 하나씩 더하고, 목록이 없던 가계부는 처음 열 때 여러 달을 한 번에 적는다.
+      function recordsMonths() {
+        let before = resource.data.get('months', []);
+        let after = request.resource.data.get('months', []);
+        return canWriteIn(resource.data)
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['months'])
+          && after is list
+          && after.size() <= 1200
+          && after.toSet().size() == after.size()
+          && after.hasAll(before)
+          && (after.size() == 0
+            || after.join(',').matches('[0-9]{4}-(0[1-9]|1[0-2])(,[0-9]{4}-(0[1-9]|1[0-2]))*'));
+      }
+
+      allow update: if ownerManages() || leavesSelf() || joinsWithInvite() || recordsMonths();
       allow delete: if signedIn() && resource.data.ownerUid == uid();
 
       // ---------- 가계부 설정: 구성원 이름표, 분류, 결제수단, 고정 지출 템플릿 ----------

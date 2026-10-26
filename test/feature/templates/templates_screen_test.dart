@@ -328,7 +328,17 @@ void main() {
 
     testWidgets('다음 달도 열면 만들고, 지난 달은 만들지 않는다', (tester) async {
       final entries = FakeEntriesRepository();
-      await pumpLedger(tester, entries: entries);
+      // 9월은 항목이 있었던 달이라 머리말로 갈 수 있다.
+      await pumpLedger(
+        tester,
+        entries: entries,
+        ledger: Ledger(
+          id: 'l1',
+          name: '우리 가계부',
+          ownerUid: 'me',
+          months: {const YearMonth(2026, 9)},
+        ),
+      );
       await openTab(tester, HomeTab.entries);
 
       await swipeMonth(tester);

@@ -135,23 +135,45 @@ class FakeLedgerRepository with LogsActivity implements LedgerRepository {
     Ledger ledger, {
     String? name,
     Map<String, MemberRole>? roles,
+    Set<YearMonth>? months,
   }) => Ledger(
     id: ledger.id,
     name: name ?? ledger.name,
     ownerUid: ledger.ownerUid,
     roles: roles ?? ledger.roles,
     createdAt: ledger.createdAt,
+    months: months ?? ledger.months,
   );
+
+  /// 처음 모아 적은 항목 있는 달([recordMonths] 호출).
+  final recordedMonths = <({String ledgerId, Set<YearMonth> months})>[];
+
+  /// 실제 arrayUnion처럼 [ledgerId] 가계부의 달 목록에 [month]를 더한다. 목록이 없었으면 새로 생긴다.
+  /// 가짜 항목 저장소가 항목을 더하면서 부른다.
+  void addMonth(String ledgerId, YearMonth month) {
+    final index = _ledgers.indexWhere((l) => l.id == ledgerId);
+    if (index < 0) return;
+    final ledger = _ledgers[index];
+    _ledgers[index] = _copy(ledger, months: {...?ledger.months, month});
+    _changes.add(null);
+  }
 
   List<Ledger> _of(String uid) =>
       _ledgers.where((l) => l.memberUids.contains(uid)).toList();
 
+  /// 실제 구독처럼 첫 값을 보내기 전에 변경을 듣기 시작한다. 첫 값 바로 뒤에 바뀐 것(달 목록 더하기)도 놓치지 않는다.
   @override
-  Stream<List<Ledger>> watchMyLedgers(String uid) async* {
-    yield _of(uid);
-    await for (final _ in _changes.stream) {
-      yield _of(uid);
-    }
+  Stream<List<Ledger>> watchMyLedgers(String uid) {
+    StreamSubscription<void>? changes;
+    late final StreamController<List<Ledger>> controller;
+    controller = StreamController<List<Ledger>>(
+      onListen: () {
+        changes = _changes.stream.listen((_) => controller.add(_of(uid)));
+        controller.add(_of(uid));
+      },
+      onCancel: () => changes?.cancel(),
+    );
+    return controller.stream;
   }
 
   @override
@@ -243,6 +265,21 @@ class FakeLedgerRepository with LogsActivity implements LedgerRepository {
     _ledgers[index] = _copy(_ledgers[index], name: name.trim());
     _changes.add(null);
     logActivity(ledgerRenameActivity(from: before, to: name), uid);
+  }
+
+  @override
+  Future<void> recordMonths({
+    required String ledgerId,
+    required Iterable<YearMonth> months,
+  }) async {
+    if (offline) throw StateError('recordMonths offline');
+    final index = _ledgers.indexWhere((l) => l.id == ledgerId);
+    if (index < 0) return;
+    recordedMonths.add((ledgerId: ledgerId, months: {...months}));
+    // 실제처럼 그사이 더해진 달은 지우지 않고 합친다.
+    final ledger = _ledgers[index];
+    _ledgers[index] = _copy(ledger, months: {...?ledger.months, ...months});
+    _changes.add(null);
   }
 }
 
@@ -680,15 +717,31 @@ class FakeEntriesRepository with LogsActivity implements EntriesRepository {
     return controller.stream;
   }
 
+  /// 항목을 더하면서 달 목록에 더하라고 한 달(`recordMonth`). 잇는 가짜 가계부 저장소([ledgers])에도 더한다.
+  final recordedMonths = <YearMonth>[];
+
+  /// 항목 있는 달을 찾아본 달([monthsWithEntries]). 읽기 횟수를 확인할 때 쓴다.
+  final scannedMonths = <YearMonth>[];
+
+  /// 달 목록을 같이 고칠 가짜 가계부 저장소. [linkActivity]가 잇는다.
+  FakeLedgerRepository? ledgers;
+
+  void _recordMonth(String ledgerId, YearMonth month) {
+    recordedMonths.add(month);
+    ledgers?.addMonth(ledgerId, month);
+  }
+
   @override
   Future<String> add({
     required String ledgerId,
     required YearMonth month,
     required EntryDraft draft,
     required String uid,
+    bool recordMonth = false,
   }) async {
     _failIfAsked();
     added.add((ledgerId: ledgerId, month: month, draft: draft, uid: uid));
+    if (recordMonth) _recordMonth(ledgerId, month);
     final id = 'entry-${added.length}';
     _edit(month, draft.kind, (entries) => [...entries, _entryOf(id, draft)]);
     final activityId = logActivity(
@@ -832,6 +885,7 @@ class FakeEntriesRepository with LogsActivity implements EntriesRepository {
     required YearMonth month,
     required List<ExpenseTemplate> templates,
     required String uid,
+    bool recordMonth = false,
   }) async {
     _checkOnline();
     final existing = monthOf(month).plannedIds;
@@ -856,8 +910,28 @@ class FakeEntriesRepository with LogsActivity implements EntriesRepository {
             _entryOf(template.id, template.draftFor(month)),
         ],
       );
+      if (recordMonth) _recordMonth(ledgerId, month);
     }
     return missing.length;
+  }
+
+  @override
+  Future<Set<YearMonth>> monthsWithEntries(
+    String ledgerId,
+    Iterable<YearMonth> months,
+  ) async {
+    _checkOnline();
+    scannedMonths.addAll(months);
+    return {
+      for (final month in months)
+        if (monthOf(month) case final ledger
+            when ledger.incomes.isNotEmpty ||
+                ledger.plannedExpenses.isNotEmpty ||
+                ledger.extraExpenses.isNotEmpty ||
+                ledger.cardBills.isNotEmpty ||
+                ledger.trashed.isNotEmpty)
+          month,
+    };
   }
 
   void _failIfAsked() {

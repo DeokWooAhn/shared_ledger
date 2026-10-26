@@ -42,11 +42,23 @@ holidays/{yyyy}
 | `roles` | map uid → `'editor'` \| `'viewer'` | 관리자를 뺀 구성원의 역할 |
 | `memberUids` | list<string> | 관리자 + `roles`의 uid 전부. '내 가계부 목록' 조회(`array-contains`)용. 두 명까지 |
 | `inviteCode` | string (선택) | 마지막으로 참여에 쓰인 초대 코드. 참여 규칙 확인용 |
+| `months` | list<string> (선택) | 항목이 들어간 적 있는 달(`2026-10`). 요약·항목 탭은 이 달과 이번 달·다음 달만 오간다. 없으면 아직 모으지 않은 가계부 |
 | `createdAt`, `updatedAt` | timestamp | 서버 시간 |
 
 `memberUids`는 항상 `ownerUid` + `roles`의 키와 같아야 하고, 규칙이 이를 확인한다.
 
 이름은 관리자만 바꾼다(규칙의 `ownerManages`, 앱의 `Ledger.canRename`). 앱은 이름과 `updatedAt`만 쓴다(`ledgerRenameUpdate`).
+
+`months`(항목 있는 달 목록)는 관리자·편집자가 달을 더하기만 한다(규칙의 `recordsMonths`). 빼거나 다른 칸과 같이 고칠 수 없고,
+값은 겹치지 않는 `yyyy-MM`이며 1,200개까지다. `updatedAt`은 바꾸지 않는다.
+
+- 새 가계부는 빈 목록(`[]`)으로 만든다(`newLedgerData`). 만들 때 달을 미리 넣을 수는 없다.
+- 그달에 처음 항목을 넣을 때 항목·변경 기록과 같은 일괄 쓰기로 `arrayUnion`한다(`recordMonthUpdate`, `EntriesRepository.add`의 `recordMonth`).
+  고정 지출로 그달을 채울 때도 같은 트랜잭션에서 더한다. 이미 있으면 바뀌지 않는다.
+- 휴지통에 넣거나 완전히 지워 그달 항목이 없어져도 목록에서 빼지 않는다.
+- `months`가 생기기 전(2026-10-26 이전)에 만든 가계부는 쓰기 권한이 있는 사람이 앱을 열 때 한 번 모아 적는다
+  (`MonthsBackfillController`). 만든 달 1년 전부터 이번 달 1년 뒤까지 달마다 네 컬렉션을 한 건씩 서버에서 읽고(25달이면 읽기 100번),
+  찾은 달을 지금 목록과 합쳐 적는다. 하나도 없으면 빈 목록을 적어 다시 모으지 않는다. 그 전까지 앱은 달을 가리지 않는다.
 
 ### `invites/{code}`
 

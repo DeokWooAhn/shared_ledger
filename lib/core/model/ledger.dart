@@ -1,4 +1,5 @@
 import 'member.dart';
+import 'year_month.dart';
 
 /// 한 가계부에 들어올 수 있는 사람 수. 커플·부부 가계부라 두 명이다.
 /// `firestore.rules`의 maxMembers와 같다.
@@ -34,6 +35,7 @@ class Ledger {
     required this.ownerUid,
     this.roles = const {},
     this.createdAt,
+    this.months,
   });
 
   final String id;
@@ -45,6 +47,19 @@ class Ledger {
 
   /// 관리자를 뺀 구성원의 역할 (uid → 역할).
   final Map<String, MemberRole> roles;
+
+  /// 항목이 들어간 적 있는 달(Firestore `months`). 요약·항목 탭은 이 달들과 이번 달·다음 달만 오간다.
+  ///
+  /// null이면 목록을 아직 모으지 않은 가계부(목록이 생기기 전에 만든 것)라 달을 가리지 않는다.
+  /// 쓰기 권한이 있는 사람이 앱을 열면 그때 한 번 모은다.
+  final Set<YearMonth>? months;
+
+  /// [month]에 항목을 넣을 때 [months]에 그달을 더해야 하는지. 목록을 아직 모으지 않았으면 더하지 않는다
+  /// (모을 때 같이 찾는다).
+  bool needsToRecord(YearMonth month) => switch (months) {
+    final months? => !months.contains(month),
+    null => false,
+  };
 
   /// 관리자를 포함한 모든 구성원 uid. Firestore의 `memberUids`와 같다.
   List<String> get memberUids => [ownerUid, ...roles.keys];

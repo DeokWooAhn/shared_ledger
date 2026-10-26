@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../model/invite.dart';
 import '../model/ledger.dart';
+import '../model/year_month.dart';
 import 'activity_summary.dart';
 import 'settings_repository.dart';
 
@@ -60,6 +61,15 @@ abstract interface class LedgerRepository {
     required String ledgerId,
     required String name,
     required String uid,
+  });
+
+  /// 목록을 아직 모으지 않은 가계부([Ledger.months]가 null)에 항목 있는 달 [months]를 처음 적는다.
+  ///
+  /// 그사이 상대가 더한 달은 지우지 않고 합친다. 서버에서 읽어 합치는 트랜잭션이라 온라인에서만 되고,
+  /// 쓰기 권한이 있는 사람만 할 수 있다(규칙의 recordsMonths). 변경 기록은 남기지 않는다.
+  Future<void> recordMonths({
+    required String ledgerId,
+    required Iterable<YearMonth> months,
   });
 }
 
@@ -192,6 +202,23 @@ class FirestoreLedgerRepository implements LedgerRepository {
     );
   }
 
+  @override
+  Future<void> recordMonths({
+    required String ledgerId,
+    required Iterable<YearMonth> months,
+  }) {
+    final doc = _ledgers.doc(ledgerId);
+    return _firestore.runTransaction((transaction) async {
+      final current = (await transaction.get(doc)).data()?['months'];
+      transaction.update(doc, {
+        'months': {
+          if (current is List) ...current.whereType<String>(),
+          for (final month in months) month.id,
+        }.toList(),
+      });
+    });
+  }
+
   // 방금 만든 가계부는 서버 시간이 아직 없어서(null) 맨 뒤로 보낸다.
   static int _byCreatedAt(
     QueryDocumentSnapshot<Map<String, dynamic>> a,
@@ -215,8 +242,16 @@ Map<String, Object> newLedgerData({
   'ownerUid': ownerUid,
   'roles': <String, String>{},
   'memberUids': [ownerUid],
+  // 새 가계부는 항목 있는 달이 아직 없다. 빈 목록이라 따로 모을 필요가 없다.
+  'months': <String>[],
   'createdAt': FieldValue.serverTimestamp(),
   'updatedAt': FieldValue.serverTimestamp(),
+};
+
+/// [month]에 항목을 넣을 때 가계부의 항목 있는 달 목록(`months`)에 그달을 더하는 값. 규칙의 recordsMonths가 받는다.
+/// 이미 있으면 바뀌지 않는다.
+Map<String, Object> recordMonthUpdate(YearMonth month) => {
+  'months': FieldValue.arrayUnion([month.id]),
 };
 
 /// 가계부 이름을 바꿀 때 쓰는 값. 규칙의 ownerManages가 받는 필드(이름·고친 시간)와 같아야 한다.
@@ -238,12 +273,20 @@ Ledger ledgerFromFirestore(String id, Map<String, dynamic> data) {
   final name = data['name'];
   final ownerUid = data['ownerUid'];
   final createdAt = data['createdAt'];
+  final months = data['months'];
   return Ledger(
     id: id,
     name: name is String ? name : '',
     ownerUid: ownerUid is String ? ownerUid : '',
     roles: roles,
     createdAt: createdAt is Timestamp ? createdAt.toDate() : null,
+    // 모양이 다른 달 값은 건너뛴다. 목록 자체가 없거나 목록이 아니면 아직 모으지 않은 가계부다.
+    months: months is List
+        ? {
+            for (final month in months)
+              if (month is String) ?YearMonth.tryParse(month),
+          }
+        : null,
   );
 }
 
