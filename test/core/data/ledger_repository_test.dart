@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_ledger/core/data/ledger_repository.dart';
 import 'package:shared_ledger/core/model/ledger.dart';
+import 'package:shared_ledger/core/model/year_month.dart';
 
 void main() {
   test('새 가계부 문서는 보안 규칙이 받는 필드만, 나를 관리자로 담는다', () {
@@ -13,10 +14,13 @@ void main() {
       'ownerUid',
       'roles',
       'memberUids',
+      'months',
       'createdAt',
       'updatedAt',
     });
     expect(data['name'], '우리 가계부');
+    // 새 가계부는 항목 있는 달이 아직 없어서 빈 목록이다(따로 모으지 않는다).
+    expect(data['months'], isEmpty);
     expect(data['ownerUid'], 'me');
     expect(data['roles'], isEmpty);
     expect(data['memberUids'], ['me']);
@@ -41,6 +45,25 @@ void main() {
     expect(broken.name, '');
     expect(broken.ownerUid, '');
     expect(broken.roles, isEmpty);
+  });
+
+  test('항목 있는 달 목록은 달 모양만 읽고, 목록이 없으면 아직 모으지 않은 가계부(null)다', () {
+    expect(
+      ledgerFromFirestore('l1', {
+        'months': ['2026-10', '2025-12', '2026-13', 202611, '10월'],
+      }).months,
+      {const YearMonth(2026, 10), const YearMonth(2025, 12)},
+    );
+    expect(ledgerFromFirestore('l2', {'months': <String>[]}).months, isEmpty);
+    expect(ledgerFromFirestore('l3', {}).months, isNull);
+    expect(ledgerFromFirestore('l4', {'months': '2026-10'}).months, isNull);
+  });
+
+  test('그달을 달 목록에 더하는 값은 arrayUnion 하나다(규칙의 recordsMonths)', () {
+    final data = recordMonthUpdate(const YearMonth(2026, 3));
+
+    expect(data.keys, ['months']);
+    expect(data['months'], FieldValue.arrayUnion(['2026-03']));
   });
 
   test('만든 때는 서버 시간이 있을 때만 읽고, 방금 만들어 아직 없으면 null이다', () {

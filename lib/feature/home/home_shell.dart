@@ -11,6 +11,7 @@ import '../../core/model/year_month.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widget/keep_all.dart';
 import 'month_fill_controller.dart';
+import 'months_backfill_controller.dart';
 
 /// 이 폭부터 아래 탭 막대 대신 옆 탭 막대를 쓴다. 아이패드·Mac, 가로로 눕힌 휴대폰이 해당한다.
 const wideLayoutMinWidth = 600.0;
@@ -83,6 +84,8 @@ class HomeShell extends ConsumerWidget {
       if (fill == null) return;
       ref.read(monthFillControllerProvider.notifier).fill(fill);
     });
+    // 목록이 생기기 전에 만든 가계부면 항목 있는 달을 한 번 모은다. 컨트롤러가 스스로 듣고, 여기서는 살려 두기만 한다.
+    ref.listen(monthsBackfillControllerProvider, (_, _) {});
     // 기다리지 않고 더한 항목을 서버가 거부하면 목록에서 조용히 빠지므로, 어느 탭에 있든 알린다.
     ref.listen(rejectedEntriesProvider, (_, rejected) {
       if (rejected is! AsyncData) return;

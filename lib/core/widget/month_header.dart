@@ -15,7 +15,8 @@ String monthLabel(YearMonth month, {required YearMonth current}) =>
 /// 요약·항목 탭(과 휴지통) 맨 위의 머리말. 달 이름 양옆의 화살표나 달 이름을 좌우로 밀어 달을 옮기고,
 /// 두 사람의 이름표를 보여준다. [openCalendar]를 주면 달 이름을 눌러 달력을 연다.
 ///
-/// 보고 있는 달은 [selectedMonthProvider]라서 두 탭이 같은 달을 본다.
+/// 보고 있는 달은 [selectedMonthProvider]라서 두 탭이 같은 달을 본다. 옮기는 달은 [ledgerMonthsProvider]의 달(항목 있는 달과
+/// 이번 달)이라 사이의 빈 달은 건너뛰고, 끝 달에서는 그쪽 화살표를 누를 수 없다.
 class MonthHeader extends ConsumerWidget {
   const MonthHeader({this.openCalendar, super.key});
 
@@ -29,7 +30,18 @@ class MonthHeader extends ConsumerWidget {
     final current = YearMonth.of(ref.watch(clockProvider)());
     final members = ref.watch(membersProvider).value ?? const [];
     final selectedMonth = ref.read(selectedMonthProvider.notifier);
+    // 누를 수 없는 화살표(끝 달)는 IconButton이 흐리게 그린다. 아이콘에 색을 따로 주면 흐려지지 않는다.
     final arrowColor = theme.colorScheme.onSurfaceVariant;
+    // 목록을 아직 모으지 않은 가계부면 바로 앞뒤 달로 간다.
+    final months = ref.watch(ledgerMonthsProvider);
+    final previous = months == null
+        ? month.previous
+        : monthBefore(months, month);
+    final next = months == null ? month.next : monthAfter(months, month);
+    final goPrevious = previous == null
+        ? null
+        : () => selectedMonth.select(previous);
+    final goNext = next == null ? null : () => selectedMonth.select(next);
     return Row(
       children: [
         // 달 이름은 남는 폭을 다 쓸 수 있고, 다음 달 화살표는 이름 바로 뒤에 붙는다.
@@ -39,15 +51,16 @@ class MonthHeader extends ConsumerWidget {
               IconButton(
                 key: const Key('previous-month'),
                 tooltip: '이전 달',
-                onPressed: selectedMonth.previous,
-                icon: Icon(Icons.chevron_left, size: 22, color: arrowColor),
+                color: arrowColor,
+                onPressed: goPrevious,
+                icon: const Icon(Icons.chevron_left, size: 22),
               ),
               Flexible(
                 child: MonthSwipeTitle(
                   month: month,
                   label: monthLabel(month, current: current),
-                  onNext: selectedMonth.next,
-                  onPrevious: selectedMonth.previous,
+                  onNext: goNext,
+                  onPrevious: goPrevious,
                   onTap: switch (openCalendar) {
                     final open? => () => open(context),
                     null => null,
@@ -62,8 +75,9 @@ class MonthHeader extends ConsumerWidget {
               IconButton(
                 key: const Key('next-month'),
                 tooltip: '다음 달',
-                onPressed: selectedMonth.next,
-                icon: Icon(Icons.chevron_right, size: 22, color: arrowColor),
+                color: arrowColor,
+                onPressed: goNext,
+                icon: const Icon(Icons.chevron_right, size: 22),
               ),
             ],
           ),
@@ -83,6 +97,7 @@ const monthSwipeVelocity = 250.0;
 const monthSwipeDistance = 48.0;
 
 /// 좌우로 밀어서 달을 옮기는 달 이름. 왼쪽으로 밀면 다음 달, 오른쪽으로 밀면 이전 달이다.
+/// [onNext]·[onPrevious]가 null이면 그쪽으로는 옮기지 않는다(머리말의 끝 달).
 ///
 /// 달이 바뀌면 이름이 민 방향으로 미끄러진다. 화면 읽기 도구에서는 조절(위·아래로 쓸기)로 달을 옮기고,
 /// [onTap]이 있으면 눌러서 그 동작([tapHint])을 한다. 머리말과 달력이 같이 쓴다.
@@ -103,8 +118,8 @@ class MonthSwipeTitle extends StatefulWidget {
 
   final YearMonth month;
   final String label;
-  final VoidCallback onNext;
-  final VoidCallback onPrevious;
+  final VoidCallback? onNext;
+  final VoidCallback? onPrevious;
   final VoidCallback? onTap;
   final String? tapHint;
 
@@ -124,9 +139,9 @@ class _MonthSwipeTitleState extends State<MonthSwipeTitle> {
   void _onDragEnd(DragEndDetails details) {
     final velocity = details.primaryVelocity ?? 0;
     if (velocity < -monthSwipeVelocity || _dragged < -monthSwipeDistance) {
-      widget.onNext();
+      widget.onNext?.call();
     } else if (velocity > monthSwipeVelocity || _dragged > monthSwipeDistance) {
-      widget.onPrevious();
+      widget.onPrevious?.call();
     }
   }
 

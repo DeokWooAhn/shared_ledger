@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_ledger/core/model/ledger.dart';
+import 'package:shared_ledger/core/model/year_month.dart';
 import 'package:shared_ledger/core/model/member.dart';
 
 void main() {
@@ -62,5 +63,25 @@ void main() {
     expect(edited.canRename('partner'), isFalse);
     expect(shared.canRename('partner'), isFalse);
     expect(shared.canRename('stranger'), isFalse);
+  });
+
+  test('항목 있는 달 목록에 없는 달만 더하고, 목록을 아직 모으지 않았으면 더하지 않는다', () {
+    final ledger = Ledger(
+      id: 'l1',
+      name: '우리 가계부',
+      ownerUid: 'me',
+      months: {const YearMonth(2026, 10)},
+    );
+
+    expect(ledger.needsToRecord(const YearMonth(2026, 11)), isTrue);
+    expect(ledger.needsToRecord(const YearMonth(2026, 10)), isFalse);
+    expect(
+      const Ledger(
+        id: 'l2',
+        name: '우리 가계부',
+        ownerUid: 'me',
+      ).needsToRecord(const YearMonth(2026, 11)),
+      isFalse,
+    );
   });
 }

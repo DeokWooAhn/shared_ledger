@@ -365,6 +365,37 @@ void main() {
       expect(monthTitle(tester), '9월');
     });
 
+    testWidgets('항목 있는 달과 이번 달만 오가고, 사이의 빈 달은 건너뛰며 끝에서는 화살표를 누를 수 없다', (
+      tester,
+    ) async {
+      await pumpApp(
+        tester,
+        auth: FakeAuthRepository(signedIn: me),
+        ledgers: FakeLedgerRepository([
+          Ledger(
+            id: 'l1',
+            name: '우리 가계부',
+            ownerUid: 'me',
+            months: {const YearMonth(2026, 8)},
+          ),
+        ]),
+      );
+      VoidCallback? arrow(String key) =>
+          tester.widget<IconButton>(find.byKey(Key(key))).onPressed;
+
+      await tester.tap(find.byKey(const Key('previous-month')));
+      await settle(tester);
+      expect(monthTitle(tester), '8월');
+      expect(arrow('previous-month'), isNull);
+
+      await swipeMonth(tester);
+      expect(monthTitle(tester), '10월');
+      // 다음 달은 항목이 없어서 오가지 않는다.
+      expect(arrow('next-month'), isNull);
+      await swipeMonth(tester);
+      expect(monthTitle(tester), '10월');
+    });
+
     testWidgets('글자를 크게 해도 달 이름이 잘리지 않는다', (tester) async {
       // 달 이름과 오른쪽 여백(Spacer)이 남는 폭을 반씩 나눠 '2026…'으로 잘린 적이 있다.
       for (final scale in [1.0, 2.0]) {

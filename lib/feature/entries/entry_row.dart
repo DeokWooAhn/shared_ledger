@@ -37,6 +37,9 @@ String entriesFailureMessage(EntriesFailure failure) => switch (failure) {
   EntriesFailure.restoreOffline => '연결되지 않아 꺼내지 못했어요. 항목은 휴지통에 남아 있어요.',
   EntriesFailure.restoreGone => '그사이 휴지통에서 꺼냈거나 지운 항목이에요.',
   EntriesFailure.restore => '꺼내지 못했어요. 잠시 후 다시 시도해 주세요.',
+  EntriesFailure.addMonthOffline =>
+    '연결되지 않아 이 달 가계부를 만들지 못했어요. 연결된 뒤에 다시 해 주세요.',
+  EntriesFailure.addMonth => '이 달 가계부를 만들지 못했어요. 잠시 후 다시 시도해 주세요.',
 };
 
 /// 항목의 자리. 모르는 자리 값(규칙이 owner·partner 말고는 막는다)은 관리자로 그린다.

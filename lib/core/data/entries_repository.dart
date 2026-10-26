@@ -10,6 +10,7 @@ import '../model/trashed_entry.dart';
 import '../model/year_month.dart';
 import 'activity_repository.dart';
 import 'activity_summary.dart';
+import 'ledger_repository.dart';
 
 /// 항목을 고치거나 휴지통에 넣거나 꺼내지 못한 이유.
 enum EntryWriteFailure {
@@ -49,11 +50,13 @@ abstract interface class EntriesRepository {
   /// 오프라인에서도 더할 수 있게 서버에 닿기를 기다리지 않는다. 기기 캐시에 바로 들어가 [watchMonth]에 보이고,
   /// 연결되면 서버로 올라간다. 그래서 서버가 나중에 거부한 것은 이 Future가 아니라 [rejectedAdds]로 알린다.
   /// 변경 기록도 같은 일괄 쓰기라 오프라인에서 같이 쌓이고, 서버가 거부하면 같이 빠진다.
+  /// [recordMonth]면 가계부의 항목 있는 달 목록에 그달을 같은 일괄 쓰기로 더한다([Ledger.needsToRecord]).
   Future<String> add({
     required String ledgerId,
     required YearMonth month,
     required EntryDraft draft,
     required String uid,
+    bool recordMonth = false,
   });
 
   /// [add]로 더한 항목을 서버가 받지 않았을 때(그사이 보기 전용이 됐거나 가계부에서 나감) 알린다.
@@ -105,12 +108,24 @@ abstract interface class EntriesRepository {
   /// 문서 id가 템플릿 id라서 이미 있는 문서(휴지통에 넣은 것 포함)는 건드리지 않는다. 서버에서 읽고 없을 때만
   /// 만드는 트랜잭션이라 두 사람이 동시에 그달을 처음 열어도 하나만 생기고 덮어쓰지 않는다.
   /// 온라인에서만 되고, 연결이 없으면 [EntryWriteException]([EntryWriteFailure.offline])으로 실패한다.
+  /// [recordMonth]면 가계부의 항목 있는 달 목록에 그달을 같은 트랜잭션으로 더한다. 고정 지출이 없거나 다 있어도 더해서,
+  /// 달력에서 그달 가계부를 새로 만들 때도 쓴다.
   Future<int> fillPlanned({
     required String ledgerId,
     required YearMonth month,
     required List<ExpenseTemplate> templates,
     required String uid,
+    bool recordMonth = false,
   });
+
+  /// [months] 가운데 항목(휴지통에 넣은 것 포함)이 하나라도 있는 달. 항목 있는 달 목록을 처음 모을 때만 쓴다.
+  ///
+  /// 달마다 네 컬렉션을 서버에서 한 건씩만 읽는다(달마다 읽기 네 번). 캐시로 답하면 빠뜨릴 수 있어서
+  /// 온라인에서만 되고, 연결이 없으면 [EntryWriteException]([EntryWriteFailure.offline])으로 실패한다.
+  Future<Set<YearMonth>> monthsWithEntries(
+    String ledgerId,
+    Iterable<YearMonth> months,
+  );
 }
 
 class FirestoreEntriesRepository implements EntriesRepository {
@@ -123,6 +138,9 @@ class FirestoreEntriesRepository implements EntriesRepository {
 
   @override
   Stream<RejectedEntry> get rejectedAdds => _rejectedAdds.stream;
+
+  DocumentReference<Map<String, dynamic>> _ledger(String ledgerId) =>
+      _firestore.collection('ledgers').doc(ledgerId);
 
   DocumentReference<Map<String, dynamic>> _month(
     String ledgerId,
@@ -174,6 +192,7 @@ class FirestoreEntriesRepository implements EntriesRepository {
     required YearMonth month,
     required EntryDraft draft,
     required String uid,
+    bool recordMonth = false,
   }) async {
     final doc = _entries(ledgerId, month, draft.kind).doc();
     final activity = entryActivity(
@@ -189,6 +208,9 @@ class FirestoreEntriesRepository implements EntriesRepository {
         activityCollection(_firestore, ledgerId).doc(),
         newActivityData(activity, uid: uid, now: _now()),
       );
+    if (recordMonth) {
+      batch.update(_ledger(ledgerId), recordMonthUpdate(month));
+    }
     // commit의 Future는 서버가 받아야 끝나서, 기다리면 오프라인에서는 저장이 끝나지 않는다.
     // 캐시에는 바로 들어가므로 기다리지 않는다. 서버가 규칙으로 거부하면 rejectedAdds로 알리고,
     // 예상 못 한 오류는 삼키지 않고 다시 던져 앱의 오류 처리로 보낸다.
@@ -318,8 +340,9 @@ class FirestoreEntriesRepository implements EntriesRepository {
     required YearMonth month,
     required List<ExpenseTemplate> templates,
     required String uid,
+    bool recordMonth = false,
   }) async {
-    if (templates.isEmpty) return 0;
+    if (templates.isEmpty && !recordMonth) return 0;
     final planned = _entries(ledgerId, month, EntryKind.planned);
     try {
       return await _firestore.runTransaction(timeout: _onlineTimeout, (
@@ -337,8 +360,41 @@ class FirestoreEntriesRepository implements EntriesRepository {
             newEntryData(template.draftFor(month), uid: uid),
           );
         }
+        if (recordMonth) {
+          transaction.update(_ledger(ledgerId), recordMonthUpdate(month));
+        }
         return missing.length;
       });
+    } on FirebaseException catch (e) {
+      if (e.code == 'unavailable' || e.code == 'deadline-exceeded') {
+        throw const EntryWriteException(EntryWriteFailure.offline);
+      }
+      rethrow;
+    }
+  }
+
+  @override
+  Future<Set<YearMonth>> monthsWithEntries(
+    String ledgerId,
+    Iterable<YearMonth> months,
+  ) async {
+    Future<bool> hasEntries(YearMonth month) async {
+      final found = await Future.wait([
+        for (final kind in EntryKind.values)
+          _entries(ledgerId, month, kind)
+              .limit(1)
+              .get(const GetOptions(source: Source.server))
+              .then((snapshot) => snapshot.docs.isNotEmpty),
+      ]);
+      return found.contains(true);
+    }
+
+    try {
+      final found = <YearMonth>{};
+      for (final month in months) {
+        if (await hasEntries(month)) found.add(month);
+      }
+      return found;
     } on FirebaseException catch (e) {
       if (e.code == 'unavailable' || e.code == 'deadline-exceeded') {
         throw const EntryWriteException(EntryWriteFailure.offline);

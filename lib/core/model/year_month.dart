@@ -6,6 +6,16 @@ class YearMonth implements Comparable<YearMonth> {
   /// [date]가 속한 달.
   YearMonth.of(DateTime date) : this(date.year, date.month);
 
+  static final _idPattern = RegExp(r'^(\d{4})-(0[1-9]|1[0-2])$');
+
+  /// [id]처럼 생긴 달 문서 id(`2026-10`)를 읽는다. 모양이 다르면 null.
+  static YearMonth? tryParse(String id) {
+    if (_idPattern.firstMatch(id) case final match?) {
+      return YearMonth(int.parse(match[1] ?? ''), int.parse(match[2] ?? ''));
+    }
+    return null;
+  }
+
   final int year;
   final int month;
 
@@ -33,4 +43,20 @@ class YearMonth implements Comparable<YearMonth> {
 
   @override
   String toString() => id;
+}
+
+/// 오래된 것부터 정렬한 [months]에서 [from] 바로 앞의 달. 없으면 null.
+YearMonth? monthBefore(List<YearMonth> months, YearMonth from) {
+  for (final month in months.reversed) {
+    if (month.compareTo(from) < 0) return month;
+  }
+  return null;
+}
+
+/// 오래된 것부터 정렬한 [months]에서 [from] 바로 뒤의 달. 없으면 null.
+YearMonth? monthAfter(List<YearMonth> months, YearMonth from) {
+  for (final month in months) {
+    if (month.compareTo(from) > 0) return month;
+  }
+  return null;
 }

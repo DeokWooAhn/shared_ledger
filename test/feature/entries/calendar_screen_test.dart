@@ -3,6 +3,7 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_ledger/core/model/auth_user.dart';
 import 'package:shared_ledger/core/model/category.dart';
+import 'package:shared_ledger/core/model/expense_template.dart';
 import 'package:shared_ledger/core/model/holidays.dart';
 import 'package:shared_ledger/core/model/ledger.dart';
 import 'package:shared_ledger/core/model/ledger_entries.dart';
@@ -88,12 +89,22 @@ const holidays2026 = Holidays({
   '2026-10-09': '한글날',
 });
 
+const rentTemplate = ExpenseTemplate(
+  id: 'rent',
+  title: '관리비',
+  categoryId: 'c-principal',
+  paymentMethodId: 'p-auto',
+  memberId: 'owner',
+  dueDay: 25,
+);
+
 /// 요약 탭에서 달 이름을 눌러 달력을 연다.
 Future<FakeEntriesRepository> openCalendar(
   WidgetTester tester, {
   Ledger ledger = mine,
   Size size = phoneSize,
   FakeHolidaysRepository? holidays,
+  FakeTemplatesRepository? templates,
 }) async {
   final entries = FakeEntriesRepository({october: octoberLedger()});
   await pumpApp(
@@ -102,6 +113,7 @@ Future<FakeEntriesRepository> openCalendar(
     ledgers: FakeLedgerRepository([ledger]),
     settings: settings,
     entries: entries,
+    templates: templates,
     holidays: holidays ?? FakeHolidaysRepository({2026: holidays2026}),
     size: size,
   );
@@ -212,8 +224,9 @@ void main() {
           isButton: true,
           isHeader: true,
           hasTapAction: true,
-          hasIncreaseAction: true,
-          hasDecreaseAction: true,
+          // 항목 있는 달이 아직 없어서 이번 달 하나뿐이다. 앞뒤로 옮길 달이 없다.
+          hasIncreaseAction: false,
+          hasDecreaseAction: false,
         ),
       );
       semantics.dispose();
@@ -383,6 +396,120 @@ void main() {
       expect(entries.restored.single.id, 'mart');
     });
 
+    testWidgets('가계부가 없는 달의 빈 날을 누르면 새로 만들지 묻고, 취소하면 입력 화면을 열지 않는다', (
+      tester,
+    ) async {
+      await openCalendar(
+        tester,
+        ledger: Ledger(
+          id: 'l1',
+          name: '우리 가계부',
+          ownerUid: 'me',
+          months: {october},
+        ),
+      );
+      await tester.fling(
+        find.byKey(const Key('calendar-swipe')),
+        const Offset(300, 0),
+        800,
+      );
+      await settleRoute(tester);
+      expect(calendarTitle(tester), '9월');
+
+      await tapShown(tester, find.byKey(const Key('calendar-day-empty')));
+      expect(find.byKey(const Key('add-month-dialog')), findsOneWidget);
+      expect(findSentence('2026년 9월에는 가계부가 없어요'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('add-month-cancel')));
+      await settleRoute(tester);
+
+      expect(find.byKey(const Key('add-month-dialog')), findsNothing);
+      expect(find.byType(EntryFormScreen), findsNothing);
+    });
+
+    testWidgets(
+      '앞으로의 달에서 추가를 고르면 고정 지출로 그달을 채운 뒤 그날로 입력 화면을 열고, 그달이 탭에서도 오가는 달이 된다',
+      (tester) async {
+        final entries = await openCalendar(
+          tester,
+          ledger: Ledger(
+            id: 'l1',
+            name: '우리 가계부',
+            ownerUid: 'me',
+            months: {october},
+          ),
+          templates: FakeTemplatesRepository(const [rentTemplate]),
+        );
+        const december = YearMonth(2026, 12);
+        for (var i = 0; i < 2; i++) {
+          await tester.fling(
+            find.byKey(const Key('calendar-swipe')),
+            const Offset(-300, 0),
+            800,
+          );
+          await settleRoute(tester);
+        }
+        expect(calendarTitle(tester), '12월');
+
+        await tapShown(tester, find.byKey(const Key('calendar-day-empty')));
+        expect(
+          findSentence('추가하면 이 달 가계부가 생기고, 고정 지출 1개를 이 달 기본 월 지출로 채워요. 추가할까요?'),
+          findsOneWidget,
+        );
+        await tester.tap(find.byKey(const Key('add-month-confirm')));
+        await settleRoute(tester);
+        // 그달 가계부를 만들며 고정 지출(관리비)을 지급 전 기본 월 지출로 채우고 달 목록에 더했다.
+        expect(entries.monthOf(december).plannedExpenses.single.id, 'rent');
+        expect(entries.recordedMonths, [december]);
+        expect(find.text('2026년 12월 1일'), findsOneWidget);
+        await tester.enterText(find.byKey(const Key('entry-amount')), '5000');
+        await tester.enterText(find.byKey(const Key('entry-title')), '간식');
+        await tapShown(tester, find.byKey(const Key('entry-method-p-shared')));
+        await tapShown(tester, find.byKey(const Key('entry-save')));
+        await settleRoute(tester);
+
+        expect(entries.added.single.month, december);
+        // 이미 달 목록에 있어서 항목을 넣을 때 다시 더하지 않는다.
+        expect(entries.recordedMonths, [december]);
+        // 이제 12월은 항목 있는 달이라, 닫아도 탭이 12월에 머문다.
+        await tester.tap(find.byKey(const Key('calendar-back')));
+        await settleRoute(tester);
+        expect(monthTitle(tester), '12월');
+      },
+    );
+
+    testWidgets('지난 달을 추가하면 고정 지출은 채우지 않고 달만 만든다', (tester) async {
+      final entries = await openCalendar(
+        tester,
+        ledger: Ledger(
+          id: 'l1',
+          name: '우리 가계부',
+          ownerUid: 'me',
+          months: {october},
+        ),
+        templates: FakeTemplatesRepository(const [rentTemplate]),
+      );
+      const september = YearMonth(2026, 9);
+      await tester.fling(
+        find.byKey(const Key('calendar-swipe')),
+        const Offset(300, 0),
+        800,
+      );
+      await settleRoute(tester);
+
+      await tapShown(tester, find.byKey(const Key('calendar-day-empty')));
+      // 고정 지출을 채우지 않으니 알리지도 않는다.
+      expect(
+        findSentence('추가하면 이 달 가계부가 생겨서 요약·항목 탭에서도 볼 수 있어요. 추가할까요?'),
+        findsOneWidget,
+      );
+      await tester.tap(find.byKey(const Key('add-month-confirm')));
+      await settleRoute(tester);
+
+      expect(entries.monthOf(september).plannedExpenses, isEmpty);
+      expect(entries.recordedMonths, [september]);
+      expect(find.text('2026년 9월 1일'), findsOneWidget);
+    });
+
     testWidgets('항목이 있는 날에는 따로 추가 단추가 없다', (tester) async {
       await openCalendar(tester);
       await tester.tap(day(18));
@@ -502,7 +629,9 @@ void main() {
       expect(calendarTitle(tester), '2025년 12월');
     });
 
-    testWidgets('달 이름을 누르면 연·월 휠 시트로 다른 달로 가고, 탭도 그 달을 본다', (tester) async {
+    testWidgets('달 이름을 누르면 연·월 휠 시트로 다른 달로 가고, 항목 없는 달이면 닫을 때 탭은 연 달로 돌아온다', (
+      tester,
+    ) async {
       await openCalendar(tester);
 
       await tester.tap(find.byKey(const Key('calendar-month')));
@@ -520,7 +649,31 @@ void main() {
       expect(dayTitle(tester), '3월 1일 일요일');
       await tester.tap(find.byKey(const Key('calendar-back')));
       await settleRoute(tester);
-      expect(monthTitle(tester), '3월');
+      expect(monthTitle(tester), '10월');
+    });
+
+    testWidgets('요약·항목 탭이 오가는 달로 옮기고 닫으면 탭도 그 달을 본다', (tester) async {
+      await openCalendar(
+        tester,
+        ledger: Ledger(
+          id: 'l1',
+          name: '우리 가계부',
+          ownerUid: 'me',
+          months: {october, const YearMonth(2026, 11)},
+        ),
+      );
+
+      await tester.fling(
+        find.byKey(const Key('calendar-swipe')),
+        const Offset(-300, 0),
+        800,
+      );
+      await settleRoute(tester);
+      expect(calendarTitle(tester), '11월');
+      await tester.tap(find.byKey(const Key('calendar-back')));
+      await settleRoute(tester);
+
+      expect(monthTitle(tester), '11월');
     });
   });
 

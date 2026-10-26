@@ -28,6 +28,44 @@ void main() {
     expect(container.read(selectedMonthProvider), const YearMonth(2026, 11));
   });
 
+  group('요약·항목 탭이 오가는 달', () {
+    Future<ProviderContainer> withLedger(Ledger ledger) async {
+      final container = createContainer(
+        auth: FakeAuthRepository(signedIn: me),
+        ledgers: FakeLedgerRepository([ledger]),
+      );
+      await loadSignedInUser(container);
+      container.listen(myLedgersProvider, (_, _) {});
+      await container.read(myLedgersProvider.future);
+      return container;
+    }
+
+    test('항목 있는 달에 이번 달을 더해 오래된 것부터 둔다(다음 달은 항목이 있을 때만)', () async {
+      final container = await withLedger(
+        Ledger(
+          id: 'l1',
+          name: '우리 가계부',
+          ownerUid: 'me',
+          months: {const YearMonth(2026, 12), const YearMonth(2026, 8)},
+        ),
+      );
+
+      expect(container.read(ledgerMonthsProvider), const [
+        YearMonth(2026, 8),
+        YearMonth(2026, 10),
+        YearMonth(2026, 12),
+      ]);
+    });
+
+    test('달 목록을 아직 모으지 않은 가계부거나 가계부가 없으면 달을 가리지 않는다(null)', () async {
+      final container = await withLedger(
+        const Ledger(id: 'l1', name: '우리 가계부', ownerUid: 'me'),
+      );
+      expect(container.read(ledgerMonthsProvider), isNull);
+      expect(createContainer().read(ledgerMonthsProvider), isNull);
+    });
+  });
+
   test('이름표는 지금 가계부의 것을 읽는다', () async {
     final settings = FakeSettingsRepository();
     final container = createContainer(

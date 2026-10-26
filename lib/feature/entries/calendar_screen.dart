@@ -46,6 +46,9 @@ String calendarDayTitle(DateTime date) =>
 ///
 /// 날짜 판은 손가락을 따라 밀리고 옆 달이 붙어 들어온다. 반 넘게 밀거나 빠르게 튕기면 그 달에 멈추고, 멈춘 달을 본다.
 /// 항목을 누르면 고치는 화면, 항목이 없는 날은 빈 칸 안내를 누르면 그날로 새 항목(추가지출)을 연다.
+/// 요약·항목 탭이 오가지 않는 달(항목이 없는 달)이면 그달 가계부를 새로 만들지 먼저 묻는다. 만들면 고정 지출이 그달에 채워진다
+/// (지난 달은 채우지 않는다).
+/// 그런 달을 보다가 닫으면 두 탭은 달력을 열었던 달로 돌아간다.
 /// 달을 옮기면 요약·항목 탭의 달도 같이 옮긴다. 공휴일은 일요일처럼 빨간색이다. 왼쪽 위 뒤로 단추로 닫는다.
 /// 저장소를 부르는 동작이 없어 컨트롤러 없이 공급자만 읽고, 고른 날과 판 위치는 이 화면에서만 쓰는 상태라 위젯에 둔다.
 class CalendarScreen extends ConsumerStatefulWidget {
@@ -64,6 +67,25 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
   late final _pages = PageController(
     initialPage: _pageOf(ref.read(selectedMonthProvider)),
   );
+
+  // 달력을 연 달. 요약·항목 탭이 오가지 않는 달을 보다가 닫으면 이 달로 돌아간다.
+  late final YearMonth _openedMonth;
+
+  @override
+  void initState() {
+    super.initState();
+    _openedMonth = ref.read(selectedMonthProvider);
+  }
+
+  // 닫을 때 보던 달이 요약·항목 탭이 오가지 않는 달이면, 두 탭이 그 빈 달에 남지 않게 연 달로 돌려놓는다.
+  // 그달에 항목을 추가했으면 그 사이에 오가는 달이 돼서 그대로 둔다.
+  void _leaveMonthWithoutLedger() {
+    final months = ref.read(ledgerMonthsProvider);
+    if (months == null || months.contains(ref.read(selectedMonthProvider))) {
+      return;
+    }
+    ref.read(selectedMonthProvider.notifier).select(_openedMonth);
+  }
 
   @override
   void dispose() {
@@ -189,20 +211,25 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                     openForm: widget.openForm,
                   ),
           );
-    return Scaffold(
-      body: SafeArea(
-        child: Column(
-          children: [
-            _CalendarTopBar(
-              month: month,
-              current: YearMonth.of(_today),
-              onPrevious: selectedMonth.previous,
-              onNext: selectedMonth.next,
-              onPickMonth: _pickMonth,
-              onToday: _goToday,
-            ),
-            Expanded(child: body),
-          ],
+    return PopScope(
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) _leaveMonthWithoutLedger();
+      },
+      child: Scaffold(
+        body: SafeArea(
+          child: Column(
+            children: [
+              _CalendarTopBar(
+                month: month,
+                current: YearMonth.of(_today),
+                onPrevious: selectedMonth.previous,
+                onNext: selectedMonth.next,
+                onPickMonth: _pickMonth,
+                onToday: _goToday,
+              ),
+              Expanded(child: body),
+            ],
+          ),
         ),
       ),
     );
@@ -703,6 +730,15 @@ class _DayPanel extends ConsumerWidget {
     final colors = context.appColors;
     final members = ref.watch(membersProvider).value ?? const [];
     final canWrite = ref.watch(myRoleProvider)?.canWrite ?? false;
+    // 요약·항목 탭이 오가지 않는 달이면 그달 가계부가 없는 것이라, 항목을 넣기 전에 만들지 묻는다.
+    final months = ref.watch(ledgerMonthsProvider);
+    final hasLedger = months == null || months.contains(month);
+    // 지난 달 가계부를 만들 때는 고정 지출을 채우지 않아서 알리지도 않는다.
+    final today = ref.watch(clockProvider)();
+    final templateCount =
+        fillsTemplatesOnAdd(month, thisMonth: YearMonth.of(today))
+        ? ref.watch(templatesProvider).value?.length ?? 0
+        : 0;
     final date = day.date;
     final holiday = ref
         .watch(holidaysOfYearProvider(date.year))
@@ -790,13 +826,17 @@ class _DayPanel extends ConsumerWidget {
                 child: _EmptyDay(
                   onAdd: canWrite
                       ? () => unawaited(
-                          openForm(
+                          _addOn(
                             context,
-                            EntryFormArgs.add(
-                              kind: EntryKind.extra,
-                              month: month,
-                              date: date,
-                            ),
+                            openForm,
+                            month,
+                            date,
+                            addMonth: hasLedger
+                                ? null
+                                : () => ref
+                                      .read(entriesControllerProvider.notifier)
+                                      .addMonth(month),
+                            templateCount: templateCount,
                           ),
                         )
                       : null,
@@ -829,6 +869,65 @@ class _DayPanel extends ConsumerWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+// 그날로 추가지출을 연다. [addMonth]가 있으면(그달 가계부가 없음) 새로 만들지 먼저 묻고, 만든다고 하면 그달 가계부를
+// 만든 뒤(고정 지출이 채워진다) 연다. 취소하거나 만들지 못하면(실패는 컨트롤러가 알린다) 열지 않는다.
+Future<void> _addOn(
+  BuildContext context,
+  OpenEntryForm openForm,
+  YearMonth month,
+  DateTime date, {
+  required Future<bool> Function()? addMonth,
+  required int templateCount,
+}) async {
+  if (addMonth != null) {
+    final add = await showDialog<bool>(
+      context: context,
+      builder: (context) =>
+          _AddMonthDialog(month: month, templateCount: templateCount),
+    );
+    if (add != true || !await addMonth() || !context.mounted) return;
+  }
+  await openForm(
+    context,
+    EntryFormArgs.add(kind: EntryKind.extra, month: month, date: date),
+  );
+}
+
+/// 그달 가계부가 없을 때 새로 만들지 묻는다. 만든다고 하면 true. 고정 지출이 있으면 몇 개가 채워지는지 알린다.
+class _AddMonthDialog extends StatelessWidget {
+  const _AddMonthDialog({required this.month, required this.templateCount});
+
+  final YearMonth month;
+  final int templateCount;
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      key: const Key('add-month-dialog'),
+      title: Text(keepAll('${yearMonthLabel(month)}에는 가계부가 없어요')),
+      content: Text(
+        keepAll(
+          templateCount > 0
+              ? '추가하면 이 달 가계부가 생기고, 고정 지출 $templateCount개를 이 달 기본 월 지출로 채워요. 추가할까요?'
+              : '추가하면 이 달 가계부가 생겨서 요약·항목 탭에서도 볼 수 있어요. 추가할까요?',
+        ),
+      ),
+      actions: [
+        TextButton(
+          key: const Key('add-month-cancel'),
+          onPressed: () => Navigator.of(context).pop(false),
+          child: const Text('취소'),
+        ),
+        TextButton(
+          key: const Key('add-month-confirm'),
+          onPressed: () => Navigator.of(context).pop(true),
+          child: const Text('추가'),
+        ),
+      ],
     );
   }
 }

@@ -1209,3 +1209,74 @@ describe('공휴일', () => {
     await assertFails(getDocs(collection(db, 'holidays')));
   });
 });
+
+describe('항목 있는 달 목록 (months)', () => {
+  // 앱은 그달에 처음 항목을 넣을 때 arrayUnion으로 더하고, 목록이 없던 가계부는 처음 열 때 한 번 모아 적는다.
+  test('새 가계부는 빈 목록으로 만들 수 있고, 달을 미리 넣어 만들 수는 없다', async () => {
+    const db = firestoreAs(NEWCOMER);
+    await assertSucceeds(setDoc(ledgerRef(db, 'l-months'), newLedger(NEWCOMER, { months: [] })));
+    await assertFails(setDoc(ledgerRef(db, 'l-months-2'), newLedger(NEWCOMER, { months: [MONTH] })));
+  });
+
+  test('관리자와 편집자는 달을 더할 수 있고, 보기 전용과 구성원이 아닌 사람은 못 한다', async () => {
+    await assertSucceeds(updateDoc(ledgerRef(firestoreAs(OWNER)), { months: arrayUnion(MONTH) }));
+    await assertSucceeds(updateDoc(ledgerRef(firestoreAs(EDITOR)), { months: arrayUnion('2026-11') }));
+    await assertFails(
+      updateDoc(ledgerRef(firestoreAs(VIEWER), VIEWER_LEDGER), { months: arrayUnion(MONTH) }),
+    );
+    await assertFails(updateDoc(ledgerRef(firestoreAs(OUTSIDER)), { months: arrayUnion(MONTH) }));
+  });
+
+  test('이미 있는 달을 다시 더해도(바뀌지 않음) 된다', async () => {
+    await seed((db) => updateDoc(ledgerRef(db), { months: [MONTH] }));
+    await assertSucceeds(updateDoc(ledgerRef(firestoreAs(EDITOR)), { months: arrayUnion(MONTH) }));
+  });
+
+  test('목록이 없던 가계부에는 여러 달을 한 번에 적을 수 있다', async () => {
+    await assertSucceeds(
+      updateDoc(ledgerRef(firestoreAs(OWNER)), { months: ['2025-12', '2026-09', MONTH] }),
+    );
+  });
+
+  test('달을 빼거나, 달 모양이 아니거나, 같은 달이 두 번이거나, 다른 칸을 같이 고치면 안 된다', async () => {
+    await seed((db) => updateDoc(ledgerRef(db), { months: ['2026-09', MONTH] }));
+    const db = firestoreAs(OWNER);
+    await assertFails(updateDoc(ledgerRef(db), { months: arrayRemove('2026-09') }));
+    await assertFails(updateDoc(ledgerRef(db), { months: ['2026-09', MONTH, '2026-13'] }));
+    await assertFails(updateDoc(ledgerRef(db), { months: ['2026-09', MONTH, 202611] }));
+    await assertFails(updateDoc(ledgerRef(db), { months: ['2026-09', MONTH, MONTH] }));
+    await assertFails(updateDoc(ledgerRef(db), { months: 'all' }));
+    await assertFails(
+      updateDoc(ledgerRef(db), {
+        months: arrayUnion('2026-11'),
+        name: '새 이름',
+        updatedAt: serverTimestamp(),
+      }),
+    );
+  });
+
+  test('달 목록은 1,200개까지만 적을 수 있다', async () => {
+    // 1000-01부터 겹치지 않는 달을 [count]개 만든다.
+    const months = (count) =>
+      Array.from({ length: count }, (_, i) => {
+        const year = 1000 + Math.floor(i / 12);
+        return `${year}-${String((i % 12) + 1).padStart(2, '0')}`;
+      });
+    await assertSucceeds(updateDoc(ledgerRef(firestoreAs(OWNER)), { months: months(1200) }));
+    await assertFails(
+      updateDoc(ledgerRef(firestoreAs(OWNER), SOLO_LEDGER), { months: months(1201) }),
+    );
+  });
+
+  test('항목 추가와 달 더하기를 한 번의 일괄 쓰기로 하고, 쓸 수 없는 사람이면 둘 다 거부된다', async () => {
+    const add = (uid) => {
+      const db = firestoreAs(uid);
+      const batch = writeBatch(db);
+      batch.set(entryRef(db, { ledger: VIEWER_LEDGER, id: `entry-${uid}` }), newEntry(uid));
+      batch.update(ledgerRef(db, VIEWER_LEDGER), { months: arrayUnion(MONTH) });
+      return batch.commit();
+    };
+    await assertSucceeds(add(OWNER));
+    await assertFails(add(VIEWER));
+  });
+});

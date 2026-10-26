@@ -138,6 +138,52 @@ void main() {
       expect(states.last.outcome, EntryFormOutcome.saved);
     });
 
+    test('그달에 처음 넣는 항목이면 가계부의 달 목록에 그달을 더하고, 이미 있으면 다시 더하지 않는다', () async {
+      final entries = FakeEntriesRepository();
+      final container = await ready(
+        entries: entries,
+        ledger: Ledger(
+          id: 'l1',
+          name: '우리 가계부',
+          ownerUid: 'me',
+          months: {const YearMonth(2026, 9)},
+        ),
+      );
+      Future<void> saveExtra() async {
+        final provider = entryFormControllerProvider(add(EntryKind.extra));
+        recordStates(container, provider);
+        container.read(provider.notifier).selectPaymentMethod('p-card');
+        await container
+            .read(provider.notifier)
+            .save(amount: '5,000', title: '간식', memo: '');
+      }
+
+      await saveExtra();
+      await pumpEventQueue();
+      expect(entries.recordedMonths, [october]);
+      expect(container.read(currentLedgerProvider)?.months, {
+        const YearMonth(2026, 9),
+        october,
+      });
+
+      await saveExtra();
+      expect(entries.recordedMonths, [october]);
+    });
+
+    test('달 목록을 아직 모으지 않은 가계부면 더하지 않는다(모을 때 같이 찾는다)', () async {
+      final entries = FakeEntriesRepository();
+      final container = await ready(entries: entries);
+      final provider = entryFormControllerProvider(add(EntryKind.income));
+      recordStates(container, provider);
+
+      await container
+          .read(provider.notifier)
+          .save(amount: '3,000,000', title: '월급', memo: '');
+
+      expect(entries.added, hasLength(1));
+      expect(entries.recordedMonths, isEmpty);
+    });
+
     test('연결이 없어도 새 항목은 저장된다', () async {
       final entries = FakeEntriesRepository()..offline = true;
       final container = await ready(entries: entries);
