@@ -1255,6 +1255,19 @@ describe('항목 있는 달 목록 (months)', () => {
     );
   });
 
+  test('달 목록은 1,200개까지만 적을 수 있다', async () => {
+    // 1000-01부터 겹치지 않는 달을 [count]개 만든다.
+    const months = (count) =>
+      Array.from({ length: count }, (_, i) => {
+        const year = 1000 + Math.floor(i / 12);
+        return `${year}-${String((i % 12) + 1).padStart(2, '0')}`;
+      });
+    await assertSucceeds(updateDoc(ledgerRef(firestoreAs(OWNER)), { months: months(1200) }));
+    await assertFails(
+      updateDoc(ledgerRef(firestoreAs(OWNER), SOLO_LEDGER), { months: months(1201) }),
+    );
+  });
+
   test('항목 추가와 달 더하기를 한 번의 일괄 쓰기로 하고, 쓸 수 없는 사람이면 둘 다 거부된다', async () => {
     const add = (uid) => {
       const db = firestoreAs(uid);
