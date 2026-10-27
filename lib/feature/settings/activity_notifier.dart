@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/providers/providers.dart';
+import '../../core/providers/usecases.dart';
 import '../../domain/model/activity.dart';
 
 /// 변경 기록 목록을 받은 상태.
@@ -167,8 +168,8 @@ class ActivityNotifier extends Notifier<ActivityState> {
     state = state.copyWith(loadingMore: true);
     try {
       final older = await ref
-          .read(activityRepositoryProvider)
-          .loadOlder(ledgerId, before: oldest);
+          .read(activityUseCasesProvider)
+          .loadOlderActivity(ledgerId, before: oldest);
       if (!ref.mounted) return;
       state = state.copyWith(
         items: mergeActivities(state.items, older),

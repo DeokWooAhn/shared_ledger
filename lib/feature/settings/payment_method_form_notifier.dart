@@ -2,8 +2,11 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/providers/providers.dart';
+import '../../core/providers/usecases.dart';
 import '../../domain/repository/settings_repository.dart';
+import '../../domain/model/name_problem.dart';
 import '../../domain/model/payment_method.dart';
+import '../../domain/usecase/settings/settings_use_cases.dart';
 import 'setting_form.dart';
 
 /// 결제수단 시트를 여는 값. 새 결제수단이면 [method]가 null이다.
@@ -124,7 +127,8 @@ class PaymentMethodFormNotifier extends Notifier<PaymentMethodFormState> {
     state = state.next(kindMissing: state.kindMissing);
   }
 
-  /// 입력란의 [name]과 고른 종류로 저장한다. 새 결제수단은 맨 뒤에 붙는다.
+  /// 입력란의 [name]과 고른 종류로 저장한다. 새 결제수단은 맨 뒤에 붙고, 이름이 그대로면 쓰지 않고 닫는다
+  /// (`SavePaymentMethodUseCase`).
   ///
   /// 이름이 비었거나 길거나 다른 결제수단(숨긴 것 포함)과 같으면 [PaymentMethodFormState.problem]으로,
   /// 새 결제수단의 종류를 고르지 않았으면 [PaymentMethodFormState.kindMissing]으로 알린다.
@@ -134,42 +138,24 @@ class PaymentMethodFormNotifier extends Notifier<PaymentMethodFormState> {
     if (state.busy || uid == null || ledgerId == null) return;
     final method = args.method;
     final methods = ref.read(paymentMethodsProvider).value ?? const [];
-    final problem = nameProblemOf(
-      name,
-      maxLength: paymentMethodNameMaxLength,
-      taken: [
-        for (final other in methods)
-          if (other.id != method?.id) other.name,
-      ],
-    );
+    final problem = paymentMethodNameProblemOf(name, methods, editing: method);
     final kind = state.kind;
     if (problem != null || kind == null) {
       state = state.next(problem: problem, kindMissing: kind == null);
       return;
     }
-    final trimmed = name.trim();
-    if (method != null && trimmed == method.name) {
-      state = state.next(outcome: SettingFormOutcome.saved);
-      return;
-    }
-    await _write(SettingFormAction.save, SettingFormOutcome.saved, (
-      repository,
-    ) {
-      if (method == null) {
-        return repository.addPaymentMethod(
-          ledgerId: ledgerId,
-          draft: (name: trimmed, kind: kind),
-          order: methods.length,
-          uid: uid,
-        );
-      }
-      return repository.renamePaymentMethod(
+    await _write(
+      SettingFormAction.save,
+      SettingFormOutcome.saved,
+      (settings) => settings.savePaymentMethod(
         ledgerId: ledgerId,
-        id: method.id,
-        name: trimmed,
+        editing: method,
+        name: name,
+        kind: kind,
+        methods: methods,
         uid: uid,
-      );
-    });
+      ),
+    );
   }
 
   /// 고치는 결제수단을 숨기거나([hidden]이 true) 다시 보이게 한다.
@@ -183,25 +169,31 @@ class PaymentMethodFormNotifier extends Notifier<PaymentMethodFormState> {
     await _write(
       hidden ? SettingFormAction.hide : SettingFormAction.show,
       hidden ? SettingFormOutcome.hidden : SettingFormOutcome.shown,
-      (repository) => repository.setPaymentMethodHidden(
-        ledgerId: ledgerId,
-        id: method.id,
-        hidden: hidden,
-        uid: uid,
-      ),
+      (settings) async {
+        await settings.setPaymentMethodHidden(
+          ledgerId: ledgerId,
+          id: method.id,
+          hidden: hidden,
+          uid: uid,
+        );
+        return null;
+      },
     );
   }
 
+  // [write]가 이름 문제를 돌려주면 쓰지 않은 것이라 그 문제를 보여 준다.
   Future<void> _write(
     SettingFormAction action,
     SettingFormOutcome outcome,
-    Future<void> Function(SettingsRepository repository) write,
+    Future<NameProblem?> Function(SettingsUseCases settings) write,
   ) async {
     state = state.next(pending: action);
     try {
-      await write(ref.read(settingsRepositoryProvider));
+      final problem = await write(ref.read(settingsUseCasesProvider));
       if (!ref.mounted) return;
-      state = state.next(outcome: outcome);
+      state = problem == null
+          ? state.next(outcome: outcome)
+          : state.next(problem: problem);
     } on SettingsWriteException catch (e) {
       if (!ref.mounted) return;
       state = state.next(failure: settingFormFailureOf(e.reason));

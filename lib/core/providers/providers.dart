@@ -14,6 +14,7 @@ import '../../domain/model/payment_method.dart';
 import '../../domain/model/year_month.dart';
 import '../../domain/repository/entries_repository.dart';
 import 'repositories.dart';
+import 'usecases.dart';
 
 export 'repositories.dart';
 
@@ -22,20 +23,21 @@ final clockProvider = Provider<DateTime Function()>((ref) => DateTime.now);
 
 /// 로그인한 사용자. 로그아웃 상태면 null.
 final authUserProvider = StreamProvider<AuthUser?>(
-  (ref) => ref.watch(authRepositoryProvider).authStateChanges(),
+  (ref) => ref.watch(authUseCasesProvider).watchAuthUser(),
 );
 
 /// 내가 속한 가계부 목록. 로그아웃 상태면 빈 목록.
 final myLedgersProvider = StreamProvider<List<Ledger>>((ref) {
   final user = ref.watch(authUserProvider).value;
   if (user == null) return Stream.value(const []);
-  return ref.watch(ledgerRepositoryProvider).watchMyLedgers(user.uid);
+  return ref.watch(ledgerUseCasesProvider).watchMyLedgers(user.uid);
 });
 
-/// 지금 보고 있는 가계부. 커플 가계부라 보통 하나이고, 여럿이면 먼저 만든 것을 쓴다.
+/// 지금 보고 있는 가계부. 고르는 규칙은 `SelectCurrentLedgerUseCase`(먼저 만든 것)다.
 final currentLedgerProvider = Provider<Ledger?>((ref) {
   final ledgers = ref.watch(myLedgersProvider).value;
-  return ledgers == null || ledgers.isEmpty ? null : ledgers.first;
+  if (ledgers == null) return null;
+  return ref.watch(ledgerUseCasesProvider).selectCurrentLedger(ledgers);
 });
 
 /// 지금 가계부에서 내 역할. 로그아웃했거나 가계부가 없으면 null.
@@ -51,21 +53,21 @@ final myRoleProvider = Provider<MemberRole?>((ref) {
 final membersProvider = StreamProvider<List<Member>>((ref) {
   final ledgerId = ref.watch(currentLedgerProvider.select((l) => l?.id));
   if (ledgerId == null) return Stream.value(const []);
-  return ref.watch(settingsRepositoryProvider).watchMembers(ledgerId);
+  return ref.watch(settingsUseCasesProvider).watchMembers(ledgerId);
 });
 
 /// 지금 가계부의 지출 분류. 가계부가 없으면 빈 목록.
 final categoriesProvider = StreamProvider<List<Category>>((ref) {
   final ledgerId = ref.watch(currentLedgerProvider.select((l) => l?.id));
   if (ledgerId == null) return Stream.value(const []);
-  return ref.watch(settingsRepositoryProvider).watchCategories(ledgerId);
+  return ref.watch(settingsUseCasesProvider).watchCategories(ledgerId);
 });
 
 /// 지금 가계부의 결제수단. 가계부가 없으면 빈 목록.
 final paymentMethodsProvider = StreamProvider<List<PaymentMethod>>((ref) {
   final ledgerId = ref.watch(currentLedgerProvider.select((l) => l?.id));
   if (ledgerId == null) return Stream.value(const []);
-  return ref.watch(settingsRepositoryProvider).watchPaymentMethods(ledgerId);
+  return ref.watch(settingsUseCasesProvider).watchPaymentMethods(ledgerId);
 });
 
 /// 지금 가계부의 고정 지출. 가계부가 없으면 빈 목록.
@@ -151,7 +153,7 @@ final monthLedgerProvider = Provider<AsyncValue<MonthLedger>>(
   (ref) => ref.watch(monthLedgerOfProvider(ref.watch(selectedMonthProvider))),
 );
 
-/// 보고 있는 달의 요약. 항목·분류·결제수단으로 계산한다.
+/// 보고 있는 달의 요약. 항목·분류·결제수단으로 계산한다(`CalculateMonthSummaryUseCase`).
 ///
 /// 셋 중 하나라도 실패하면 실패, 아직 받지 못했으면 불러오는 중이다. 달을 옮긴 직후에도 불러오는 중이라
 /// 새 달의 항목이 오기 전에 이전 달 숫자를 보여주지 않는다.
@@ -170,11 +172,13 @@ final monthSummaryProvider = Provider<AsyncValue<MonthSummary>>((ref) {
     AsyncData(value: final paymentMethods),
   )) {
     return AsyncData(
-      MonthSummary.of(
-        ledger,
-        categories: categories,
-        paymentMethods: paymentMethods,
-      ),
+      ref
+          .watch(summaryUseCasesProvider)
+          .calculateMonthSummary(
+            ledger,
+            categories: categories,
+            paymentMethods: paymentMethods,
+          ),
     );
   }
   return const AsyncLoading();
@@ -185,7 +189,7 @@ final holidaysOfYearProvider = StreamProvider.autoDispose.family<Holidays, int>(
   (ref, year) {
     final uid = ref.watch(authUserProvider.select((user) => user.value?.uid));
     if (uid == null) return Stream.value(const Holidays());
-    return ref.watch(holidaysRepositoryProvider).watchYear(year);
+    return ref.watch(holidayUseCasesProvider).watchHolidays(year);
   },
 );
 
@@ -197,5 +201,5 @@ final recentActivityProvider = StreamProvider.autoDispose<List<Activity>>((
 ) {
   final ledgerId = ref.watch(currentLedgerProvider.select((l) => l?.id));
   if (ledgerId == null) return Stream.value(const []);
-  return ref.watch(activityRepositoryProvider).watchRecent(ledgerId);
+  return ref.watch(activityUseCasesProvider).watchRecentActivity(ledgerId);
 });

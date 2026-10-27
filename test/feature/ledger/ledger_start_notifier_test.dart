@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_ledger/domain/repository/ledger_repository.dart';
 import 'package:shared_ledger/domain/model/auth_user.dart';
+import 'package:shared_ledger/domain/model/invite.dart';
 import 'package:shared_ledger/domain/model/ledger.dart';
 import 'package:shared_ledger/feature/ledger/ledger_start_notifier.dart';
 
@@ -15,16 +16,6 @@ const partnerLedger = Ledger(
 );
 
 void main() {
-  group('초대 코드 입력 검사', () {
-    test('비었거나 모양이 다르면 문제를 돌려주고, 공백·하이픈·소문자는 정리해서 본다', () {
-      expect(inviteCodeProblemOf(''), InviteCodeProblem.empty);
-      expect(inviteCodeProblemOf('   '), InviteCodeProblem.empty);
-      expect(inviteCodeProblemOf('abc'), InviteCodeProblem.malformed);
-      expect(inviteCodeProblemOf('ABCDEFGH23'), isNull);
-      expect(inviteCodeProblemOf(' abcd-efgh 23 '), isNull);
-    });
-  });
-
   group('가계부 만들기', () {
     test('이름의 앞뒤 공백을 빼고 나를 관리자로 만든다', () async {
       final ledgers = FakeLedgerRepository();

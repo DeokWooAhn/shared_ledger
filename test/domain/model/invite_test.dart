@@ -28,6 +28,16 @@ void main() {
     expect(isInviteCodeShaped('가나다라마바사아'), isFalse);
   });
 
+  group('초대 코드 입력 검사', () {
+    test('비었거나 모양이 다르면 문제를 돌려주고, 공백·하이픈·소문자는 정리해서 본다', () {
+      expect(inviteCodeProblemOf(''), InviteCodeProblem.empty);
+      expect(inviteCodeProblemOf('   '), InviteCodeProblem.empty);
+      expect(inviteCodeProblemOf('abc'), InviteCodeProblem.malformed);
+      expect(inviteCodeProblemOf('ABCDEFGH23'), isNull);
+      expect(inviteCodeProblemOf(' abcd-efgh 23 '), isNull);
+    });
+  });
+
   test('유효기간이 지나면 만료다', () {
     final invite = Invite(
       code: 'ABCDEFGH23',

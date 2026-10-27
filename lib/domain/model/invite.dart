@@ -43,3 +43,24 @@ String normalizeInviteCode(String input) =>
 /// 정리한 코드가 초대 코드 모양인지. 아니면 서버에 묻지 않고 바로 안내한다.
 bool isInviteCodeShaped(String code) =>
     RegExp(r'^[A-Z0-9]{8,32}$').hasMatch(code);
+
+/// 초대 코드 입력란 아래에 보여 줄 문제. 입력 검사와 참여 실패를 한곳에서 다룬다.
+enum InviteCodeProblem {
+  empty,
+  malformed,
+
+  /// 코드가 없거나 관리자가 지웠다.
+  notFound,
+  expired,
+
+  /// 두 명이 다 찼거나 가계부가 없어졌다.
+  unavailable,
+}
+
+/// 입력한 초대 코드를 서버에 묻기 전에 검사한다. 문제가 없으면 null.
+InviteCodeProblem? inviteCodeProblemOf(String input) {
+  final code = normalizeInviteCode(input);
+  if (code.isEmpty) return InviteCodeProblem.empty;
+  if (!isInviteCodeShaped(code)) return InviteCodeProblem.malformed;
+  return null;
+}

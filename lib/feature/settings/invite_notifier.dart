@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/providers/providers.dart';
+import '../../core/providers/usecases.dart';
 import '../../domain/model/invite.dart';
 import '../../domain/model/ledger.dart';
 
@@ -64,7 +64,7 @@ class InviteNotifier extends Notifier<InviteState> {
     state = InviteState(role: role, pending: true);
     try {
       final invite = await ref
-          .read(ledgerRepositoryProvider)
+          .read(ledgerUseCasesProvider)
           .createInvite(ledgerId: ledgerId, role: role, createdBy: createdBy);
       if (!ref.mounted) return;
       state = InviteState(role: role, invite: invite);

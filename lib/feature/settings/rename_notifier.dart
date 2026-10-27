@@ -2,9 +2,11 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/providers/providers.dart';
+import '../../core/providers/usecases.dart';
 import '../../domain/repository/settings_repository.dart';
 import '../../domain/model/ledger.dart';
 import '../../domain/model/member.dart';
+import '../../domain/model/name_problem.dart';
 import 'setting_form.dart';
 
 /// 이름을 바꿀 대상: 가계부 이름이나 이름표 하나.
@@ -103,7 +105,8 @@ class RenameNotifier extends Notifier<RenameState> {
     state = const RenameState();
   }
 
-  /// [name]으로 바꾼다. 앞뒤 공백은 뺀다. 지금 이름과 같으면 쓰지 않고 끝낸다.
+  /// [name]으로 바꾼다. 앞뒤 공백은 뺀다. 지금 이름과 같으면 쓰지 않고 끝낸다
+  /// (`RenameLedgerUseCase`·`RenameMemberUseCase`).
   ///
   /// 이름에 문제가 있으면 [RenameState.problem]으로 알리고 저장하지 않는다.
   Future<void> save(String name) async {
@@ -115,29 +118,28 @@ class RenameNotifier extends Notifier<RenameState> {
       state = RenameState(problem: problem);
       return;
     }
-    if (name.trim() == _currentName(ledger)) {
-      state = const RenameState(done: true);
-      return;
-    }
     state = const RenameState(saving: true);
     try {
-      switch (target) {
-        case LedgerNameTarget():
+      final refused = switch (target) {
+        LedgerNameTarget() =>
           await ref
-              .read(ledgerRepositoryProvider)
-              .rename(ledgerId: ledger.id, name: name, uid: uid);
-        case MemberNameTarget(:final slot):
+              .read(ledgerUseCasesProvider)
+              .renameLedger(ledger: ledger, name: name, uid: uid),
+        MemberNameTarget(:final slot) =>
           await ref
-              .read(settingsRepositoryProvider)
+              .read(settingsUseCasesProvider)
               .renameMember(
                 ledgerId: ledger.id,
                 slot: slot,
                 name: name,
+                members: ref.read(membersProvider).value ?? const [],
                 uid: uid,
-              );
-      }
+              ),
+      };
       if (!ref.mounted) return;
-      state = const RenameState(done: true);
+      state = refused == null
+          ? const RenameState(done: true)
+          : RenameState(problem: refused);
     } on SettingsWriteException catch (e) {
       if (!ref.mounted) return;
       state = RenameState(failure: settingFormFailureOf(e.reason));
@@ -147,14 +149,4 @@ class RenameNotifier extends Notifier<RenameState> {
       state = const RenameState(failure: SettingFormFailure.save);
     }
   }
-
-  // 이름표가 생기기 전에 만든 가계부는 이름표 문서가 없으므로 같아 보여도 null로 두어 새로 만든다.
-  String? _currentName(Ledger ledger) => switch (target) {
-    LedgerNameTarget() => ledger.name,
-    MemberNameTarget(:final slot) =>
-      (ref.read(membersProvider).value ?? const [])
-          .where((m) => m.slot == slot)
-          .firstOrNull
-          ?.name,
-  };
 }

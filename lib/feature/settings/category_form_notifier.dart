@@ -2,8 +2,11 @@ import 'package:flutter/foundation.dart' hide Category;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/providers/providers.dart';
+import '../../core/providers/usecases.dart';
 import '../../domain/repository/settings_repository.dart';
 import '../../domain/model/category.dart';
+import '../../domain/model/name_problem.dart';
+import '../../domain/usecase/settings/settings_use_cases.dart';
 import 'setting_form.dart';
 
 /// 분류 시트를 여는 값. 새 분류면 [category]가 null이다.
@@ -114,7 +117,7 @@ class CategoryFormNotifier extends Notifier<CategoryFormState> {
     state = state.next();
   }
 
-  /// 입력란의 [name]과 고른 값으로 저장한다. 새 분류는 맨 뒤에 붙는다.
+  /// 입력란의 [name]과 고른 값으로 저장한다. 새 분류는 맨 뒤에 붙고, 바뀐 것이 없으면 쓰지 않고 닫는다(`SaveCategoryUseCase`).
   ///
   /// 이름이 비었거나 길거나 다른 분류(숨긴 것 포함)와 같으면 [CategoryFormState.problem]으로 알린다.
   Future<void> save(String name) async {
@@ -123,43 +126,24 @@ class CategoryFormNotifier extends Notifier<CategoryFormState> {
     if (state.busy || uid == null || ledgerId == null) return;
     final category = args.category;
     final categories = ref.read(categoriesProvider).value ?? const [];
-    final problem = nameProblemOf(
-      name,
-      maxLength: categoryNameMaxLength,
-      taken: [
-        for (final other in categories)
-          if (other.id != category?.id) other.name,
-      ],
-    );
+    final problem = categoryNameProblemOf(name, categories, editing: category);
     if (problem != null) {
       state = state.next(problem: problem);
       return;
     }
-    final draft = (name: name.trim(), countsAsSaving: state.countsAsSaving);
-    if (category != null &&
-        draft.name == category.name &&
-        draft.countsAsSaving == category.countsAsSaving) {
-      state = state.next(outcome: SettingFormOutcome.saved);
-      return;
-    }
-    await _write(SettingFormAction.save, SettingFormOutcome.saved, (
-      repository,
-    ) {
-      if (category == null) {
-        return repository.addCategory(
-          ledgerId: ledgerId,
-          draft: draft,
-          order: categories.length,
-          uid: uid,
-        );
-      }
-      return repository.updateCategory(
+    final countsAsSaving = state.countsAsSaving;
+    await _write(
+      SettingFormAction.save,
+      SettingFormOutcome.saved,
+      (settings) => settings.saveCategory(
         ledgerId: ledgerId,
-        id: category.id,
-        draft: draft,
+        editing: category,
+        name: name,
+        countsAsSaving: countsAsSaving,
+        categories: categories,
         uid: uid,
-      );
-    });
+      ),
+    );
   }
 
   /// 고치는 분류를 숨기거나([hidden]이 true) 다시 보이게 한다.
@@ -173,25 +157,31 @@ class CategoryFormNotifier extends Notifier<CategoryFormState> {
     await _write(
       hidden ? SettingFormAction.hide : SettingFormAction.show,
       hidden ? SettingFormOutcome.hidden : SettingFormOutcome.shown,
-      (repository) => repository.setCategoryHidden(
-        ledgerId: ledgerId,
-        id: category.id,
-        hidden: hidden,
-        uid: uid,
-      ),
+      (settings) async {
+        await settings.setCategoryHidden(
+          ledgerId: ledgerId,
+          id: category.id,
+          hidden: hidden,
+          uid: uid,
+        );
+        return null;
+      },
     );
   }
 
+  // [write]가 이름 문제를 돌려주면 쓰지 않은 것이라 그 문제를 보여 준다.
   Future<void> _write(
     SettingFormAction action,
     SettingFormOutcome outcome,
-    Future<void> Function(SettingsRepository repository) write,
+    Future<NameProblem?> Function(SettingsUseCases settings) write,
   ) async {
     state = state.next(pending: action);
     try {
-      await write(ref.read(settingsRepositoryProvider));
+      final problem = await write(ref.read(settingsUseCasesProvider));
       if (!ref.mounted) return;
-      state = state.next(outcome: outcome);
+      state = problem == null
+          ? state.next(outcome: outcome)
+          : state.next(problem: problem);
     } on SettingsWriteException catch (e) {
       if (!ref.mounted) return;
       state = state.next(failure: settingFormFailureOf(e.reason));

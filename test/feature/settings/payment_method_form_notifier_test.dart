@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_ledger/core/providers/providers.dart';
 import 'package:shared_ledger/domain/model/auth_user.dart';
 import 'package:shared_ledger/domain/model/ledger.dart';
+import 'package:shared_ledger/domain/model/name_problem.dart';
 import 'package:shared_ledger/domain/model/payment_method.dart';
 import 'package:shared_ledger/feature/settings/payment_method_form_notifier.dart';
 import 'package:shared_ledger/feature/settings/setting_form.dart';

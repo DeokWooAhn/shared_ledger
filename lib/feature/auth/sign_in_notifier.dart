@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/providers/providers.dart';
+import '../../core/providers/usecases.dart';
 
 /// 로그인 방법.
 enum SignInMethod { google, apple }
@@ -46,7 +46,7 @@ class SignInNotifier extends Notifier<SignInState> {
   Future<void> signIn(SignInMethod method) async {
     if (state.busy) return;
     state = SignInState(pending: method);
-    final auth = ref.read(authRepositoryProvider);
+    final auth = ref.read(authUseCasesProvider);
     try {
       await switch (method) {
         SignInMethod.google => auth.signInWithGoogle(),

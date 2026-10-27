@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../domain/model/invite.dart';
 import '../../domain/model/ledger.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widget/keep_all.dart';

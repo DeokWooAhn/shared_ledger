@@ -1,3 +1,5 @@
+import 'name_problem.dart';
+
 /// 결제수단 이름 길이 제한. `firestore.rules`의 validPaymentMethod와 같다.
 const paymentMethodNameMaxLength = 20;
 
@@ -52,3 +54,19 @@ List<PaymentMethod> choosablePaymentMethods(
   for (final method in methods)
     if (!method.hidden || keep.contains(method.id)) method,
 ];
+
+/// 결제수단 이름 [name]을 검사한다. 문제가 없으면 null.
+///
+/// [methods](숨긴 것 포함)에서 고치는 결제수단 [editing] 말고 다른 결제수단과 이름이 겹치면 안 된다.
+NameProblem? paymentMethodNameProblemOf(
+  String name,
+  List<PaymentMethod> methods, {
+  PaymentMethod? editing,
+}) => nameProblemOf(
+  name,
+  maxLength: paymentMethodNameMaxLength,
+  taken: [
+    for (final other in methods)
+      if (other.id != editing?.id) other.name,
+  ],
+);
