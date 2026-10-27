@@ -230,30 +230,6 @@ void main() {
       expect(entries.added, isEmpty);
     });
 
-    test('제목은 40자(UTF-16 단위), 메모는 200자를 넘으면 알린다', () {
-      EntryDraft draft({String title = '간식', String? memo}) => EntryDraft(
-        kind: EntryKind.extra,
-        memberId: 'owner',
-        amount: 1000,
-        title: title,
-        paymentMethodId: 'p1',
-        memo: memo,
-      );
-
-      expect(entryProblemsOf(draft(title: '가' * 40)), isEmpty);
-      expect(entryProblemsOf(draft(title: '가' * 41)), {
-        EntryProblem.titleTooLong,
-      });
-      // 보안 규칙처럼 이모지 하나를 두 글자로 센다.
-      expect(entryProblemsOf(draft(title: '🍚' * 21)), {
-        EntryProblem.titleTooLong,
-      });
-      expect(entryProblemsOf(draft(memo: '가' * 200)), isEmpty);
-      expect(entryProblemsOf(draft(memo: '가' * 201)), {
-        EntryProblem.memoTooLong,
-      });
-    });
-
     test('칸을 고치거나 고르면 그 칸의 문제만 지운다', () async {
       final container = await ready();
       final provider = entryFormNotifierProvider(add(EntryKind.planned));

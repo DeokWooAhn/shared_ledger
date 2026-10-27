@@ -5,63 +5,19 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../domain/repository/entries_repository.dart';
 import '../../core/providers/providers.dart';
-import '../../domain/model/year_month.dart';
+import '../../core/providers/usecases.dart';
+import '../../domain/usecase/month/plan_months_backfill_use_case.dart';
 
-/// 항목 있는 달을 찾는 범위. 가계부를 만든 달 [monthsBackfillSpan]달 전부터 이번 달 [monthsBackfillSpan]달 뒤까지다.
-const monthsBackfillSpan = 12;
-
-/// 항목 있는 달 목록을 처음 모을 가계부와 살펴볼 달.
-@immutable
-class MonthsBackfill {
-  const MonthsBackfill({required this.ledgerId, required this.months});
-
-  final String ledgerId;
-
-  /// 살펴볼 달. 오래된 것부터.
-  final List<YearMonth> months;
-
-  @override
-  bool operator ==(Object other) =>
-      other is MonthsBackfill &&
-      other.ledgerId == ledgerId &&
-      listEquals(other.months, months);
-
-  @override
-  int get hashCode => Object.hash(ledgerId, Object.hashAll(months));
-}
-
-/// [createdIn](가계부를 만든 달) [monthsBackfillSpan]달 전부터 [thisMonth] [monthsBackfillSpan]달 뒤까지의 달.
-List<YearMonth> monthsToBackfill({
-  required YearMonth createdIn,
-  required YearMonth thisMonth,
-}) {
-  var month = createdIn;
-  for (var i = 0; i < monthsBackfillSpan; i++) {
-    month = month.previous;
-  }
-  var last = thisMonth;
-  for (var i = 0; i < monthsBackfillSpan; i++) {
-    last = last.next;
-  }
-  return [for (; month.compareTo(last) <= 0; month = month.next) month];
-}
-
-/// 지금 가계부의 항목 있는 달 목록을 모아야 하면 그 범위. 아니면 null.
-///
-/// 목록이 생기기 전에 만든 가계부([Ledger.months]가 null)이고 쓰기 권한이 있을 때만이다(보기 전용은 규칙이 막는다).
-final monthsBackfillProvider = Provider<MonthsBackfill?>((ref) {
-  final canWrite = ref.watch(myRoleProvider)?.canWrite ?? false;
-  final ledger = ref.watch(currentLedgerProvider);
-  if (!canWrite || ledger == null || ledger.months != null) return null;
-  final now = ref.watch(clockProvider)();
-  return MonthsBackfill(
-    ledgerId: ledger.id,
-    months: monthsToBackfill(
-      createdIn: YearMonth.of(ledger.createdAt ?? now),
-      thisMonth: YearMonth.of(now),
-    ),
-  );
-});
+/// 지금 가계부의 항목 있는 달 목록을 모아야 하면 그 범위. 아니면 null. 정하는 규칙은 `PlanMonthsBackfillUseCase`다
+/// (목록이 생기기 전에 만든 가계부이고 쓰기 권한이 있을 때만).
+final monthsBackfillProvider = Provider<MonthsBackfill?>(
+  (ref) => ref
+      .watch(monthUseCasesProvider)
+      .planMonthsBackfill(
+        ledger: ref.watch(currentLedgerProvider),
+        canWrite: ref.watch(myRoleProvider)?.canWrite ?? false,
+      ),
+);
 
 /// 목록을 모으는 Notifier. 홈 틀이 떠 있는 동안 살아 있으면서 [monthsBackfillProvider]를 듣는다.
 final monthsBackfillNotifierProvider =
@@ -91,13 +47,7 @@ class MonthsBackfillNotifier extends Notifier<bool> {
     if (state || !_tried.add(backfill.ledgerId)) return;
     state = true;
     try {
-      final found = await ref
-          .read(entriesRepositoryProvider)
-          .monthsWithEntries(backfill.ledgerId, backfill.months);
-      if (!ref.mounted) return;
-      await ref
-          .read(ledgerRepositoryProvider)
-          .recordMonths(ledgerId: backfill.ledgerId, months: found);
+      await ref.read(monthUseCasesProvider).backfillMonths(backfill);
     } on EntryWriteException catch (e) {
       debugPrint('항목 있는 달을 모으지 못해 다음에 다시 모음: ${e.reason}');
     } catch (e) {

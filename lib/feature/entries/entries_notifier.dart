@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../domain/repository/entries_repository.dart';
 import '../../core/providers/providers.dart';
-import '../../domain/model/expense_template.dart';
+import '../../core/providers/usecases.dart';
 import '../../domain/model/ledger_entries.dart';
 import '../../domain/model/year_month.dart';
 
@@ -52,10 +52,6 @@ class EntriesState {
   int get hashCode => Object.hash(restoring, addingMonth, failure);
 }
 
-/// 달력에서 [month] 가계부를 만들 때 고정 지출로 채우는지. 이번 달과 앞으로의 달만 채우고, 지난 달은 달만 만든다.
-bool fillsTemplatesOnAdd(YearMonth month, {required YearMonth thisMonth}) =>
-    month.compareTo(thisMonth) >= 0;
-
 final entriesNotifierProvider =
     NotifierProvider.autoDispose<EntriesNotifier, EntriesState>(
       EntriesNotifier.new,
@@ -75,12 +71,11 @@ class EntriesNotifier extends Notifier<EntriesState> {
     state = const EntriesState(restoring: true);
     try {
       await ref
-          .read(entriesRepositoryProvider)
-          .restore(
+          .read(entryUseCasesProvider)
+          .restoreEntry(
             ledgerId: ledgerId,
             month: month,
-            kind: entry.kind,
-            id: entry.id,
+            entry: entry,
             uid: uid,
           );
       if (!ref.mounted) return;
@@ -101,7 +96,7 @@ class EntriesNotifier extends Notifier<EntriesState> {
   }
 
   /// [month] 가계부를 새로 만든다. 그달을 항목 있는 달 목록에 더하고, 고정 지출이 있으면 그달 기본 월 지출(지급 전)로 채운다.
-  /// 지난 달은 고정 지출을 채우지 않고 달만 만든다([fillsTemplatesOnAdd]).
+  /// 지난 달은 고정 지출을 채우지 않고 달만 만든다(`AddMonthUseCase`).
   ///
   /// 달력에서 가계부가 없는 달에 항목을 넣으려 할 때 부른다. 한 트랜잭션이라 온라인에서만 되고, 만들었으면 true다.
   /// 실패는 [EntriesState.failure]로 알린다.
@@ -113,18 +108,14 @@ class EntriesNotifier extends Notifier<EntriesState> {
     // 아무도 듣지 않는 공급자는 멈춰 있어 값을 기다리면 끝나지 않는다. 받는 동안 직접 듣는다.
     final templates = ref.listen(templatesProvider.future, (_, _) {});
     try {
-      final thisMonth = YearMonth.of(ref.read(clockProvider)());
-      final current = fillsTemplatesOnAdd(month, thisMonth: thisMonth)
-          ? await templates.read()
-          : const <ExpenseTemplate>[];
+      // 고정 지출은 채우는 달일 때만 기다린다.
       await ref
-          .read(entriesRepositoryProvider)
-          .fillPlanned(
+          .read(monthUseCasesProvider)
+          .addMonth(
             ledgerId: ledgerId,
             month: month,
-            templates: current,
             uid: uid,
-            recordMonth: true,
+            templates: templates.read,
           );
       if (ref.mounted) state = const EntriesState();
       return true;

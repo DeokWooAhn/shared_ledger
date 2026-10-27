@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../domain/repository/entries_repository.dart';
 import '../../core/providers/providers.dart';
+import '../../core/providers/usecases.dart';
 import '../../domain/model/ledger_entries.dart';
 import '../../domain/model/trashed_entry.dart';
 import '../../domain/model/year_month.dart';
@@ -83,33 +84,35 @@ class TrashNotifier extends Notifier<TrashState> {
     final ledgerId = ref.read(currentLedgerProvider)?.id;
     if (state.busy || uid == null || ledgerId == null) return;
     state = TrashState(pending: (action: action, id: entry.id));
-    final repository = ref.read(entriesRepositoryProvider);
+    final entries = ref.read(entryUseCasesProvider);
     try {
+      var done = true;
       switch (action) {
         case TrashAction.restore:
-          await repository.restore(
+          await entries.restoreEntry(
             ledgerId: ledgerId,
             month: month,
-            kind: entry.kind,
-            id: entry.id,
+            entry: entry,
             uid: uid,
           );
         case TrashAction.purge:
-          await repository.purge(
+          // 휴지통에 남길 항목은 purge에서 걸렀지만, 그사이 달이 바뀌었으면 UseCase가 다시 거른다.
+          done = await entries.purgeEntry(
             ledgerId: ledgerId,
             month: month,
-            kind: entry.kind,
-            id: entry.id,
+            entry: entry,
             uid: uid,
           );
       }
       if (!ref.mounted) return;
-      state = TrashState(
-        notice: switch (action) {
-          TrashAction.restore => TrashNotice.restored,
-          TrashAction.purge => TrashNotice.purged,
-        },
-      );
+      state = done
+          ? TrashState(
+              notice: switch (action) {
+                TrashAction.restore => TrashNotice.restored,
+                TrashAction.purge => TrashNotice.purged,
+              },
+            )
+          : const TrashState();
     } on EntryWriteException catch (e) {
       if (!ref.mounted) return;
       state = TrashState(

@@ -10,6 +10,8 @@ import 'package:flutter_test/flutter_test.dart';
 /// - core: domain과 Flutter·Riverpod만. data·feature는 못 본다
 /// - feature/<기능>: domain·core와 자기 기능 폴더, Flutter·Riverpod·go_router만. data와 다른 기능은 못 본다
 /// - lib 바로 아래(main·app·router·di): 모두 조립하는 자리라 제한이 없다
+/// - 저장소 자리(core/providers/repositories.dart)는 feature가 보지 못하고 아무도 export하지 않는다.
+///   feature는 UseCase 홀더(usecases.dart)로만 저장소에 닿는다(AGENTS.md 'UseCase')
 ///
 /// 새 패키지를 들이면(먼저 승인을 받는다) 여기 허용 목록도 같이 고친다.
 const _allowedPackages = <String, Set<String>>{
@@ -36,12 +38,32 @@ bool _mayImport(String from, String to) => switch (from) {
   _ => true,
 };
 
-// export도 본다. core가 data를 export하면 feature가 core를 거쳐 data를 볼 수 있다.
-final _importPattern = RegExp(r"^(?:import|export) '([^']+)'", multiLine: true);
+/// 저장소 자리. 레이어 표로는 core 안의 파일이라 feature가 볼 수 있어서 따로 막는다.
+const _repositorySlots = 'lib/core/providers/repositories.dart';
 
-/// lib의 모든 파일과 그 import 대상: (파일, import 문자열, 대상 레이어 또는 패키지 이름).
-List<({String file, String spec, String layer})> _imports() {
-  final result = <({String file, String spec, String layer})>[];
+/// [from] 레이어의 파일이 [directive](import·export)로 [target](lib 안의 경로)을 가리켜도 되는지.
+///
+/// 저장소 자리는 UseCase 홀더(core)와 조립(앱)만 import한다. export하면 그 파일을 import한 feature가 저장소를 보게 된다.
+bool _mayReach(String from, String directive, String target) =>
+    target != _repositorySlots ||
+    (directive == 'import' && !from.startsWith('feature/'));
+
+// export도 본다. core가 data를 export하면 feature가 core를 거쳐 data를 볼 수 있다.
+final _importPattern = RegExp(r"^(import|export) '([^']+)'", multiLine: true);
+
+typedef _Import = ({
+  String file,
+  String directive,
+  String spec,
+
+  /// 가리키는 lib 안의 경로. 패키지나 lib 밖이면 null.
+  String? target,
+  String layer,
+});
+
+/// lib의 모든 파일과 그 import 대상: (파일, import·export, import 문자열, 대상 경로, 대상 레이어 또는 패키지 이름).
+List<_Import> _imports() {
+  final result = <_Import>[];
   final files = Directory('lib')
       .listSync(recursive: true)
       .whereType<File>()
@@ -49,22 +71,34 @@ List<({String file, String spec, String layer})> _imports() {
   for (final file in files) {
     final path = file.path.replaceAll(r'\', '/');
     for (final match in _importPattern.allMatches(file.readAsStringSync())) {
-      final spec = match.group(1)!;
+      final directive = match.group(1)!;
+      final spec = match.group(2)!;
       if (spec.startsWith('dart:')) continue;
+      final String? target;
       if (spec.startsWith('package:shared_ledger/')) {
-        final target = 'lib/${spec.substring('package:shared_ledger/'.length)}';
-        result.add((file: path, spec: spec, layer: _layerOf(target)));
+        target = 'lib/${spec.substring('package:shared_ledger/'.length)}';
       } else if (spec.startsWith('package:')) {
-        result.add((file: path, spec: spec, layer: 'package'));
+        target = null;
       } else {
-        final target = File(
+        final resolved = File(
           '${file.parent.path}/$spec',
         ).uri.normalizePath().path.replaceAll(r'\', '/');
-        // lib 밖을 가리키면 어느 레이어도 아니라서 위반으로 잡는다.
-        final at = target.indexOf('lib/');
-        final layer = at < 0 ? 'lib 밖' : _layerOf(target.substring(at));
-        result.add((file: path, spec: spec, layer: layer));
+        final at = resolved.indexOf('lib/');
+        target = at < 0 ? null : resolved.substring(at);
       }
+      final layer = switch (target) {
+        final target? => _layerOf(target),
+        null when spec.startsWith('package:') => 'package',
+        // lib 밖을 가리키면 어느 레이어도 아니라서 위반으로 잡는다.
+        null => 'lib 밖',
+      };
+      result.add((
+        file: path,
+        directive: directive,
+        spec: spec,
+        target: target,
+        layer: layer,
+      ));
     }
   }
   return result;
@@ -106,6 +140,18 @@ void main() {
     expect(violations, isEmpty, reason: violations.join('\n'));
   });
 
+  test('feature는 저장소 자리를 import하지 않고, 아무도 저장소 자리를 export하지 않는다', () {
+    // 경로를 제대로 풀었는지: 저장소 자리를 import하는 곳(UseCase 홀더, 조립)이 있어야 한다.
+    expect(imports.where((i) => i.target == _repositorySlots), isNotEmpty);
+    final violations = [
+      for (final i in imports)
+        if (i.target case final target?
+            when !_mayReach(_layerOf(i.file), i.directive, target))
+          '${i.file} → ${i.directive} ${i.spec} (UseCase 홀더 usecases.dart를 쓴다)',
+    ];
+    expect(violations, isEmpty, reason: violations.join('\n'));
+  });
+
   test('규칙 검사가 실제로 잡아낸다', () {
     expect(_mayImport('domain', 'data'), isFalse);
     expect(_mayImport('core', 'data'), isFalse);
@@ -115,5 +161,17 @@ void main() {
     expect(_mayImport('app', 'data'), isTrue);
     expect(_mayImport('core', 'lib 밖'), isFalse);
     expect(_importPattern.hasMatch("export '../../data/x.dart';"), isTrue);
+    expect(_mayReach('feature/entries', 'import', _repositorySlots), isFalse);
+    expect(_mayReach('core', 'export', _repositorySlots), isFalse);
+    expect(_mayReach('core', 'import', _repositorySlots), isTrue);
+    expect(_mayReach('app', 'import', _repositorySlots), isTrue);
+    expect(
+      _mayReach(
+        'feature/entries',
+        'import',
+        'lib/core/providers/usecases.dart',
+      ),
+      isTrue,
+    );
   });
 }

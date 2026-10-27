@@ -178,7 +178,7 @@ class CardBill extends LedgerEntry {
 /// 저장할 항목 값. 입력 화면이 만들고 저장소가 Firestore 문서로 바꾼다.
 ///
 /// 종류마다 쓰는 칸이 다르다(docs/firestore.md의 항목 표). 그 종류가 쓰지 않는 칸은 저장하지 않는다.
-/// 꼭 필요한 칸이 채워졌는지는 입력 화면이 저장 전에 확인한다.
+/// 꼭 필요한 칸이 채워졌는지는 저장 전에 [entryProblemsOf]로 확인한다(입력 화면과 `SaveEntryUseCase`).
 class EntryDraft {
   const EntryDraft({
     required this.kind,
@@ -289,4 +289,40 @@ class EntryDraft {
     dueOn,
     memo,
   );
+}
+
+/// 저장 전에 입력란 아래에 보여 줄 문제.
+enum EntryProblem {
+  amountMissing,
+  titleMissing,
+  titleTooLong,
+  categoryMissing,
+  paymentMethodMissing,
+  cardMissing,
+  memoTooLong,
+}
+
+/// 저장할 값을 검사한다. 문제가 없으면 빈 집합.
+///
+/// 금액은 기본 월 지출만 비울 수 있고(금액 미정), 제목은 카드대금 말고 꼭 적는다.
+/// 길이는 보안 규칙처럼 UTF-16 단위로 센다(`entryTitleMaxLength`).
+Set<EntryProblem> entryProblemsOf(EntryDraft draft) {
+  final kind = draft.kind;
+  final title = draft.title.trim();
+  return {
+    if (draft.amount == null && kind != EntryKind.planned)
+      EntryProblem.amountMissing,
+    if (kind != EntryKind.cardBill && title.isEmpty) EntryProblem.titleMissing,
+    if (kind != EntryKind.cardBill && title.length > entryTitleMaxLength)
+      EntryProblem.titleTooLong,
+    if (kind == EntryKind.planned && draft.categoryId == null)
+      EntryProblem.categoryMissing,
+    if ((kind == EntryKind.planned || kind == EntryKind.extra) &&
+        draft.paymentMethodId == null)
+      EntryProblem.paymentMethodMissing,
+    if (kind == EntryKind.cardBill && draft.cardId == null)
+      EntryProblem.cardMissing,
+    if ((draft.memo?.trim().length ?? 0) > entryMemoMaxLength)
+      EntryProblem.memoTooLong,
+  };
 }

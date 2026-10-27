@@ -196,7 +196,8 @@ reviews:
         앱 공통 공급자(Riverpod). domain 만 본다.
         - `repositories.dart` 의 저장소 공급자는 구현을 모르는 자리다. 여기서 `lib/data`·Firebase 를 import 하거나 구현을 만들면 반드시 지적.
           구현은 `lib/di.dart` 가 넣는다
-        - `usecases.dart` 는 영역별 UseCase 홀더 공급자(`xxxUseCasesProvider`)이고 저장소 공급자로 만든다
+        - `usecases.dart` 는 영역별 UseCase 홀더 공급자(`xxxUseCasesProvider`)이고 저장소 공급자와 `clockProvider`(`clock.dart`)로 만든다
+        - `repositories.dart` 를 export 하면 반드시 지적. feature 가 그 파일을 거쳐 저장소를 보게 된다(`test/architecture_test.dart` 도 막는다)
         - `providers.dart` 의 공급자가 저장소 공급자를 직접 부르면 지적. 구독은 홀더의 `watch…` UseCase 로 연다
         - 공급자 안에서 다른 공급자는 `ref.watch` 로 의존한다. `ref.read` 로 읽으면 바뀌어도 다시 계산되지 않는다
         - 로그인하지 않았을 때 빈 값을 내보내는지 (`myLedgersProvider`)

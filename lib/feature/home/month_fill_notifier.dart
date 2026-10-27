@@ -3,72 +3,32 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../domain/repository/entries_repository.dart';
 import '../../core/providers/providers.dart';
-import '../../domain/model/expense_template.dart';
-import '../../domain/model/year_month.dart';
+import '../../core/providers/usecases.dart';
+import '../../domain/usecase/month/plan_month_fill_use_case.dart';
 
-/// 보고 있는 달에 고정 지출로 채울 것.
-@immutable
-class PlannedFill {
-  const PlannedFill({
-    required this.ledgerId,
-    required this.month,
-    required this.templates,
-    this.recordMonth = false,
-  });
-
-  final String ledgerId;
-  final YearMonth month;
-
-  /// 그달에 아직 기본 월 지출이 없는 고정 지출.
-  final List<ExpenseTemplate> templates;
-
-  /// 채우면서 가계부의 항목 있는 달 목록에 그달을 더할지([Ledger.needsToRecord]).
-  final bool recordMonth;
-
-  @override
-  bool operator ==(Object other) =>
-      other is PlannedFill &&
-      other.ledgerId == ledgerId &&
-      other.month == month &&
-      listEquals(other.templates, templates) &&
-      other.recordMonth == recordMonth;
-
-  @override
-  int get hashCode =>
-      Object.hash(ledgerId, month, Object.hashAll(templates), recordMonth);
-}
-
-/// 보고 있는 달에 고정 지출로 채울 것. 채울 것이 없거나 채울 수 없으면 null.
+/// 보고 있는 달에 고정 지출로 채울 것. 채울 것이 없거나 채울 수 없으면 null. 정하는 규칙은 `PlanMonthFillUseCase`다.
 ///
-/// 보기 전용이면(규칙이 막는다), 자동으로 채우지 않는 달이면(지난 달·다음 달보다 먼 달),
-/// 요약·항목 탭이 오가지 않는 달이면(달력으로 지나가는 다음 달 등. 그 달은 달력에서 가계부를 만들 때 채운다),
-/// 그달 항목이나 고정 지출을 아직 받지 못했으면 null이다. 달을 옮긴 직후에는 이전 달 항목으로 판단하지 않는다.
+/// 그달 항목과 고정 지출은 UseCase가 꺼낼 때만 구독한다(보기 전용이거나 채우지 않는 달에는 읽지 않는다).
+/// 달을 옮긴 직후에는 이전 달 항목으로 판단하지 않는다(받은 값만 쓴다).
 /// 값이 바뀔 때만 알리므로, 홈 틀이 듣다가 [MonthFillNotifier.fill]로 넘긴다.
-final plannedFillProvider = Provider<PlannedFill?>((ref) {
-  final canWrite = ref.watch(myRoleProvider)?.canWrite ?? false;
-  final ledger = ref.watch(currentLedgerProvider);
-  final month = ref.watch(selectedMonthProvider);
-  if (!canWrite || ledger == null) return null;
-  final thisMonth = YearMonth.of(ref.watch(clockProvider)());
-  if (!fillsFromTemplates(month, thisMonth: thisMonth)) return null;
-  // 보기만 해서 그달이 생기지 않게 한다. 목록을 아직 모으지 않은 가계부(null)는 예전처럼 채운다.
-  final months = ref.watch(ledgerMonthsProvider);
-  if (months != null && !months.contains(month)) return null;
-  if ((ref.watch(monthLedgerProvider), ref.watch(templatesProvider)) case (
-    AsyncData(value: final entries),
-    AsyncData(value: final templates),
-  )) {
-    final missing = templatesMissingIn(entries, templates);
-    if (missing.isEmpty) return null;
-    return PlannedFill(
-      ledgerId: ledger.id,
-      month: month,
-      templates: missing,
-      recordMonth: ledger.needsToRecord(month),
-    );
-  }
-  return null;
-});
+final plannedFillProvider = Provider<PlannedFill?>(
+  (ref) => ref
+      .watch(monthUseCasesProvider)
+      .planMonthFill(
+        ledger: ref.watch(currentLedgerProvider),
+        canWrite: ref.watch(myRoleProvider)?.canWrite ?? false,
+        month: ref.watch(selectedMonthProvider),
+        ledgerMonths: ref.watch(ledgerMonthsProvider),
+        entries: () => switch (ref.watch(monthLedgerProvider)) {
+          AsyncData(:final value) => value,
+          _ => null,
+        },
+        templates: () => switch (ref.watch(templatesProvider)) {
+          AsyncData(:final value) => value,
+          _ => null,
+        },
+      ),
+);
 
 /// 그달 기본 월 지출을 채우는 Notifier. 홈 틀이 떠 있는 동안 계속 살아 있게 autoDispose를 쓰지 않는다.
 final monthFillNotifierProvider = NotifierProvider<MonthFillNotifier, bool>(
@@ -116,14 +76,8 @@ class MonthFillNotifier extends Notifier<bool> {
   Future<void> _fillOnce(PlannedFill fill, String uid) async {
     try {
       await ref
-          .read(entriesRepositoryProvider)
-          .fillPlanned(
-            ledgerId: fill.ledgerId,
-            month: fill.month,
-            templates: fill.templates,
-            uid: uid,
-            recordMonth: fill.recordMonth,
-          );
+          .read(monthUseCasesProvider)
+          .fillMonthFromTemplates(fill, uid: uid);
     } on EntryWriteException catch (e) {
       debugPrint('그달 기본 월 지출을 채우지 못해 다음에 다시 열 때 채움: ${e.reason}');
     } catch (e) {

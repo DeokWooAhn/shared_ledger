@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart' show ProviderListenable;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_ledger/core/providers/providers.dart';
+import 'package:shared_ledger/core/providers/repositories.dart';
 import 'package:shared_ledger/domain/model/month_ledger.dart';
 
 import 'fakes.dart';

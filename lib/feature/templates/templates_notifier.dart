@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/providers/providers.dart';
+import '../../core/providers/usecases.dart';
 import '../../domain/repository/templates_repository.dart';
 import '../../domain/model/expense_template.dart';
 
@@ -51,8 +52,8 @@ class TemplatesNotifier extends Notifier<TemplatesState> {
     state = const TemplatesState(restoring: true);
     try {
       await ref
-          .read(templatesRepositoryProvider)
-          .restore(ledgerId: ledgerId, template: template, uid: uid);
+          .read(templateUseCasesProvider)
+          .restoreTemplate(ledgerId: ledgerId, template: template, uid: uid);
       if (!ref.mounted) return;
       state = const TemplatesState();
     } on TemplateWriteException catch (e) {

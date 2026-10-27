@@ -35,7 +35,7 @@ Notifier는 저장소 대신 domain의 UseCase를 영역별 홀더로 부른다(
 - 머리말은 달을 보는 탭이면 `MonthHeader`, 아니면 `TabTitle`이다. 예: `lib/feature/summary/summary_screen.dart`, `lib/feature/templates/templates_screen.dart`
 - 보고 있는 달은 `selectedMonthProvider`를 읽는다(탭을 옮겨도 같은 달). 오늘 날짜가 필요하면 `clockProvider`.
   머리말로 오가는 달은 `ledgerMonthsProvider`(항목 있는 달 + 이번 달, 목록을 아직 모으지 않았으면 null)이고, 달력은 모든 달을 보여준다.
-  새 항목을 더하는 쓰기는 `Ledger.needsToRecord(month)`로 그달을 가계부의 달 목록에 같이 더한다(`docs/firestore.md`의 `months`).
+  새 항목을 더하는 쓰기는 `Ledger.needsToRecord(month)`로 그달을 가계부의 달 목록에 같이 더한다(`SaveEntryUseCase`, `docs/firestore.md`의 `months`).
 - 두 사람 표시는 `MemberAvatar`, 이름은 `membersProvider`에서 꺼낸다.
 - 탭을 더하거나 빼면 `HomeTab`과 router.dart의 `Routes.of`·`_tabScreen`을 같이 고친다(`switch`라 빠뜨리면 컴파일 에러).
 - 폭 600 이상(`wideLayoutMinWidth`)에서는 아래 탭 막대 대신 옆 탭 막대(NavigationRail)가 나온다. 위젯 테스트는 두 배치를 다 본다.
@@ -91,6 +91,10 @@ final xxxUseCasesProvider = Provider<XxxUseCases>(
 - UseCase 하나 = 파일 하나(`<이름>_use_case.dart`), 공개 메서드는 `call()` 하나. 구독은 `Watch…`(`Stream`), 순수 계산은 저장소 없이(`CalculateMonthSummaryUseCase`).
 - 바로 답이 나오는 검사는 domain 함수(`categoryNameProblemOf`, `inviteCodeProblemOf`)로 두고 UseCase와 Notifier가 같이 부른다. UseCase에만 두면 '진행 중'을 거친 뒤에야 문제를 알게 된다.
 - Riverpod·Flutter를 import하지 않는다. `AsyncValue` 묶기는 공급자에, 화면에 그리려고 묶는 일(`mergeActivities`)은 feature에 남긴다.
+- 시간이 필요하면 생성자로 `DateTime Function() now`를 받고, 홀더 공급자가 `clockProvider`를 넣는다(`PurgeEntryUseCase`, `AddMonthUseCase`).
+- 공급자가 판단만 UseCase에 맡길 때는 다른 공급자 값을 미리 읽어 넘기지 말고 꺼내는 함수(`MonthLedger? Function()`)를 넘긴다.
+  UseCase가 꺼낼 때만 `ref.watch`가 불려서, 지금처럼 필요할 때만 구독한다(`plannedFillProvider` → `PlanMonthFillUseCase`).
+- feature는 저장소 자리(`repositories.dart`)를 import할 수 없다. `test/architecture_test.dart`가 막는다.
 
 ## Notifier 뼈대
 
