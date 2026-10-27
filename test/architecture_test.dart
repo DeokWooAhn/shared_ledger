@@ -36,7 +36,8 @@ bool _mayImport(String from, String to) => switch (from) {
   _ => true,
 };
 
-final _importPattern = RegExp(r"^import '([^']+)'", multiLine: true);
+// export도 본다. core가 data를 export하면 feature가 core를 거쳐 data를 볼 수 있다.
+final _importPattern = RegExp(r"^(?:import|export) '([^']+)'", multiLine: true);
 
 /// lib의 모든 파일과 그 import 대상: (파일, import 문자열, 대상 레이어 또는 패키지 이름).
 List<({String file, String spec, String layer})> _imports() {
@@ -59,8 +60,10 @@ List<({String file, String spec, String layer})> _imports() {
         final target = File(
           '${file.parent.path}/$spec',
         ).uri.normalizePath().path.replaceAll(r'\', '/');
-        final relative = target.substring(target.indexOf('lib/'));
-        result.add((file: path, spec: spec, layer: _layerOf(relative)));
+        // lib 밖을 가리키면 어느 레이어도 아니라서 위반으로 잡는다.
+        final at = target.indexOf('lib/');
+        final layer = at < 0 ? 'lib 밖' : _layerOf(target.substring(at));
+        result.add((file: path, spec: spec, layer: layer));
       }
     }
   }
@@ -110,5 +113,7 @@ void main() {
     expect(_mayImport('feature/entries', 'feature/settings'), isFalse);
     expect(_mayImport('feature/entries', 'core'), isTrue);
     expect(_mayImport('app', 'data'), isTrue);
+    expect(_mayImport('core', 'lib 밖'), isFalse);
+    expect(_importPattern.hasMatch("export '../../data/x.dart';"), isTrue);
   });
 }

@@ -49,8 +49,8 @@ abstract interface class LedgerRepository {
 
   /// 가계부 이름을 [name]으로 바꾼다. 관리자([uid])만 할 수 있다(규칙의 ownerManages).
   ///
-  /// 다른 설정처럼 온라인에서만 되고 변경 기록을 같이 남긴다. 연결이 없으면 [SettingsWriteException]([SettingsWriteFailure.offline]),
-  /// 가계부가 없어졌으면 [SettingsWriteFailure.notFound]로 실패한다.
+  /// 다른 설정처럼 온라인에서만 되고 변경 기록을 같이 남긴다. 연결이 없으면 `SettingsWriteException`(`SettingsWriteFailure.offline`),
+  /// 가계부가 없어졌으면 `SettingsWriteFailure.notFound`로 실패한다(settings_repository.dart).
   Future<void> rename({
     required String ledgerId,
     required String name,
