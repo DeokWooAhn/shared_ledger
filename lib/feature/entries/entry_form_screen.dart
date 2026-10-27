@@ -16,6 +16,7 @@ import 'entry_kind_tabs.dart';
 /// 입력란 아래에 보여 줄 문구.
 String entryProblemMessage(EntryProblem problem) => switch (problem) {
   EntryProblem.amountMissing => '금액을 입력해 주세요.',
+  EntryProblem.amountNegative => '금액은 0원부터 적을 수 있어요.',
   EntryProblem.titleMissing => '내용을 입력해 주세요.',
   EntryProblem.titleTooLong => '내용은 $entryTitleMaxLength자까지 쓸 수 있어요.',
   EntryProblem.categoryMissing => '분류를 골라 주세요.',
@@ -187,7 +188,10 @@ class _EntryFormScreenState extends ConsumerState<EntryFormScreen> {
         optional: kind == EntryKind.planned,
         autofocus: !isEdit,
         enabled: enabled,
-        errorText: errorOf({EntryProblem.amountMissing}),
+        errorText: errorOf({
+          EntryProblem.amountMissing,
+          EntryProblem.amountNegative,
+        }),
         onChanged: (_) => notifier.textEdited(EntryTextField.amount),
       ),
       if (kind != EntryKind.cardBill)

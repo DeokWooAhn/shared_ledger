@@ -204,7 +204,18 @@ class TemplateFormNotifier extends Notifier<TemplateFormState> {
     if (state.busy || day < 1 || day > lastDueDay) return;
     state = state.copyWith(
       dueDay: day,
-      problems: {...state.problems}..remove(TemplateProblem.dueDayMissing),
+      problems: state.problems.difference({
+        TemplateProblem.dueDayMissing,
+        TemplateProblem.dueDayOutOfRange,
+      }),
+    );
+  }
+
+  /// 금액 글자를 고치면 그 칸의 문제를 지운다.
+  void amountEdited() {
+    if (!state.problems.contains(TemplateProblem.amountNegative)) return;
+    state = state.copyWith(
+      problems: {...state.problems}..remove(TemplateProblem.amountNegative),
     );
   }
 

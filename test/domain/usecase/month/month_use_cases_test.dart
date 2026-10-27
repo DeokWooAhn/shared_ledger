@@ -135,6 +135,26 @@ void main() {
     test('항목이나 고정 지출을 아직 받지 못했으면 null이고, 그래도 둘 다 꺼낸다', () {
       expect(plan(entries: null), isNull);
       expect(reads, 2);
+      reads = 0;
+      expect(plan(templates: null), isNull);
+      expect(reads, 2);
+    });
+
+    test('달 목록을 아직 모으지 않은 가계부(null)는 달을 가리지 않고 채울 것을 낸다', () {
+      final fill = plan(
+        ledger: const Ledger(id: 'l1', name: '우리 가계부', ownerUid: 'me'),
+        ledgerMonths: null,
+        month: november,
+      );
+
+      expect(
+        fill,
+        const PlannedFill(
+          ledgerId: 'l1',
+          month: november,
+          templates: [rent, phone],
+        ),
+      );
     });
   });
 

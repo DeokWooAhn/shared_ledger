@@ -319,7 +319,10 @@ class EntryFormNotifier extends Notifier<EntryFormState> {
   /// 글자를 고치면 그 칸의 문제를 지운다.
   void textEdited(EntryTextField field) {
     final cleared = switch (field) {
-      EntryTextField.amount => {EntryProblem.amountMissing},
+      EntryTextField.amount => {
+        EntryProblem.amountMissing,
+        EntryProblem.amountNegative,
+      },
       EntryTextField.title => {
         EntryProblem.titleMissing,
         EntryProblem.titleTooLong,

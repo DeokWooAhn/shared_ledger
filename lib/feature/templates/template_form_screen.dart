@@ -16,11 +16,13 @@ import 'template_list.dart';
 
 /// 입력란 아래에 보여 줄 문구.
 String templateProblemMessage(TemplateProblem problem) => switch (problem) {
+  TemplateProblem.amountNegative => '금액은 0원부터 적을 수 있어요.',
   TemplateProblem.titleMissing => '내용을 입력해 주세요.',
   TemplateProblem.titleTooLong => '내용은 $entryTitleMaxLength자까지 쓸 수 있어요.',
   TemplateProblem.categoryMissing => '분류를 골라 주세요.',
   TemplateProblem.paymentMethodMissing => '결제수단을 골라 주세요.',
   TemplateProblem.dueDayMissing => '예정일을 골라 주세요.',
+  TemplateProblem.dueDayOutOfRange => '예정일은 1일부터 말일까지 고를 수 있어요.',
 };
 
 String templateFormFailureMessage(TemplateFormFailure failure) =>
@@ -129,8 +131,8 @@ class _TemplateFormScreenState extends ConsumerState<TemplateFormScreen> {
         optional: true,
         autofocus: !isEdit,
         enabled: enabled,
-        errorText: null,
-        onChanged: (_) {},
+        errorText: errorOf({TemplateProblem.amountNegative}),
+        onChanged: (_) => notifier.amountEdited(),
       ),
       LabeledField(
         label: '내용',
@@ -199,7 +201,10 @@ class _TemplateFormScreenState extends ConsumerState<TemplateFormScreen> {
       ),
       _DueDayField(
         dueDay: state.dueDay,
-        errorText: errorOf({TemplateProblem.dueDayMissing}),
+        errorText: errorOf({
+          TemplateProblem.dueDayMissing,
+          TemplateProblem.dueDayOutOfRange,
+        }),
         onTap: enabled ? () => _pickDueDay(state.dueDay) : null,
       ),
       Padding(

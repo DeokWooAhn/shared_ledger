@@ -294,6 +294,9 @@ class EntryDraft {
 /// 저장 전에 입력란 아래에 보여 줄 문제.
 enum EntryProblem {
   amountMissing,
+
+  /// 금액은 0원부터다(보안 규칙과 같다).
+  amountNegative,
   titleMissing,
   titleTooLong,
   categoryMissing,
@@ -304,7 +307,7 @@ enum EntryProblem {
 
 /// 저장할 값을 검사한다. 문제가 없으면 빈 집합.
 ///
-/// 금액은 기본 월 지출만 비울 수 있고(금액 미정), 제목은 카드대금 말고 꼭 적는다.
+/// 금액은 기본 월 지출만 비울 수 있고(금액 미정), 적으면 0원부터다. 제목은 카드대금 말고 꼭 적는다.
 /// 길이는 보안 규칙처럼 UTF-16 단위로 센다(`entryTitleMaxLength`).
 Set<EntryProblem> entryProblemsOf(EntryDraft draft) {
   final kind = draft.kind;
@@ -312,6 +315,7 @@ Set<EntryProblem> entryProblemsOf(EntryDraft draft) {
   return {
     if (draft.amount == null && kind != EntryKind.planned)
       EntryProblem.amountMissing,
+    if ((draft.amount ?? 0) < 0) EntryProblem.amountNegative,
     if (kind != EntryKind.cardBill && title.isEmpty) EntryProblem.titleMissing,
     if (kind != EntryKind.cardBill && title.length > entryTitleMaxLength)
       EntryProblem.titleTooLong,

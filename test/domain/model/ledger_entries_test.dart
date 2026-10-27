@@ -26,5 +26,18 @@ void main() {
         EntryProblem.memoTooLong,
       });
     });
+
+    test('금액은 0원부터 받고, 음수면 알린다', () {
+      EntryDraft draft(int amount) => EntryDraft(
+        kind: EntryKind.extra,
+        memberId: 'owner',
+        amount: amount,
+        title: '간식',
+        paymentMethodId: 'p1',
+      );
+
+      expect(entryProblemsOf(draft(0)), isEmpty);
+      expect(entryProblemsOf(draft(-1)), {EntryProblem.amountNegative});
+    });
   });
 }

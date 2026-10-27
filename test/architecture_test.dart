@@ -49,7 +49,20 @@ bool _mayReach(String from, String directive, String target) =>
     (directive == 'import' && !from.startsWith('feature/'));
 
 // export도 본다. core가 data를 export하면 feature가 core를 거쳐 data를 볼 수 있다.
-final _importPattern = RegExp(r"^(import|export) '([^']+)'", multiLine: true);
+// 지시문 전체(;까지)를 잡고 그 안의 문자열을 모두 URI로 본다. 따옴표 종류·줄바꿈과 상관없고,
+// 조건부 import·export의 대체 URI(`if (dart.library.io) 'b.dart'`)도 빠뜨리지 않는다.
+final _directivePattern = RegExp(
+  r'^(import|export)\b([^;]*);',
+  multiLine: true,
+);
+final _uriPattern = RegExp(r'''['"]([^'"]+)['"]''');
+
+/// [source]의 import·export 지시문이 가리키는 URI 전부.
+List<({String directive, String uri})> _directivesOf(String source) => [
+  for (final directive in _directivePattern.allMatches(source))
+    for (final uri in _uriPattern.allMatches(directive.group(2)!))
+      (directive: directive.group(1)!, uri: uri.group(1)!),
+];
 
 typedef _Import = ({
   String file,
@@ -70,9 +83,9 @@ List<_Import> _imports() {
       .where((f) => f.path.endsWith('.dart'));
   for (final file in files) {
     final path = file.path.replaceAll(r'\', '/');
-    for (final match in _importPattern.allMatches(file.readAsStringSync())) {
-      final directive = match.group(1)!;
-      final spec = match.group(2)!;
+    for (final (:directive, uri: spec) in _directivesOf(
+      file.readAsStringSync(),
+    )) {
       if (spec.startsWith('dart:')) continue;
       final String? target;
       if (spec.startsWith('package:shared_ledger/')) {
@@ -160,7 +173,21 @@ void main() {
     expect(_mayImport('feature/entries', 'core'), isTrue);
     expect(_mayImport('app', 'data'), isTrue);
     expect(_mayImport('core', 'lib 밖'), isFalse);
-    expect(_importPattern.hasMatch("export '../../data/x.dart';"), isTrue);
+    expect(_directivesOf("export '../../data/x.dart';"), [
+      (directive: 'export', uri: '../../data/x.dart'),
+    ]);
+    expect(_directivesOf('import "../../data/x.dart" show X;'), [
+      (directive: 'import', uri: '../../data/x.dart'),
+    ]);
+    expect(
+      _directivesOf(
+        "import 'a.dart'\n    if (dart.library.io) '../core/providers/repositories.dart';",
+      ),
+      [
+        (directive: 'import', uri: 'a.dart'),
+        (directive: 'import', uri: '../core/providers/repositories.dart'),
+      ],
+    );
     expect(_mayReach('feature/entries', 'import', _repositorySlots), isFalse);
     expect(_mayReach('core', 'export', _repositorySlots), isFalse);
     expect(_mayReach('core', 'import', _repositorySlots), isTrue);
