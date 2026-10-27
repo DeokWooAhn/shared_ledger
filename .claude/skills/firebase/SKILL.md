@@ -50,7 +50,9 @@ Firebase 패키지는 4.x 세대에 고정했다(firebase_core 4.15, firebase_au
 
 ## 보안 규칙 배포
 
-저장소의 `firestore.rules`가 실제 프로젝트에 배포돼 있다. 마지막 배포는 2026-10-26, PR #21의 공휴일(`holidays`) 읽기 규칙(`firestore:rules`)이다.
+저장소의 `firestore.rules`가 실제 프로젝트에 배포돼 있다. 마지막 배포는 2026-10-26, PR #23의 항목 있는 달 목록(`months`) 규칙
+(`recordsMonths`, 가계부 만들기의 빈 `months`)이다. 같은 날 앞서 PR #21의 공휴일(`holidays`) 읽기 규칙을 배포했다.
+`months` 규칙을 배포하기 전에는 앱이 달 목록을 저장하지 못해(permission-denied) 모든 달을 그대로 보여준다.
 TTL 정책 5개(`firestore:indexes`)는 2026-10-23 PR #15 때 배포했다.
 
 1. 규칙 테스트를 먼저 고치고 통과시킨다(명령은 verification 스킬).
