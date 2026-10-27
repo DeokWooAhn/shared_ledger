@@ -1,22 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:shared_ledger/core/model/auth_user.dart';
-import 'package:shared_ledger/core/model/category.dart';
-import 'package:shared_ledger/core/model/expense_template.dart';
-import 'package:shared_ledger/core/model/holidays.dart';
-import 'package:shared_ledger/core/model/ledger.dart';
-import 'package:shared_ledger/core/model/ledger_entries.dart';
-import 'package:shared_ledger/core/model/month_ledger.dart';
-import 'package:shared_ledger/core/model/payment_method.dart';
-import 'package:shared_ledger/core/model/year_month.dart';
+import 'package:shared_ledger/domain/model/auth_user.dart';
+import 'package:shared_ledger/domain/model/category.dart';
+import 'package:shared_ledger/domain/model/expense_template.dart';
+import 'package:shared_ledger/domain/model/holidays.dart';
+import 'package:shared_ledger/domain/model/ledger.dart';
+import 'package:shared_ledger/domain/model/ledger_entries.dart';
+import 'package:shared_ledger/domain/model/month_ledger.dart';
+import 'package:shared_ledger/domain/model/payment_method.dart';
+import 'package:shared_ledger/domain/model/year_month.dart';
 import 'package:shared_ledger/core/widget/month_picker_sheet.dart';
 import 'package:shared_ledger/feature/entries/calendar_screen.dart';
 import 'package:shared_ledger/feature/entries/entry_form_screen.dart';
 import 'package:shared_ledger/feature/home/home_shell.dart';
 
-import '../../support/app.dart';
-import '../../support/fakes.dart';
+import '../../../testing/app.dart';
+import '../../../testing/fakes.dart';
 
 const me = AuthUser(uid: 'me');
 const mine = Ledger(id: 'l1', name: '우리 가계부', ownerUid: 'me');
@@ -377,7 +377,7 @@ void main() {
     });
 
     testWidgets('휴지통에 넣고 돌아온 뒤 달력을 닫아도 되돌리기로 다시 꺼낸다', (tester) async {
-      // 요약 탭에서 연 달력이라, 달력을 닫으면 항목 컨트롤러를 듣는 화면이 없다.
+      // 요약 탭에서 연 달력이라, 달력을 닫으면 항목 Notifier를 듣는 화면이 없다.
       final entries = await openCalendar(tester);
       await tester.tap(day(18));
       await settle(tester);

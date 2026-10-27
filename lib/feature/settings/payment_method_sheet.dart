@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/data/providers.dart';
-import '../../core/model/payment_method.dart';
+import '../../core/providers/providers.dart';
+import '../../domain/model/payment_method.dart';
 import '../../core/widget/form_parts.dart';
 import '../../core/widget/keep_all.dart';
 import '../../core/widget/labeled_field.dart';
-import 'payment_method_form_controller.dart';
+import 'payment_method_form_notifier.dart';
 import 'setting_sheet.dart';
 
 /// 화면에 보이는 결제수단 종류 이름.
@@ -35,7 +35,7 @@ class PaymentMethodSheet extends ConsumerStatefulWidget {
 }
 
 class _PaymentMethodSheetState extends ConsumerState<PaymentMethodSheet> {
-  // 입력란 글자는 화면에만 필요한 상태라 위젯이 갖고, 저장할 때 컨트롤러에 넘긴다.
+  // 입력란 글자는 화면에만 필요한 상태라 위젯이 갖고, 저장할 때 Notifier에 넘긴다.
   late final TextEditingController _name = TextEditingController(
     text: widget.args.method?.name ?? '',
   );
@@ -47,15 +47,15 @@ class _PaymentMethodSheetState extends ConsumerState<PaymentMethodSheet> {
   }
 
   void _save() => ref
-      .read(paymentMethodFormControllerProvider(widget.args).notifier)
+      .read(paymentMethodFormNotifierProvider(widget.args).notifier)
       .save(_name.text);
 
   @override
   Widget build(BuildContext context) {
     final method = widget.args.method;
-    final provider = paymentMethodFormControllerProvider(widget.args);
+    final provider = paymentMethodFormNotifierProvider(widget.args);
     final state = ref.watch(provider);
-    final controller = ref.read(provider.notifier);
+    final notifier = ref.read(provider.notifier);
     ref.listen(provider.select((s) => s.outcome), (_, outcome) {
       if (outcome != null) Navigator.of(context).pop(outcome);
     });
@@ -93,7 +93,7 @@ class _PaymentMethodSheetState extends ConsumerState<PaymentMethodSheet> {
                     ),
             ),
             textInputAction: TextInputAction.done,
-            onChanged: (_) => controller.nameEdited(),
+            onChanged: (_) => notifier.nameEdited(),
             onSubmitted: (_) => _save(),
           ),
         ),
@@ -111,9 +111,7 @@ class _PaymentMethodSheetState extends ConsumerState<PaymentMethodSheet> {
                   key: Key('method-kind-${kind.name}'),
                   label: paymentKindLabel(kind),
                   selected: state.kind == kind,
-                  onSelected: enabled
-                      ? () => controller.selectKind(kind)
-                      : null,
+                  onSelected: enabled ? () => notifier.selectKind(kind) : null,
                 ),
             ],
           )
@@ -142,7 +140,7 @@ class _PaymentMethodSheetState extends ConsumerState<PaymentMethodSheet> {
           HideButton(
             hidden: method.hidden,
             onPressed: enabled
-                ? () => controller.setHidden(!method.hidden)
+                ? () => notifier.setHidden(!method.hidden)
                 : null,
           ),
       ],

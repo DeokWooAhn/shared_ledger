@@ -1,21 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/data/providers.dart';
-import '../../core/model/ledger_entries.dart';
-import '../../core/model/member.dart';
-import '../../core/model/payment_method.dart';
-import '../../core/model/trashed_entry.dart';
-import '../../core/model/year_month.dart';
+import '../../core/providers/providers.dart';
+import '../../domain/model/ledger_entries.dart';
+import '../../domain/model/member.dart';
+import '../../domain/model/payment_method.dart';
+import '../../domain/model/trashed_entry.dart';
+import '../../domain/model/year_month.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widget/entry_kind_label.dart';
 import '../../core/widget/keep_all.dart';
 import '../../core/widget/member_avatar.dart';
 import '../../core/widget/month_header.dart';
 import '../../core/widget/tab_page.dart';
-import '../../core/widget/won.dart';
+import '../../domain/format/won.dart';
 import 'setting_list.dart';
-import 'trash_controller.dart';
+import 'trash_notifier.dart';
 
 String trashFailureMessage(TrashFailure failure) => switch (failure) {
   TrashFailure.offline => '인터넷에 연결된 뒤에 다시 시도해 주세요. 휴지통은 연결돼 있을 때만 바꿀 수 있어요.',
@@ -46,9 +46,9 @@ class TrashScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final ledger = ref.watch(monthLedgerProvider);
-    final controller = ref.read(trashControllerProvider.notifier);
+    final notifier = ref.read(trashNotifierProvider.notifier);
     ref
-      ..listen(trashControllerProvider.select((s) => s.failure), (_, failure) {
+      ..listen(trashNotifierProvider.select((s) => s.failure), (_, failure) {
         if (failure == null) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -56,9 +56,9 @@ class TrashScreen extends ConsumerWidget {
             content: Text(keepAll(trashFailureMessage(failure))),
           ),
         );
-        controller.failureShown();
+        notifier.failureShown();
       })
-      ..listen(trashControllerProvider.select((s) => s.notice), (_, notice) {
+      ..listen(trashNotifierProvider.select((s) => s.notice), (_, notice) {
         if (notice == null) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -66,7 +66,7 @@ class TrashScreen extends ConsumerWidget {
             content: Text(keepAll(trashNoticeMessage(notice))),
           ),
         );
-        controller.noticeShown();
+        notifier.noticeShown();
       });
     return TabPage(
       header: const SubPageTitle(
@@ -101,14 +101,14 @@ class _TrashContent extends ConsumerWidget {
     String title,
     YearMonth month,
   ) async {
-    final controller = ref.read(trashControllerProvider.notifier);
+    final notifier = ref.read(trashNotifierProvider.notifier);
     final purge = await showDialog<bool>(
       context: context,
       builder: (context) =>
           _PurgeDialog(title: title, amount: item.entry.amount),
     );
     if (purge != true) return;
-    await controller.purge(item.entry, month);
+    await notifier.purge(item.entry, month);
   }
 
   // 모르는 자리 값(규칙이 owner·partner 말고는 막는다)은 관리자로 그린다.
@@ -119,7 +119,7 @@ class _TrashContent extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final month = ref.watch(selectedMonthProvider);
     final now = ref.watch(clockProvider)();
-    final state = ref.watch(trashControllerProvider);
+    final state = ref.watch(trashNotifierProvider);
     final canWrite = ref.watch(myRoleProvider)?.canWrite ?? false;
     final members = ref.watch(membersProvider).value ?? const [];
     final methods = {
@@ -127,7 +127,7 @@ class _TrashContent extends ConsumerWidget {
           in ref.watch(paymentMethodsProvider).value ?? const <PaymentMethod>[])
         method.id: method,
     };
-    final controller = ref.read(trashControllerProvider.notifier);
+    final notifier = ref.read(trashNotifierProvider.notifier);
     // 최근에 넣은 것부터. 방금 넣어 서버 시간이 아직 없는 것이 맨 앞이다.
     final sorted = [...items]
       ..sort((a, b) {
@@ -163,7 +163,7 @@ class _TrashContent extends ConsumerWidget {
                   now: now,
                   canWrite: canWrite,
                   busy: state.busy,
-                  onRestore: () => controller.restore(item.entry, month),
+                  onRestore: () => notifier.restore(item.entry, month),
                   onPurge: () => _confirmPurge(
                     context,
                     ref,

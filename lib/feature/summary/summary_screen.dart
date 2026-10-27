@@ -1,17 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/budget/budget_summary.dart';
-import '../../core/budget/month_summary.dart';
-import '../../core/data/providers.dart';
-import '../../core/model/member.dart';
-import '../../core/model/year_month.dart';
+import '../../domain/budget/budget_summary.dart';
+import '../../domain/budget/month_summary.dart';
+import '../../core/providers/providers.dart';
+import '../../domain/model/member.dart';
+import '../../domain/model/year_month.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widget/keep_all.dart';
 import '../../core/widget/member_avatar.dart';
 import '../../core/widget/month_header.dart';
 import '../../core/widget/tab_page.dart';
-import '../../core/widget/won.dart';
+import '../../domain/format/won.dart';
 
 /// 본문(양옆 여백을 뺀 폭)이 이 폭 이상이면 월 요약을 두 칸으로 놓는다.
 /// 아이패드를 가로로 놓은 정도다(세로는 한 칸).
@@ -22,7 +22,7 @@ const summaryTwoColumnMaxWidth = 960.0;
 
 /// 월 요약 탭. 보고 있는 달의 남는 현금, 이번 달 지출·저축, 카드, 기본 월 지출 소계를 보여준다.
 ///
-/// 저장소를 부르는 동작이 없어 컨트롤러 없이 [monthSummaryProvider]만 읽는다.
+/// 저장소를 부르는 동작이 없어 Notifier 없이 [monthSummaryProvider]만 읽는다.
 class SummaryScreen extends ConsumerWidget {
   const SummaryScreen({required this.openCalendar, super.key});
 

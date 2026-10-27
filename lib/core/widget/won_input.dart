@@ -1,6 +1,6 @@
 import 'package:flutter/services.dart';
 
-import 'won.dart';
+import '../../domain/format/won.dart';
 
 /// 금액 입력란이 받는 자릿수. 999,999,999,999원(1조 원 미만)까지다.
 const wonInputMaxDigits = 12;

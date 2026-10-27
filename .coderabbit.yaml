@@ -126,19 +126,21 @@ reviews:
         - `print`/`debugPrint`/로그에 금액·메모·이메일·토큰을 남기지 말 것
 
     # ---------------------------------------------------------------
-    # 레이어: core/budget·model → core/data → feature (+ router)
+    # 레이어: feature → core → domain ← data, 앱(main·di·router)이 조립 (AGENTS.md '프로젝트 구조', test/architecture_test.dart)
     # ---------------------------------------------------------------
-    - path: "lib/core/{budget,model}/**/*.dart"
+    - path: "lib/domain/**/*.dart"
       instructions: |-
-        도메인 레이어 — 순수 Dart(계산 규칙과 모델).
+        도메인 레이어 — 순수 Dart. 모델(model), 계산 규칙(budget), 저장소 인터페이스·도메인 실패·쓰기 입력(repository),
+        변경 기록 요약(activity), 원 표기(format).
 
         가장 중요한 불변조건:
-        - `package:flutter`, `cloud_firestore`, `firebase_auth`, `flutter_riverpod` import 가 들어오면 반드시 지적.
-          이 폴더는 Dart SDK 만 쓴다
-        - Firestore 타입(`DocumentSnapshot`, `Timestamp`, `FieldValue`)이 모델에 들어오면 지적. 변환은 core/data 에서 한다
+        - `package:` import 가 하나라도 들어오면 반드시 지적(`flutter`, `cloud_firestore`, `firebase_auth`, `flutter_riverpod` 등).
+          이 폴더는 Dart SDK(`dart:`)만 쓴다. `lib/data`·`lib/core`·`lib/feature` 를 import 해도 지적
+        - Firestore 타입(`DocumentSnapshot`, `Timestamp`, `FieldValue`)이 들어오면 지적. 변환은 `lib/data` 에서 한다
+        - 저장소 인터페이스는 `abstract interface class`, 실패는 enum + 예외. 구현을 여기 두면 지적
 
-        계산 규칙 (core/budget):
-        - 구글 시트 수식을 옮긴 것이다. `test/core/budget/sheet_golden_test.dart` 의 정답 숫자가 바뀌면
+        계산 규칙 (domain/budget):
+        - 구글 시트 수식을 옮긴 것이다. `test/domain/budget/sheet_golden_test.dart` 의 정답 숫자가 바뀌면
           시트와 어긋나는 것이 의도인지 PR 설명에 있어야 한다
         - 지표 정의(현금 유입·유출, 이번 달 지출, 저축, 남는 현금, 카드 이번 달 사용분·저번 달 사용분)는
           `docs/plan.md` 의 '계산 규칙' 이 원본이다. 정의와 다르게 계산하면 지적
@@ -149,18 +151,19 @@ reviews:
         - 불변(`final` 필드, `const` 생성자), 값 비교가 필요하면 `==`/`hashCode`
         - 역할·권한 판단과 두 명 제한(`ledger.dart`)은 `firestore.rules` 와 같은 내용이어야 한다. 한쪽만 바뀌면 반드시 지적
         - enum 값을 추가하면 Firestore 에서 읽을 때 모르는 값을 건너뛰는 처리(`ledgerFromFirestore`)도 확인
-    - path: "lib/core/data/**/*.dart"
+    - path: "lib/data/**/*.dart"
       instructions: |-
-        데이터 레이어 — 저장소 인터페이스, Firebase 구현, Riverpod 공급자.
+        데이터 레이어 — domain 의 저장소 인터페이스를 Firebase 로 구현한 것과 문서 ↔ 모델 변환 함수.
 
         레이어 규칙:
-        - 저장소는 `abstract interface class XxxRepository` + `FirestoreXxxRepository` 구현. 화면은 인터페이스만 안다
+        - `FirestoreXxxRepository implements XxxRepository`(인터페이스는 `lib/domain/repository`). 화면은 인터페이스만 안다
+        - `lib/core`·`lib/feature`·`package:flutter`·`flutter_riverpod` 를 import 하면 지적. domain 과 Firebase 패키지만 쓴다
         - `DocumentSnapshot`·`QuerySnapshot`·Firestore `Map` 이 저장소 밖으로 새면 지적. 모델로 바꿔서 돌려준다
-        - 새 인터페이스에는 `test/support/fakes.dart` 의 가짜가 있어야 한다
+        - 새 저장소는 자리 공급자(`lib/core/providers/repositories.dart`), 구현 넣기(`lib/di.dart`), 가짜(`testing/fakes.dart`)가 같이 있어야 한다
 
         Firestore 쓰기:
         - 쓰는 문서의 필드는 `firestore.rules` 가 받는 필드와 정확히 같아야 한다. 앱 테스트는 가짜 저장소로 돌아서 못 잡는다.
-          필드를 바꿨는데 규칙·규칙 테스트·필드 목록 테스트(`ledger_repository_test.dart`)·`docs/firestore.md` 가
+          필드를 바꿨는데 규칙·규칙 테스트·필드 목록 테스트(`test/data/ledger/firestore_ledger_repository_test.dart`)·`docs/firestore.md` 가
           그대로면 반드시 지적
         - 시간 필드는 `FieldValue.serverTimestamp()`. 규칙이 `== request.time` 을 보므로
           `DateTime.now()`·`Timestamp.now()` 는 실제로 거부된다
@@ -178,13 +181,17 @@ reviews:
         - `FirebaseException`/`FirebaseAuthException` 은 `code` 로 처리할 것만 고르고 나머지는 다시 던진다
         - `permission-denied` 를 빈 목록으로 바꿔 숨기지 말 것. 규칙과 쿼리가 어긋났다는 신호다
 
-        Riverpod 공급자 (`providers.dart`):
+    - path: "lib/core/providers/**/*.dart"
+      instructions: |-
+        앱 공통 공급자(Riverpod). domain 만 본다.
+        - `repositories.dart` 의 저장소 공급자는 구현을 모르는 자리다. 여기서 `lib/data`·Firebase 를 import 하거나 구현을 만들면 반드시 지적.
+          구현은 `lib/di.dart` 가 넣는다
         - 공급자 안에서 다른 공급자는 `ref.watch` 로 의존한다. `ref.read` 로 읽으면 바뀌어도 다시 계산되지 않는다
         - 로그인하지 않았을 때 빈 값을 내보내는지 (`myLedgersProvider`)
         - 공급자 본문에서 쓰기·외부 요청 같은 부수효과를 일으키지 말 것
         - 정리가 필요한 자원은 `ref.onDispose`
         - Riverpod 3 의 `AsyncValue.value` 는 nullable 이다. 로딩·오류·데이터 세 경우를 모두 다루는지
-    - path: "lib/core/data/auth_repository.dart"
+    - path: "lib/data/auth/firebase_auth_repository.dart"
       instructions: |-
         로그인 저장소.
         - 사용자가 로그인 창을 닫은 경우(`GoogleSignInException` 의 `canceled`, `FirebaseAuthException` 의 `canceled`)는
@@ -194,14 +201,15 @@ reviews:
           됐는지 PR 설명을 요구 (firebase 스킬)
         - 로그아웃은 Google 세션과 Firebase 세션을 함께 정리한다
         - idToken·이메일을 로그로 남기지 말 것
-    - path: "lib/feature/**/*_controller.dart"
+    - path: "lib/feature/**/*_notifier.dart"
       instructions: |-
-        컨트롤러 리뷰 기준 (MVVM: Riverpod Notifier). 정석 레퍼런스는 `lib/feature/ledger/ledger_start_controller.dart`.
+        Notifier 리뷰 기준 (MVVM: Riverpod Notifier). 정석 레퍼런스는 `lib/feature/ledger/ledger_start_notifier.dart`.
 
         구조:
         - `Notifier<불변 State>` + `NotifierProvider.autoDispose`. 화면을 넘어 살아야 하는 상태만 autoDispose 를 뺀다
-        - `package:flutter/material.dart`·위젯·`BuildContext` 를 쓰면 지적. 컨트롤러 은 화면을 모른다
-        - Firebase 패키지를 직접 import 하면 반드시 지적. `core/data` 의 저장소 인터페이스와 공급자만 쓴다
+        - 이름은 `XxxNotifier`, 파일은 `_notifier.dart`, 공급자는 `xxxNotifierProvider`. `XxxController` 로 새로 만들면 지적(2026-10-27에 바꿈)
+        - `package:flutter/material.dart`·위젯·`BuildContext` 를 쓰면 지적. Notifier 는 화면을 모른다
+        - Firebase 패키지나 `lib/data` 를 import 하면 반드시 지적. domain 의 저장소 인터페이스와 core 의 공급자만 쓴다
         - 사용자 동작은 메서드로 받는다. 공개 메서드에는 무엇을 하는지 한국어 문서 주석
 
         State:
@@ -216,24 +224,24 @@ reviews:
         - 사용자 취소를 실패로 알리면 지적
 
         입력 검사:
-        - 서버 결과도 보여야 하는 입력란은 입력 검사까지 컨트롤러 이 맡는지. 폼 validator 와 나눠 갖으면 지적(PR #3 의 재시도 무시 버그)
+        - 서버 결과도 보여야 하는 입력란은 입력 검사까지 Notifier 가 맡는지. 폼 validator 와 나눠 갖으면 지적(PR #3 의 재시도 무시 버그)
     - path: "lib/feature/**/*_screen.dart"
       instructions: |-
-        View(화면 위젯) 리뷰 기준. 로직은 같은 폴더의 `*_controller.dart` 에 있어야 한다.
+        View(화면 위젯) 리뷰 기준. 로직은 같은 폴더의 `*_notifier.dart` 에 있어야 한다.
 
-        - 저장소를 직접 부르거나, `try/catch`·진행 상태(`_busy`)·서버 오류를 위젯 `State` 에 두면 컨트롤러 로 옮기라고 지적
+        - 저장소를 직접 부르거나, `try/catch`·진행 상태(`_busy`)·서버 오류를 위젯 `State` 에 두면 Notifier 로 옮기라고 지적
         - 일회성 표시(스낵바)는 `ref.listen(provider.select(...))` 로 띄우고 `failureShown()` 을 부르는지
         - `ref.watch(provider)` 로 그리고 `ref.read(provider.notifier)` 로 메서드를 부르는지
         - 버튼은 `state.busy` 동안 막히는지
         - enum → 문구 함수가 `switch` 식으로 모든 경우를 다루는지(`default`/`_` 없이)
-        - 입력란은 `LabeledField` 로 이름표와 묶였는지. 서버 결과가 보이는 입력란은 `TextField` + `errorText`(컨트롤러 상태), 그 칸에서 끝나는 검사는 `TextFormField` + `validator`. 섞으면 지적
+        - 입력란은 `LabeledField` 로 이름표와 묶였는지. 서버 결과가 보이는 입력란은 `TextField` + `errorText`(Notifier 상태), 그 칸에서 끝나는 검사는 `TextFormField` + `validator`. 섞으면 지적
     - path: "lib/feature/**/*.dart"
       instructions: |-
         Flutter 화면 best practices.
 
         레이어 규칙:
-        - 다른 `lib/feature/*` 폴더를 import 하면 지적. 둘 이상이 쓰는 것은 `lib/core` 로 올린다
-        - `cloud_firestore`·`firebase_auth`·`google_sign_in` 을 직접 import 하면 반드시 지적. `core/data` 의 공급자만 쓴다
+        - 다른 `lib/feature/*` 폴더를 import 하면 지적. 둘 이상이 쓰는 위젯·공급자는 `lib/core` 로, 화면과 상관없는 규칙은 `lib/domain` 으로 올린다
+        - `lib/data` 나 `cloud_firestore`·`firebase_auth`·`google_sign_in` 을 import 하면 반드시 지적. core 의 공급자만 쓴다
         - 로그인·가계부 만들기·불러오는 중 화면으로 직접 `context.go` 하면 지적. `router.dart` 의 `redirectFor` 가 상태를 보고 옮긴다
         - 컨셉이 커플·부부라 화면 문구에 '가구'·'가족' 을 쓰면 지적. 한 가계부에 두 명까지다
         - 색은 `Theme.of(context)`·`context.appColors` 에서 꺼낸다. `AppPalette` 를 화면에서 직접 쓰면 지적
@@ -247,7 +255,7 @@ reviews:
         - `build` 는 순수해야 한다. `build` 안에서 저장소 호출, `setState`, 화면 이동, 스낵바 표시 금지
 
         상태:
-        - 화면 안에서만 쓰는 상태(입력란 컨트롤러, 폼 키, 복사 표시)만 위젯 `State` 에, 진행 상태·서버 결과는 컨트롤러 에, 공유 데이터는 공급자에
+        - 화면 안에서만 쓰는 상태(입력란 컨트롤러, 폼 키, 복사 표시)만 위젯 `State` 에, 진행 상태·서버 결과는 Notifier 에, 공유 데이터는 공급자에
         - 기본은 `ConsumerWidget`, 입력란 컨트롤러가 있을 때만 `ConsumerStatefulWidget`
         - 그릴 값은 `ref.watch`, 버튼 콜백에서 쓰는 저장소는 `ref.read`. `build` 에서 `ref.read` 로 읽은 값을 그리면 갱신되지 않는다
         - 상태 변화에 따른 스낵바·화면 이동은 `ref.listen` 으로
@@ -256,7 +264,7 @@ reviews:
         생명주기:
         - `TextEditingController`, `FocusNode`, `ScrollController`, `AnimationController`, `StreamSubscription` 은 `dispose` 에서 정리
         - `await` 뒤에 `context`·`setState` 를 쓰기 전에 `mounted` 확인 (State 밖의 BuildContext 는 `context.mounted`)
-        - 오류가 날 수 있는 `Future`(저장소 호출 등)를 버리면 지적. 컨트롤러 메서드와 `signOutWithFeedback` 은 안에서 오류를 처리하므로 바로 불러도 된다
+        - 오류가 날 수 있는 `Future`(저장소 호출 등)를 버리면 지적. Notifier 메서드와 `signOutWithFeedback` 은 안에서 오류를 처리하므로 바로 불러도 된다
 
         목록:
         - 긴 목록은 `ListView.builder`/`SliverList` 로 필요한 만큼만 만든다. `Column` + `map` 으로 전부 만들면 지적
@@ -286,7 +294,7 @@ reviews:
     - path: "lib/core/widget/**/*.dart"
       instructions: |-
         여러 화면이 같이 쓰는 위젯.
-        - 특정 feature 를 import 하거나 특정 화면 상태에 기대면 지적. 필요한 값은 생성자로 받는다
+        - feature·`lib/data` 를 import 하거나 특정 화면 상태에 기대면 지적. 필요한 값은 생성자나 core 의 공급자로 받는다
         - 공개 위젯이면 짧은 문서 주석(무엇을 그리는지, 언제 쓰는지)
         - 색·글자는 테마에서 가져온다. 이 위젯이 화면 간 일관성의 기준이 된다
     - path: "lib/router.dart"
@@ -299,9 +307,10 @@ reviews:
         - 준비가 끝난 상태에서 시작 화면이 아닌 경로는 그대로 둔다 (딥링크로 들어온 경로를 홈으로 덮어쓰지 않기)
         - 경로 매개변수(id)는 없는 값으로 들어와도 앱이 죽지 않게 처리
         - `GoRouter`·`ValueNotifier` 는 `ref.onDispose` 로 정리
-    - path: "lib/{main,app}.dart"
+    - path: "lib/{main,app,di}.dart"
       instructions: |-
-        앱 시작점.
+        앱 시작점과 조립. `lib/data` 를 import 해도 되는 곳은 여기(di.dart)뿐이다.
+        - 저장소 구현은 `di.dart` 의 `repositoryOverrides()` 로 `ProviderScope(overrides:)` 에 넣는다. 새 저장소 자리가 생겼는데 여기 구현이 없으면 앱이 시작할 때 실패한다
         - `Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform)` 은 `runApp` 전에 한 번
         - `ProviderScope` 는 최상위에 하나
         - 시작 시 무거운 작업으로 첫 화면을 막지 말 것. 필요한 데이터는 공급자와 불러오는 중 화면으로 처리
@@ -323,13 +332,13 @@ reviews:
         - 초기값과 기대값이 같아 아무것도 검증하지 못하는 단언 지적
         - 새 저장소·계산 함수·`AppGate` 경우가 추가됐는데 테스트가 없으면 지적
 
-        컨트롤러 테스트:
-        - `test/support/provider_container.dart` 의 `createContainer`·`loadSignedInUser`·`recordStates` 로 가짜를 끼운다
+        Notifier 테스트:
+        - `testing/provider_container.dart` 의 `createContainer`·`loadSignedInUser`·`recordStates` 로 가짜를 끼운다
         - 상태가 거쳐 간 순서(진행 중 → 끝)와 일회성 실패가 켜지고 꺼지는 것을 둘 다 보는지
         - 문구가 아니라 enum 값을 단언하는지
 
         위젯 테스트:
-        - Firebase 를 모킹하지 않고 `ProviderScope(overrides:)` 로 `test/support/fakes.dart` 의 가짜 저장소를 끼운다.
+        - Firebase 를 모킹하지 않고 `ProviderScope(overrides:)` 로 `testing/fakes.dart` 의 가짜 저장소를 끼운다.
           mockito·mocktail 을 들이면 이유를 묻는다
         - 위젯은 화면 문구보다 `find.byKey` 로 찾는다
         - 진행 표시가 계속 도는 화면에서 `pumpAndSettle` 은 시간 초과로 끝난다. `settle()` 처럼 정해진 횟수만 그린다
@@ -341,9 +350,12 @@ reviews:
         - 계산 규칙은 실제 객체로 검증. `sheet_golden_test.dart` 의 정답 숫자를 바꾸면 이유가 PR 에 있어야 한다
         - Firestore 변환 함수는 필드 목록 전체를 단언한다 (규칙이 받는 필드와 맞추는 장치)
         - 경계값: 0원, 음수, 빈 이름, 최대 길이(40자), 모르는 enum 값
-    - path: "test/support/**/*.dart"
+
+        레이어 규칙 검사(`test/architecture_test.dart`):
+        - 허용 목록(레이어별 패키지, `_mayImport`)을 넓히는 변경은 이유가 PR 에 있어야 한다. 테스트를 통과시키려고 규칙을 푸는 것이면 반드시 지적
+    - path: "testing/**/*.dart"
       instructions: |-
-        가짜 저장소.
+        테스트에서만 쓰는 가짜 저장소와 도우미(lib 밖이라 배포되지 않는다). 가짜는 domain 의 저장소 인터페이스를 구현한다.
         - 실제 구현과 같은 인터페이스를 `implements` 해야 한다. 인터페이스가 바뀌면 컴파일 에러로 드러나야 한다
         - 실제 구현이 지키는 약속(로그아웃 상태면 빈 목록, 취소면 false)을 가짜도 지키는지. 다르면 테스트가 거짓 통과한다
         - 호출 기록(`created`, `googleCalls`)으로 검증할 수 있게
@@ -498,7 +510,7 @@ reviews:
         - 월 id 는 `YYYY-MM` 형식 검사를 유지
 
         이 저장소의 약속:
-        - 역할별 권한과 두 명 제한(`maxMembers()`)은 `lib/core/model/ledger.dart` 와 같아야 한다. 한쪽만 바뀌면 반드시 지적
+        - 역할별 권한과 두 명 제한(`maxMembers()`)은 `lib/domain/model/ledger.dart` 와 같아야 한다. 한쪽만 바뀌면 반드시 지적
         - 바뀐 규칙마다 `firestore-tests/rules.test.js` 에 허용·거부 테스트가 둘 다 있는지
         - `get()`·`exists()` 는 문서 읽기 비용이 들고 요청당 횟수 제한이 있다. 같은 문서를 여러 번 읽으면 함수로 묶기 제안
         - 규칙을 넓히는 변경은 이유가 PR 설명에 있어야 한다. 배포는 PR 이 합쳐진 뒤에 한다
@@ -567,7 +579,7 @@ reviews:
       instructions: |-
         Claude Code 스킬(작업별 절차)이다.
         - frontmatter 의 `description` 이 언제 쓰는 스킬인지(요청 예시 포함) 드러내는지. 다른 스킬과 겹치면 지적
-        - 정석 레퍼런스로 가리킨 파일이 실제로 있는지, 뼈대 코드가 지금 코드의 이름·구조(View + `XxxController`)와 맞는지
+        - 정석 레퍼런스로 가리킨 파일이 실제로 있는지, 뼈대 코드가 지금 코드의 이름·구조(View + `XxxNotifier`)와 맞는지
         - AGENTS.md 의 규칙과 어긋나는 절차가 들어오면 지적
     - path: ".claude/settings.json"
       instructions: |-

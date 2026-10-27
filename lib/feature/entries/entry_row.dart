@@ -3,17 +3,17 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/model/ledger_entries.dart';
-import '../../core/model/member.dart';
-import '../../core/model/payment_method.dart';
-import '../../core/model/year_month.dart';
+import '../../domain/model/ledger_entries.dart';
+import '../../domain/model/member.dart';
+import '../../domain/model/payment_method.dart';
+import '../../domain/model/year_month.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widget/entry_kind_label.dart';
 import '../../core/widget/keep_all.dart';
 import '../../core/widget/member_avatar.dart';
-import '../../core/widget/won.dart';
-import 'entries_controller.dart';
-import 'entry_form_controller.dart';
+import '../../domain/format/won.dart';
+import 'entries_notifier.dart';
+import 'entry_form_notifier.dart';
 
 // 항목 탭과 달력이 같이 쓰는 항목 한 줄, 표시, 고치기 흐름.
 
@@ -48,9 +48,9 @@ MemberSlot entryMemberSlot(String memberId) =>
 
 /// 고치기 화면을 열고, 휴지통에 넣고 돌아오면 '되돌리기'를 띄운다.
 ///
-/// 되돌리기 실패는 [entriesControllerProvider]의 실패로 오니, 부르는 화면이 그 실패를 듣고 알린다.
+/// 되돌리기 실패는 [entriesNotifierProvider]의 실패로 오니, 부르는 화면이 그 실패를 듣고 알린다.
 /// 되돌리기는 부른 화면이 닫힌 뒤에도(요약 탭에서 연 달력을 닫음) 누를 수 있어서, 스낵바가 떠 있는 동안
-/// autoDispose 컨트롤러를 살려 두고 누를 때 꺼낸다.
+/// autoDispose Notifier를 살려 두고 누를 때 꺼낸다.
 Future<void> editEntryWithUndo(
   BuildContext context,
   OpenEntryForm openForm,
@@ -65,7 +65,7 @@ Future<void> editEntryWithUndo(
     EntryFormArgs.edit(entry: entry, month: month),
   );
   if (outcome != EntryFormOutcome.trashed) return;
-  final keepController = container.listen(entriesControllerProvider, (_, _) {});
+  final keepController = container.listen(entriesNotifierProvider, (_, _) {});
   final snackBar = messenger.showSnackBar(
     SnackBar(
       key: const Key('trashed-snack-bar'),
@@ -77,7 +77,7 @@ Future<void> editEntryWithUndo(
         key: const Key('restore-entry'),
         label: '되돌리기',
         onPressed: () => container
-            .read(entriesControllerProvider.notifier)
+            .read(entriesNotifierProvider.notifier)
             .restore(entry, month),
       ),
     ),

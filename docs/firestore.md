@@ -55,11 +55,11 @@ holidays/{yyyy}
 - 새 가계부는 빈 목록(`[]`)으로 만든다(`newLedgerData`). 만들 때 달을 미리 넣을 수는 없다.
 - 그달에 처음 항목을 넣을 때 항목·변경 기록과 같은 일괄 쓰기로 `arrayUnion`한다(`recordMonthUpdate`, `EntriesRepository.add`의 `recordMonth`).
   고정 지출로 그달을 채울 때도 같은 트랜잭션에서 더한다. 이미 있으면 바뀌지 않는다.
-- 달력에서 가계부가 없는 달의 가계부를 만들면(`EntriesController.addMonth`) 고정 지출로 그달 기본 월 지출을 채우면서(지난 달은 채우지 않음) 그달을 더한다.
+- 달력에서 가계부가 없는 달의 가계부를 만들면(`EntriesNotifier.addMonth`) 고정 지출로 그달 기본 월 지출을 채우면서(지난 달은 채우지 않음) 그달을 더한다.
   `fillPlanned`의 `recordMonth`라 고정 지출이 없거나 이미 다 있어도 더하고, 한 트랜잭션이라 온라인에서만 된다.
 - 휴지통에 넣거나 완전히 지워 그달 항목이 없어져도 목록에서 빼지 않는다.
 - `months`가 생기기 전(2026-10-26 이전)에 만든 가계부는 쓰기 권한이 있는 사람이 앱을 열 때 한 번 모아 적는다
-  (`MonthsBackfillController`). 만든 달 1년 전부터 이번 달 1년 뒤까지 달마다 네 컬렉션을 한 건씩 서버에서 읽고(25달이면 읽기 100번),
+  (`MonthsBackfillNotifier`). 만든 달 1년 전부터 이번 달 1년 뒤까지 달마다 네 컬렉션을 한 건씩 서버에서 읽고(25달이면 읽기 100번),
   찾은 달을 지금 목록과 합쳐 적는다. 하나도 없으면 빈 목록을 적어 다시 모으지 않는다. 그 전까지 앱은 달을 가리지 않는다.
 
 ### `invites/{code}`
@@ -87,7 +87,7 @@ holidays/{yyyy}
 가계부를 보고 권한을 확인한다. 그래서 아직 없는 가계부의 설정도 같은 일괄 쓰기 안에서는 만들 수 있고, 남의 가계부에는 만들 수 없다.
 
 규칙은 공통 기록 필드와 이름표의 id·이름 길이, 분류(`validCategory`)·결제수단(`validPaymentMethod`)·고정 지출(`validTemplate`)의
-받는 필드와 값을 확인한다. 앱의 모델은 [`lib/core/model`](../lib/core/model), 읽기·쓰기 변환 함수는 `lib/core/data/settings_repository.dart`에 있고,
+받는 필드와 값을 확인한다. 앱의 모델은 [`lib/domain/model`](../lib/domain/model), 읽기·쓰기 변환 함수는 `lib/data/settings/firestore_settings_repository.dart`에 있고,
 읽을 때 모르는 값은 앱이 건너뛴다.
 
 - 이름표·분류·결제수단은 **지울 수 없다**(규칙이 `templates`만 지우게 한다). 지난 항목이 이 id를 가리키고 있어서, 지우면 카드로 쓴 돈이
@@ -142,7 +142,7 @@ holidays/{yyyy}
 | `dueDay` | int (1~31) | 매달 예정일. 31은 말일이고, 그달에 없는 날(2월 30일)은 그달 말일이 된다 |
 
 - 규칙(`validTemplate`)이 위 필드와 공통 기록 필드만 받고 값의 범위를 확인한다. 앱의 쓰기 데이터는 `newTemplateData`·`templateUpdateData`
-  (`lib/core/data/templates_repository.dart`, 고칠 때 비운 금액은 `FieldValue.delete()`)다.
+  (`lib/data/templates/firestore_templates_repository.dart`, 고칠 때 비운 금액은 `FieldValue.delete()`)다.
 - 고정 지출은 온라인에서만 바꾼다. 더하기·고치기·지우기·되돌리기(같은 id로 다시 만들기)가 모두 트랜잭션이라 연결이 없으면 실패한다.
 - 고치거나 지워도 이미 만든 달의 기본 월 지출은 그대로다. 지운 고정 지출은 새 달에 만들지 않는다.
 
@@ -202,7 +202,7 @@ holidays/{yyyy}
 
 ### 고정 지출로 그달 기본 월 지출 만들기
 
-- 요약·항목 탭에서 **이번 달이나 다음 달**을 보면, 그달에 아직 없는 고정 지출의 기본 월 지출을 만든다(홈 틀의 `MonthFillController`).
+- 요약·항목 탭에서 **이번 달이나 다음 달**을 보면, 그달에 아직 없는 고정 지출의 기본 월 지출을 만든다(홈 틀의 `MonthFillNotifier`).
   지난 달과 다음 달보다 먼 달은 만들지 않는다(필요하면 + 버튼으로 직접 적는다). 달 목록(`months`)이 있는 가계부는 탭이 오가는 달
   (목록의 달·이번 달)만 채워서, 달력으로 다음 달을 지나가기만 해서는 그달이 생기지 않는다. 다음 달은 대개 아래 경우로 채운다.
 - 달력에서 가계부가 없는 달의 가계부를 만들면, 이번 달 이후의 달이면 그때 고정 지출로 그달을 채운다.
@@ -242,7 +242,7 @@ holidays/{yyyy}
 | `expireAt` | timestamp | 지울 때(남긴 때부터 1년). TTL 정책이 지운다. 규칙은 요청 시각보다 뒤이고 400일 이내만 받는다(오프라인에서 남겨 나중에 올라가는 기록도 받게 하한은 넉넉히 둔다) |
 
 - 추가만 가능하고 고치거나 지울 수 없다. 관리자·편집자만 남기고, 보기 전용을 포함한 구성원은 모두 읽는다.
-- 앱은 항목·고정 지출·설정을 쓰는 저장소에서 같은 일괄 쓰기·트랜잭션으로 남긴다(`newActivityData`, 요약은 `lib/core/data/activity_summary.dart`).
+- 앱은 항목·고정 지출·설정을 쓰는 저장소에서 같은 일괄 쓰기·트랜잭션으로 남긴다(`newActivityData`, 요약은 `lib/domain/activity/activity_summary.dart`).
   그래서 기록과 실제 변경이 함께 쓰이거나 함께 실패한다. 규칙은 기록이 같이 쓰였는지까지는 확인하지 않는다.
 - 남기는 동작: 항목 추가·고치기·휴지통·되살리기·완전 삭제, 고정 지출 추가·고치기·삭제·되돌리기,
   가계부 이름·이름표 이름 바꾸기, 분류·결제수단 추가·고치기·숨기기·다시 보이기.

@@ -1,17 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/data/providers.dart';
-import '../../core/model/category.dart';
-import '../../core/model/expense_template.dart';
-import '../../core/model/ledger_entries.dart';
-import '../../core/model/member.dart';
-import '../../core/model/payment_method.dart';
+import '../../core/providers/providers.dart';
+import '../../domain/model/category.dart';
+import '../../domain/model/expense_template.dart';
+import '../../domain/model/ledger_entries.dart';
+import '../../domain/model/member.dart';
+import '../../domain/model/payment_method.dart';
 import '../../core/widget/form_parts.dart';
 import '../../core/widget/keep_all.dart';
 import '../../core/widget/labeled_field.dart';
 import '../../core/widget/won_input.dart';
-import 'template_form_controller.dart';
+import 'template_form_notifier.dart';
 import 'template_list.dart';
 
 /// 입력란 아래에 보여 줄 문구.
@@ -46,7 +46,7 @@ class TemplateFormScreen extends ConsumerStatefulWidget {
 }
 
 class _TemplateFormScreenState extends ConsumerState<TemplateFormScreen> {
-  // 입력란 글자는 화면에만 필요한 상태라 위젯이 갖고, 저장할 때 컨트롤러에 넘긴다.
+  // 입력란 글자는 화면에만 필요한 상태라 위젯이 갖고, 저장할 때 Notifier에 넘긴다.
   late final TextEditingController _amount;
   late final TextEditingController _title;
 
@@ -66,7 +66,7 @@ class _TemplateFormScreenState extends ConsumerState<TemplateFormScreen> {
   }
 
   void _save() => ref
-      .read(templateFormControllerProvider(widget.args).notifier)
+      .read(templateFormNotifierProvider(widget.args).notifier)
       .save(amount: _amount.text, title: _title.text);
 
   Future<void> _pickDueDay(int? selected) async {
@@ -77,7 +77,7 @@ class _TemplateFormScreenState extends ConsumerState<TemplateFormScreen> {
     );
     if (picked == null || !mounted) return;
     ref
-        .read(templateFormControllerProvider(widget.args).notifier)
+        .read(templateFormNotifierProvider(widget.args).notifier)
         .selectDueDay(picked);
   }
 
@@ -85,15 +85,15 @@ class _TemplateFormScreenState extends ConsumerState<TemplateFormScreen> {
   Widget build(BuildContext context) {
     final args = widget.args;
     final isEdit = args.template != null;
-    final provider = templateFormControllerProvider(args);
+    final provider = templateFormNotifierProvider(args);
     final state = ref.watch(provider);
-    final controller = ref.read(provider.notifier);
+    final notifier = ref.read(provider.notifier);
     ref.listen(provider.select((s) => s.failure), (_, failure) {
       if (failure == null) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(keepAll(templateFormFailureMessage(failure)))),
       );
-      controller.failureShown();
+      notifier.failureShown();
     });
     ref.listen(provider.select((s) => s.outcome), (_, outcome) {
       if (outcome != null) Navigator.of(context).pop(outcome);
@@ -148,7 +148,7 @@ class _TemplateFormScreenState extends ConsumerState<TemplateFormScreen> {
             }),
           ),
           textInputAction: TextInputAction.done,
-          onChanged: (_) => controller.titleEdited(),
+          onChanged: (_) => notifier.titleEdited(),
         ),
       ),
       ChoiceGroup(
@@ -159,7 +159,7 @@ class _TemplateFormScreenState extends ConsumerState<TemplateFormScreen> {
               key: Key('template-member-${slot.name}'),
               label: memberIn(members, slot).name,
               selected: state.memberId == slot.name,
-              onSelected: enabled ? () => controller.selectMember(slot) : null,
+              onSelected: enabled ? () => notifier.selectMember(slot) : null,
             ),
         ],
       ),
@@ -174,7 +174,7 @@ class _TemplateFormScreenState extends ConsumerState<TemplateFormScreen> {
               label: category.name,
               selected: state.categoryId == category.id,
               onSelected: enabled
-                  ? () => controller.selectCategory(category.id)
+                  ? () => notifier.selectCategory(category.id)
                   : null,
             ),
         ],
@@ -192,7 +192,7 @@ class _TemplateFormScreenState extends ConsumerState<TemplateFormScreen> {
               label: method.name,
               selected: state.paymentMethodId == method.id,
               onSelected: enabled
-                  ? () => controller.selectPaymentMethod(method.id)
+                  ? () => notifier.selectPaymentMethod(method.id)
                   : null,
             ),
         ],
@@ -229,7 +229,7 @@ class _TemplateFormScreenState extends ConsumerState<TemplateFormScreen> {
                   foregroundColor: scheme.error,
                   minimumSize: const Size(64, 48),
                 ),
-                onPressed: enabled ? controller.delete : null,
+                onPressed: enabled ? notifier.delete : null,
                 icon: const Icon(Icons.delete_outline, size: 20),
                 label: const Text('삭제'),
               ),

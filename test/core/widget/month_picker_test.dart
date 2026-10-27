@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:shared_ledger/core/model/year_month.dart';
+import 'package:shared_ledger/domain/model/year_month.dart';
 import 'package:shared_ledger/core/widget/month_picker_sheet.dart';
 
 /// 단추로 시트를 열고, 닫힐 때 돌려준 달을 [onResult]로 넘긴다.

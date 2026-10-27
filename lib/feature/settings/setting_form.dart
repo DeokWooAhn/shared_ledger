@@ -1,6 +1,6 @@
-import '../../core/data/settings_repository.dart';
+import '../../domain/repository/settings_repository.dart';
 
-// 설정을 고치는 시트(이름 바꾸기·분류·결제수단)의 컨트롤러가 같이 쓰는 문제·실패와 검사.
+// 설정을 고치는 시트(이름 바꾸기·분류·결제수단)의 Notifier가 같이 쓰는 문제·실패와 검사.
 
 /// 이름 칸 아래에 보여 줄 문제.
 enum NameProblem {

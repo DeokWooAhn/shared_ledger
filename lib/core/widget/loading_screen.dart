@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../data/providers.dart';
+import '../providers/providers.dart';
 import 'keep_all.dart';
 import 'sign_out.dart';
 

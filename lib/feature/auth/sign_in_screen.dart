@@ -6,10 +6,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/widget/keep_all.dart';
 import '../../core/widget/wallet_glyph.dart';
-import 'sign_in_controller.dart';
+import 'sign_in_notifier.dart';
 
 /// 로그인 화면(design/app.pen의 01). Apple 로그인은 iOS에서만 보여준다.
-/// 카카오 로그인은 출시 준비 단계에서 붙인다. 로직은 [SignInController]에 있다.
+/// 카카오 로그인은 출시 준비 단계에서 붙인다. 로직은 [SignInNotifier]에 있다.
 class SignInScreen extends ConsumerWidget {
   const SignInScreen({super.key});
 
@@ -17,14 +17,14 @@ class SignInScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final state = ref.watch(signInControllerProvider);
-    final controller = ref.read(signInControllerProvider.notifier);
-    ref.listen(signInControllerProvider.select((s) => s.failed), (_, failed) {
+    final state = ref.watch(signInNotifierProvider);
+    final notifier = ref.read(signInNotifierProvider.notifier);
+    ref.listen(signInNotifierProvider.select((s) => s.failed), (_, failed) {
       if (!failed) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(keepAll('로그인하지 못했어요. 잠시 후 다시 시도해 주세요.'))),
       );
-      controller.failureShown();
+      notifier.failureShown();
     });
     final showApple = defaultTargetPlatform == TargetPlatform.iOS;
     final theme = Theme.of(context);
@@ -66,7 +66,7 @@ class SignInScreen extends ConsumerWidget {
                             ),
                             onPressed: state.busy
                                 ? null
-                                : () => controller.signIn(SignInMethod.apple),
+                                : () => notifier.signIn(SignInMethod.apple),
                             icon: const Icon(Icons.apple),
                             label: const Text('Apple로 계속하기'),
                           ),
@@ -76,7 +76,7 @@ class SignInScreen extends ConsumerWidget {
                           key: const Key('sign-in-google'),
                           onPressed: state.busy
                               ? null
-                              : () => controller.signIn(SignInMethod.google),
+                              : () => notifier.signIn(SignInMethod.google),
                           child: const Text('Google로 계속하기'),
                         ),
                       ],

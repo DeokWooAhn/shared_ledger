@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:shared_ledger/core/model/auth_user.dart';
-import 'package:shared_ledger/core/model/ledger.dart';
+import 'package:shared_ledger/domain/model/auth_user.dart';
+import 'package:shared_ledger/domain/model/ledger.dart';
 import 'package:shared_ledger/core/widget/keep_all.dart';
 import 'package:shared_ledger/feature/entries/entry_form_screen.dart';
 import 'package:shared_ledger/feature/home/home_shell.dart';
@@ -11,8 +11,8 @@ import 'package:shared_ledger/feature/settings/settings_screen.dart';
 import 'package:shared_ledger/feature/summary/summary_screen.dart';
 import 'package:shared_ledger/feature/templates/templates_screen.dart';
 
-import '../../support/app.dart';
-import '../../support/fakes.dart';
+import '../../../testing/app.dart';
+import '../../../testing/fakes.dart';
 
 const me = AuthUser(uid: 'me');
 const mine = Ledger(id: 'l1', name: '우리 가계부', ownerUid: 'me');

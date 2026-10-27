@@ -2,7 +2,7 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 
-import '../model/year_month.dart';
+import '../../domain/model/year_month.dart';
 import '../theme/app_theme.dart';
 
 /// 달 고르기 시트의 최대 폭. 넓은 화면에서도 휠이 너무 벌어지지 않게 한다.

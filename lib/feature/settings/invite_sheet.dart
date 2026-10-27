@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/model/ledger.dart';
+import '../../domain/model/ledger.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widget/keep_all.dart';
-import 'invite_controller.dart';
+import 'invite_notifier.dart';
 import 'member_role_label.dart';
 
 /// 초대 코드가 언제까지 유효한지 보여주는 문구. 예: '10월 28일 오후 3:05까지 쓸 수 있어요'
@@ -40,8 +40,8 @@ class _InviteSheetState extends ConsumerState<InviteSheet> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final state = ref.watch(inviteControllerProvider);
-    final controller = ref.read(inviteControllerProvider.notifier);
+    final state = ref.watch(inviteNotifierProvider);
+    final notifier = ref.read(inviteNotifierProvider.notifier);
     final invite = state.invite;
     return SafeArea(
       child: Padding(
@@ -73,7 +73,7 @@ class _InviteSheetState extends ConsumerState<InviteSheet> {
                     selected: {state.role},
                     onSelectionChanged: state.pending
                         ? null
-                        : (selection) => controller.selectRole(selection.first),
+                        : (selection) => notifier.selectRole(selection.first),
                   ),
                   const SizedBox(height: 8),
                   Text(
@@ -98,7 +98,7 @@ class _InviteSheetState extends ConsumerState<InviteSheet> {
                     key: const Key('confirm-invite'),
                     onPressed: state.pending
                         ? null
-                        : () => controller.create(
+                        : () => notifier.create(
                             ledgerId: widget.ledgerId,
                             createdBy: widget.uid,
                           ),

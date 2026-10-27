@@ -1,22 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:shared_ledger/core/data/ledger_repository.dart';
-import 'package:shared_ledger/core/model/auth_user.dart';
-import 'package:shared_ledger/core/model/category.dart';
-import 'package:shared_ledger/core/model/ledger.dart';
-import 'package:shared_ledger/core/model/ledger_entries.dart';
-import 'package:shared_ledger/core/model/month_ledger.dart';
-import 'package:shared_ledger/core/model/payment_method.dart';
-import 'package:shared_ledger/core/model/year_month.dart';
+import 'package:shared_ledger/domain/repository/ledger_repository.dart';
+import 'package:shared_ledger/domain/model/auth_user.dart';
+import 'package:shared_ledger/domain/model/category.dart';
+import 'package:shared_ledger/domain/model/ledger.dart';
+import 'package:shared_ledger/domain/model/ledger_entries.dart';
+import 'package:shared_ledger/domain/model/month_ledger.dart';
+import 'package:shared_ledger/domain/model/payment_method.dart';
+import 'package:shared_ledger/domain/model/year_month.dart';
 import 'package:shared_ledger/core/widget/tab_page.dart';
 import 'package:shared_ledger/feature/home/home_shell.dart';
 import 'package:shared_ledger/feature/ledger/ledger_start_screen.dart';
 import 'package:shared_ledger/feature/settings/invite_sheet.dart';
 import 'package:shared_ledger/feature/summary/summary_screen.dart';
 
-import 'support/app.dart';
-import 'support/fakes.dart';
+import '../testing/app.dart';
+import '../testing/fakes.dart';
 
 const me = AuthUser(uid: 'me');
 const partnerLedger = Ledger(

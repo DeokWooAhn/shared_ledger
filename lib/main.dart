@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'app.dart';
+import 'di.dart';
 import 'firebase_options.dart';
 
 /// 개발할 때 운영 DB 대신 로컬 Firestore 에뮬레이터를 쓰려면
@@ -30,5 +31,10 @@ Future<void> main() async {
       automaticHostMapping: false,
     );
   }
-  runApp(const ProviderScope(child: SharedLedgerApp()));
+  runApp(
+    ProviderScope(
+      overrides: repositoryOverrides(),
+      child: const SharedLedgerApp(),
+    ),
+  );
 }

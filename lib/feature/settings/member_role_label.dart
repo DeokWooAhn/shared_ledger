@@ -1,4 +1,4 @@
-import '../../core/model/ledger.dart';
+import '../../domain/model/ledger.dart';
 
 /// 화면에 보이는 역할 이름.
 String memberRoleLabel(MemberRole role) => switch (role) {
