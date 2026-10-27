@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/widget/keep_all.dart';
+import '../../domain/model/name_problem.dart';
 import 'setting_form.dart';
 
 // 설정을 고치는 아래 시트(이름 바꾸기·분류·결제수단)가 같이 쓰는 틀과 문구.

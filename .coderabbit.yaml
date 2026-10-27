@@ -131,7 +131,7 @@ reviews:
     - path: "lib/domain/**/*.dart"
       instructions: |-
         도메인 레이어 — 순수 Dart. 모델(model), 계산 규칙(budget), 저장소 인터페이스·도메인 실패·쓰기 입력(repository),
-        변경 기록 요약(activity), 원 표기(format).
+        UseCase(usecase), 변경 기록 요약(activity), 원 표기(format).
 
         가장 중요한 불변조건:
         - `package:` import 가 하나라도 들어오면 반드시 지적(`flutter`, `cloud_firestore`, `firebase_auth`, `flutter_riverpod` 등).
@@ -151,6 +151,16 @@ reviews:
         - 불변(`final` 필드, `const` 생성자), 값 비교가 필요하면 `==`/`hashCode`
         - 역할·권한 판단과 두 명 제한(`ledger.dart`)은 `firestore.rules` 와 같은 내용이어야 한다. 한쪽만 바뀌면 반드시 지적
         - enum 값을 추가하면 Firestore 에서 읽을 때 모르는 값을 건너뛰는 처리(`ledgerFromFirestore`)도 확인
+    - path: "lib/domain/usecase/**/*.dart"
+      instructions: |-
+        UseCase (AGENTS.md 'UseCase'). 정석 레퍼런스는 `lib/domain/usecase/settings/save_category_use_case.dart` 와 홀더 `settings_use_cases.dart`.
+        - 파일 하나에 UseCase 하나, 공개 메서드는 `call()` 하나. 메서드가 늘거나 한 파일에 UseCase 가 여럿이면 지적
+        - 저장소와 시간은 생성자로 받는다(`DateTime Function() now`). 안에서 `DateTime.now()` 를 읽거나 구현(`lib/data`)을 만들면 지적
+        - 쓰기 전에 그 영역의 domain 검사 함수(`categoryNameProblemOf` 등)로 다시 검사하고, 걸리면 쓰지 않고 문제를 값으로 돌려주는지.
+          Notifier 만 검사하고 UseCase 가 그대로 쓰면 지적
+        - 저장소 실패(`XxxWriteException`)를 삼키거나 화면용 실패로 바꾸면 지적. 그대로 던지고 Notifier 가 바꾼다
+        - 새 UseCase 는 영역 홀더(`XxxUseCases`)의 필드(클래스 이름에서 UseCase 를 뺀 이름)로 들어가고 `test/domain/usecase/` 에 테스트가 있어야 한다
+        - Riverpod(`AsyncValue`)·화면에 그리려고 묶는 규칙(`mergeActivities`)이 들어오면 지적
     - path: "lib/data/**/*.dart"
       instructions: |-
         데이터 레이어 — domain 의 저장소 인터페이스를 Firebase 로 구현한 것과 문서 ↔ 모델 변환 함수.
@@ -186,6 +196,8 @@ reviews:
         앱 공통 공급자(Riverpod). domain 만 본다.
         - `repositories.dart` 의 저장소 공급자는 구현을 모르는 자리다. 여기서 `lib/data`·Firebase 를 import 하거나 구현을 만들면 반드시 지적.
           구현은 `lib/di.dart` 가 넣는다
+        - `usecases.dart` 는 영역별 UseCase 홀더 공급자(`xxxUseCasesProvider`)이고 저장소 공급자로 만든다
+        - `providers.dart` 의 공급자가 저장소 공급자를 직접 부르면 지적. 구독은 홀더의 `watch…` UseCase 로 연다
         - 공급자 안에서 다른 공급자는 `ref.watch` 로 의존한다. `ref.read` 로 읽으면 바뀌어도 다시 계산되지 않는다
         - 로그인하지 않았을 때 빈 값을 내보내는지 (`myLedgersProvider`)
         - 공급자 본문에서 쓰기·외부 요청 같은 부수효과를 일으키지 말 것
@@ -209,7 +221,9 @@ reviews:
         - `Notifier<불변 State>` + `NotifierProvider.autoDispose`. 화면을 넘어 살아야 하는 상태만 autoDispose 를 뺀다
         - 이름은 `XxxNotifier`, 파일은 `_notifier.dart`, 공급자는 `xxxNotifierProvider`. `XxxController` 로 새로 만들면 지적(2026-10-27에 바꿈)
         - `package:flutter/material.dart`·위젯·`BuildContext` 를 쓰면 지적. Notifier 는 화면을 모른다
-        - Firebase 패키지나 `lib/data` 를 import 하면 반드시 지적. domain 의 저장소 인터페이스와 core 의 공급자만 쓴다
+        - Firebase 패키지나 `lib/data` 를 import 하면 반드시 지적
+        - 저장소 공급자(`xxxRepositoryProvider`, `lib/core/providers/repositories.dart`)를 읽으면 지적. UseCase 홀더(`xxxUseCasesProvider`)를 부른다
+        - 입력 검사는 domain 함수(`nameProblemOf` 등)로 먼저 해서 '진행 중' 없이 문제를 보여 주는지. 검사를 Notifier 안에 새로 짜면 domain 으로 올리라고 지적
         - 사용자 동작은 메서드로 받는다. 공개 메서드에는 무엇을 하는지 한국어 문서 주석
 
         State:
@@ -242,6 +256,7 @@ reviews:
         레이어 규칙:
         - 다른 `lib/feature/*` 폴더를 import 하면 지적. 둘 이상이 쓰는 위젯·공급자는 `lib/core` 로, 화면과 상관없는 규칙은 `lib/domain` 으로 올린다
         - `lib/data` 나 `cloud_firestore`·`firebase_auth`·`google_sign_in` 을 import 하면 반드시 지적. core 의 공급자만 쓴다
+        - `lib/core/providers/repositories.dart` 를 import 하거나 저장소 공급자를 읽으면 지적. 저장소 호출은 UseCase 홀더(`usecases.dart`)로 한다
         - 로그인·가계부 만들기·불러오는 중 화면으로 직접 `context.go` 하면 지적. `router.dart` 의 `redirectFor` 가 상태를 보고 옮긴다
         - 컨셉이 커플·부부라 화면 문구에 '가구'·'가족' 을 쓰면 지적. 한 가계부에 두 명까지다
         - 색은 `Theme.of(context)`·`context.appColors` 에서 꺼낸다. `AppPalette` 를 화면에서 직접 쓰면 지적
@@ -331,6 +346,10 @@ reviews:
         - 테스트 데이터는 가상이어야 한다. 실제 금액·이름·이메일이면 반드시 지적
         - 초기값과 기대값이 같아 아무것도 검증하지 못하는 단언 지적
         - 새 저장소·계산 함수·`AppGate` 경우가 추가됐는데 테스트가 없으면 지적
+
+        UseCase 테스트(`test/domain/usecase/<영역>/<영역>_use_cases_test.dart`):
+        - 홀더를 `testing/fakes.dart` 의 가짜 저장소로 바로 만든다. `ProviderContainer` 는 쓰지 않는다
+        - 넘긴 값, 검사에 걸리거나 바뀐 것이 없으면 쓰지 않는 것(호출 기록이 빈지), 저장소 실패를 그대로 던지는 것을 보는지
 
         Notifier 테스트:
         - `testing/provider_container.dart` 의 `createContainer`·`loadSignedInUser`·`recordStates` 로 가짜를 끼운다

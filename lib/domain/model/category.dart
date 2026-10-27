@@ -1,3 +1,5 @@
+import 'name_problem.dart';
+
 /// 분류 이름 길이 제한. `firestore.rules`의 validCategory와 같다.
 const categoryNameMaxLength = 20;
 
@@ -43,3 +45,19 @@ List<Category> choosableCategories(
   for (final category in categories)
     if (!category.hidden || keep.contains(category.id)) category,
 ];
+
+/// 분류 이름 [name]을 검사한다. 문제가 없으면 null.
+///
+/// [categories](숨긴 것 포함)에서 고치는 분류 [editing] 말고 다른 분류와 이름이 겹치면 안 된다.
+NameProblem? categoryNameProblemOf(
+  String name,
+  List<Category> categories, {
+  Category? editing,
+}) => nameProblemOf(
+  name,
+  maxLength: categoryNameMaxLength,
+  taken: [
+    for (final other in categories)
+      if (other.id != editing?.id) other.name,
+  ],
+);
