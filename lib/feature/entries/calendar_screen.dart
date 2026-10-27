@@ -3,22 +3,22 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/data/providers.dart';
-import '../../core/model/holidays.dart';
-import '../../core/model/ledger_entries.dart';
-import '../../core/model/member.dart';
-import '../../core/model/month_ledger.dart';
-import '../../core/model/payment_method.dart';
-import '../../core/model/year_month.dart';
+import '../../core/providers/providers.dart';
+import '../../domain/model/holidays.dart';
+import '../../domain/model/ledger_entries.dart';
+import '../../domain/model/member.dart';
+import '../../domain/model/month_ledger.dart';
+import '../../domain/model/payment_method.dart';
+import '../../domain/model/year_month.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widget/back_circle_button.dart';
 import '../../core/widget/keep_all.dart';
 import '../../core/widget/month_header.dart';
 import '../../core/widget/month_picker_sheet.dart';
-import '../../core/widget/won.dart';
+import '../../domain/format/won.dart';
 import 'calendar_days.dart';
-import 'entries_controller.dart';
-import 'entry_form_controller.dart';
+import 'entries_notifier.dart';
+import 'entry_form_notifier.dart';
 import 'entry_row.dart';
 
 /// 화면 폭이 이 폭 이상이면 달력과 고른 날 목록을 두 칸으로 놓는다.
@@ -50,7 +50,7 @@ String calendarDayTitle(DateTime date) =>
 /// (지난 달은 채우지 않는다).
 /// 그런 달을 보다가 닫으면 두 탭은 달력을 열었던 달로 돌아간다.
 /// 달을 옮기면 요약·항목 탭의 달도 같이 옮긴다. 공휴일은 일요일처럼 빨간색이다. 왼쪽 위 뒤로 단추로 닫는다.
-/// 저장소를 부르는 동작이 없어 컨트롤러 없이 공급자만 읽고, 고른 날과 판 위치는 이 화면에서만 쓰는 상태라 위젯에 둔다.
+/// 저장소를 부르는 동작이 없어 Notifier 없이 공급자만 읽고, 고른 날과 판 위치는 이 화면에서만 쓰는 상태라 위젯에 둔다.
 class CalendarScreen extends ConsumerStatefulWidget {
   const CalendarScreen({required this.openForm, super.key});
 
@@ -161,15 +161,12 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
   Widget build(BuildContext context) {
     final month = ref.watch(selectedMonthProvider);
     ref.listen(selectedMonthProvider, (_, month) => _showMonth(month));
-    ref.listen(entriesControllerProvider.select((s) => s.failure), (
-      _,
-      failure,
-    ) {
+    ref.listen(entriesNotifierProvider.select((s) => s.failure), (_, failure) {
       if (failure == null) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(keepAll(entriesFailureMessage(failure)))),
       );
-      ref.read(entriesControllerProvider.notifier).failureShown();
+      ref.read(entriesNotifierProvider.notifier).failureShown();
     });
     final ledger = ref.watch(monthLedgerProvider);
     final paymentMethods = ref.watch(paymentMethodsProvider);
@@ -834,7 +831,7 @@ class _DayPanel extends ConsumerWidget {
                             addMonth: hasLedger
                                 ? null
                                 : () => ref
-                                      .read(entriesControllerProvider.notifier)
+                                      .read(entriesNotifierProvider.notifier)
                                       .addMonth(month),
                             templateCount: templateCount,
                           ),
@@ -874,7 +871,7 @@ class _DayPanel extends ConsumerWidget {
 }
 
 // 그날로 추가지출을 연다. [addMonth]가 있으면(그달 가계부가 없음) 새로 만들지 먼저 묻고, 만든다고 하면 그달 가계부를
-// 만든 뒤(고정 지출이 채워진다) 연다. 취소하거나 만들지 못하면(실패는 컨트롤러가 알린다) 열지 않는다.
+// 만든 뒤(고정 지출이 채워진다) 연다. 취소하거나 만들지 못하면(실패는 Notifier가 알린다) 열지 않는다.
 Future<void> _addOn(
   BuildContext context,
   OpenEntryForm openForm,

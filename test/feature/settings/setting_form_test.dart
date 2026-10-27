@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:shared_ledger/core/data/settings_repository.dart';
+import 'package:shared_ledger/domain/repository/settings_repository.dart';
 import 'package:shared_ledger/feature/settings/setting_form.dart';
 
 void main() {

@@ -23,7 +23,7 @@ description: 심플 공유 가계부(shared_ledger)에서 코드를 바꾼 뒤 �
 모두 저장소 루트에서 실행한다. 전역 `flutter`가 아니라 `fvm flutter`다(AGENTS.md '환경 함정').
 
 ```bash
-fvm dart format --output=none --set-exit-if-changed lib test   # CI와 같은 포맷 검사
+fvm dart format --output=none --set-exit-if-changed lib test testing   # CI와 같은 포맷 검사
 fvm flutter analyze
 fvm flutter test
 fvm flutter build apk --debug

@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/data/providers.dart';
-import '../../core/model/auth_user.dart';
-import '../../core/model/ledger.dart';
-import '../../core/model/member.dart';
+import '../../core/providers/providers.dart';
+import '../../domain/model/auth_user.dart';
+import '../../domain/model/ledger.dart';
+import '../../domain/model/member.dart';
 import '../../core/widget/keep_all.dart';
 import '../../core/widget/member_avatar.dart';
 import '../../core/widget/sign_out.dart';
@@ -12,7 +12,7 @@ import '../../core/widget/tab_page.dart';
 import '../../core/widget/wallet_glyph.dart';
 import 'invite_sheet.dart';
 import 'member_role_label.dart';
-import 'rename_controller.dart';
+import 'rename_notifier.dart';
 import 'rename_sheet.dart';
 import 'setting_list.dart';
 import 'setting_sheet.dart';

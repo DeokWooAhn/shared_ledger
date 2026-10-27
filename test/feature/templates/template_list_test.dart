@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:shared_ledger/core/model/category.dart';
-import 'package:shared_ledger/core/model/expense_template.dart';
+import 'package:shared_ledger/domain/model/category.dart';
+import 'package:shared_ledger/domain/model/expense_template.dart';
 import 'package:shared_ledger/feature/templates/template_list.dart';
 
 ExpenseTemplate template(

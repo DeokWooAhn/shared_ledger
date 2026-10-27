@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../core/model/ledger_entries.dart';
+import '../../domain/model/ledger_entries.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widget/entry_kind_label.dart';
 

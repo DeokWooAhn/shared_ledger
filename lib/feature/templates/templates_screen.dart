@@ -3,18 +3,18 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/data/providers.dart';
-import '../../core/model/category.dart';
-import '../../core/model/expense_template.dart';
-import '../../core/model/member.dart';
-import '../../core/model/payment_method.dart';
+import '../../core/providers/providers.dart';
+import '../../domain/model/category.dart';
+import '../../domain/model/expense_template.dart';
+import '../../domain/model/member.dart';
+import '../../domain/model/payment_method.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widget/keep_all.dart';
 import '../../core/widget/tab_page.dart';
-import '../../core/widget/won.dart';
-import 'template_form_controller.dart';
+import '../../domain/format/won.dart';
+import 'template_form_notifier.dart';
 import 'template_list.dart';
-import 'templates_controller.dart';
+import 'templates_notifier.dart';
 
 /// 고정 지출 입력 화면을 열고, 닫힐 때의 결과를 돌려준다. 화면 이동은 router.dart가 정해서 넘겨준다.
 typedef OpenTemplateForm =
@@ -31,7 +31,7 @@ String templatesFailureMessage(TemplatesFailure failure) => switch (failure) {
 
 /// 고정 지출 탭(design/app/06). 매달 나가는 돈의 합계와, 분류마다 묶은 고정 지출을 보여준다.
 ///
-/// 새 달(이번 달·다음 달)을 열면 이 목록으로 그달 기본 월 지출이 만들어진다(홈 틀의 MonthFillController).
+/// 새 달(이번 달·다음 달)을 열면 이 목록으로 그달 기본 월 지출이 만들어진다(홈 틀의 MonthFillNotifier).
 /// 줄을 누르면 입력 화면에서 고치거나 지운다. 보기 전용은 보기만 한다.
 class TemplatesScreen extends ConsumerWidget {
   const TemplatesScreen({required this.openForm, super.key});
@@ -40,7 +40,7 @@ class TemplatesScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    ref.listen(templatesControllerProvider.select((s) => s.failure), (
+    ref.listen(templatesNotifierProvider.select((s) => s.failure), (
       _,
       failure,
     ) {
@@ -48,7 +48,7 @@ class TemplatesScreen extends ConsumerWidget {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(keepAll(templatesFailureMessage(failure)))),
       );
-      ref.read(templatesControllerProvider.notifier).failureShown();
+      ref.read(templatesNotifierProvider.notifier).failureShown();
     });
     return TabPage(
       header: const TabTitle(
@@ -110,7 +110,7 @@ class _TemplatesContent extends ConsumerWidget {
   ) async {
     // await 뒤에는 context가 사라졌을 수 있어서 미리 잡아 둔다.
     final messenger = ScaffoldMessenger.of(context);
-    final controller = ref.read(templatesControllerProvider.notifier);
+    final notifier = ref.read(templatesNotifierProvider.notifier);
     final outcome = await openForm(context, TemplateFormArgs.edit(template));
     if (outcome != TemplateFormOutcome.deleted) return;
     messenger.showSnackBar(
@@ -123,7 +123,7 @@ class _TemplatesContent extends ConsumerWidget {
         action: SnackBarAction(
           key: const Key('restore-template'),
           label: '되돌리기',
-          onPressed: () => controller.restore(template),
+          onPressed: () => notifier.restore(template),
         ),
       ),
     );

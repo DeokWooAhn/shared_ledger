@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/data/providers.dart';
-import '../../core/model/activity.dart';
-import '../../core/model/ledger.dart';
-import '../../core/model/member.dart';
+import '../../core/providers/providers.dart';
+import '../../domain/model/activity.dart';
+import '../../domain/model/ledger.dart';
+import '../../domain/model/member.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widget/keep_all.dart';
 import '../../core/widget/member_avatar.dart';
 import '../../core/widget/tab_page.dart';
-import 'activity_controller.dart';
+import 'activity_notifier.dart';
 import 'setting_list.dart';
 
 /// 기록 줄에 붙이는 동작 표시. 모르는 동작(새 버전 앱이 남긴 것)은 '변경'이다.
@@ -63,12 +63,9 @@ class ActivityScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final state = ref.watch(activityControllerProvider);
-    final controller = ref.read(activityControllerProvider.notifier);
-    ref.listen(activityControllerProvider.select((s) => s.failure), (
-      _,
-      failure,
-    ) {
+    final state = ref.watch(activityNotifierProvider);
+    final notifier = ref.read(activityNotifierProvider.notifier);
+    ref.listen(activityNotifierProvider.select((s) => s.failure), (_, failure) {
       if (failure == null) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -80,7 +77,7 @@ class ActivityScreen extends ConsumerWidget {
           ),
         ),
       );
-      controller.failureShown();
+      notifier.failureShown();
     });
     return TabPage(
       header: const SubPageTitle(
@@ -97,7 +94,7 @@ class ActivityScreen extends ConsumerWidget {
             const SettingListMessage('아직 변경 기록이 없어요. 항목이나 설정을 바꾸면 여기에 남아요.'),
           ActivityLoad.ready => _ActivityContent(
             state: state,
-            onMore: controller.loadMore,
+            onMore: notifier.loadMore,
           ),
         },
       ],

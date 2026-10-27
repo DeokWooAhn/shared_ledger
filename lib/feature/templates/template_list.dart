@@ -1,5 +1,5 @@
-import '../../core/model/category.dart';
-import '../../core/model/expense_template.dart';
+import '../../domain/model/category.dart';
+import '../../domain/model/expense_template.dart';
 
 /// 예정일 글자. 예: '25일', '말일'
 String dueDayLabel(int dueDay) => dueDay == lastDueDay ? '말일' : '$dueDay일';

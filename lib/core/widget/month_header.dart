@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../data/providers.dart';
-import '../model/year_month.dart';
+import '../providers/providers.dart';
+import '../../domain/model/year_month.dart';
 import 'member_avatar.dart';
 
 /// 연도까지 붙인 달 이름. 예: '2026년 10월'

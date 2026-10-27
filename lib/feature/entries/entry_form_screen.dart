@@ -1,16 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/data/providers.dart';
-import '../../core/model/category.dart';
-import '../../core/model/ledger_entries.dart';
-import '../../core/model/member.dart';
-import '../../core/model/payment_method.dart';
+import '../../core/providers/providers.dart';
+import '../../domain/model/category.dart';
+import '../../domain/model/ledger_entries.dart';
+import '../../domain/model/member.dart';
+import '../../domain/model/payment_method.dart';
 import '../../core/widget/form_parts.dart';
 import '../../core/widget/keep_all.dart';
 import '../../core/widget/labeled_field.dart';
 import '../../core/widget/won_input.dart';
-import 'entry_form_controller.dart';
+import 'entry_form_notifier.dart';
 import 'entry_kind_tabs.dart';
 
 /// 입력란 아래에 보여 줄 문구.
@@ -63,7 +63,7 @@ class EntryFormScreen extends ConsumerStatefulWidget {
 }
 
 class _EntryFormScreenState extends ConsumerState<EntryFormScreen> {
-  // 입력란 글자는 화면에만 필요한 상태라 위젯이 갖고, 저장할 때 컨트롤러에 넘긴다.
+  // 입력란 글자는 화면에만 필요한 상태라 위젯이 갖고, 저장할 때 Notifier에 넘긴다.
   late final TextEditingController _amount;
   late final TextEditingController _title;
   late final TextEditingController _memo;
@@ -93,7 +93,7 @@ class _EntryFormScreenState extends ConsumerState<EntryFormScreen> {
   }
 
   void _save() => ref
-      .read(entryFormControllerProvider(widget.args).notifier)
+      .read(entryFormNotifierProvider(widget.args).notifier)
       .save(amount: _amount.text, title: _title.text, memo: _memo.text);
 
   Future<void> _pickDate(EntryFormState state) async {
@@ -119,7 +119,7 @@ class _EntryFormScreenState extends ConsumerState<EntryFormScreen> {
     );
     if (picked == null || !mounted) return;
     ref
-        .read(entryFormControllerProvider(widget.args).notifier)
+        .read(entryFormNotifierProvider(widget.args).notifier)
         .selectDate(picked);
   }
 
@@ -127,15 +127,15 @@ class _EntryFormScreenState extends ConsumerState<EntryFormScreen> {
   Widget build(BuildContext context) {
     final args = widget.args;
     final isEdit = args.entry != null;
-    final provider = entryFormControllerProvider(args);
+    final provider = entryFormNotifierProvider(args);
     final state = ref.watch(provider);
-    final controller = ref.read(provider.notifier);
+    final notifier = ref.read(provider.notifier);
     ref.listen(provider.select((s) => s.failure), (_, failure) {
       if (failure == null) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(keepAll(entryFormFailureMessage(failure)))),
       );
-      controller.failureShown();
+      notifier.failureShown();
     });
     ref.listen(provider.select((s) => s.outcome), (_, outcome) {
       if (outcome != null) Navigator.of(context).pop(outcome);
@@ -179,7 +179,7 @@ class _EntryFormScreenState extends ConsumerState<EntryFormScreen> {
     final fields = <Widget>[
       EntryKindTabs(
         selected: kind,
-        onSelect: isEdit || !enabled ? null : controller.selectKind,
+        onSelect: isEdit || !enabled ? null : notifier.selectKind,
       ),
       WonAmountField(
         controller: _amount,
@@ -188,7 +188,7 @@ class _EntryFormScreenState extends ConsumerState<EntryFormScreen> {
         autofocus: !isEdit,
         enabled: enabled,
         errorText: errorOf({EntryProblem.amountMissing}),
-        onChanged: (_) => controller.textEdited(EntryTextField.amount),
+        onChanged: (_) => notifier.textEdited(EntryTextField.amount),
       ),
       if (kind != EntryKind.cardBill)
         LabeledField(
@@ -207,7 +207,7 @@ class _EntryFormScreenState extends ConsumerState<EntryFormScreen> {
               }),
             ),
             textInputAction: TextInputAction.next,
-            onChanged: (_) => controller.textEdited(EntryTextField.title),
+            onChanged: (_) => notifier.textEdited(EntryTextField.title),
           ),
         ),
       ChoiceGroup(
@@ -218,7 +218,7 @@ class _EntryFormScreenState extends ConsumerState<EntryFormScreen> {
               key: Key('entry-member-${slot.name}'),
               label: memberIn(members, slot).name,
               selected: state.memberId == slot.name,
-              onSelected: enabled ? () => controller.selectMember(slot) : null,
+              onSelected: enabled ? () => notifier.selectMember(slot) : null,
             ),
         ],
       ),
@@ -234,7 +234,7 @@ class _EntryFormScreenState extends ConsumerState<EntryFormScreen> {
                 label: category.name,
                 selected: state.categoryId == category.id,
                 onSelected: enabled
-                    ? () => controller.selectCategory(category.id)
+                    ? () => notifier.selectCategory(category.id)
                     : null,
               ),
           ],
@@ -253,7 +253,7 @@ class _EntryFormScreenState extends ConsumerState<EntryFormScreen> {
                 label: method.name,
                 selected: state.paymentMethodId == method.id,
                 onSelected: enabled
-                    ? () => controller.selectPaymentMethod(method.id)
+                    ? () => notifier.selectPaymentMethod(method.id)
                     : null,
               ),
           ],
@@ -269,16 +269,14 @@ class _EntryFormScreenState extends ConsumerState<EntryFormScreen> {
                 key: Key('entry-card-${card.id}'),
                 label: card.name,
                 selected: state.cardId == card.id,
-                onSelected: enabled
-                    ? () => controller.selectCard(card.id)
-                    : null,
+                onSelected: enabled ? () => notifier.selectCard(card.id) : null,
               ),
           ],
         ),
       if (kind == EntryKind.planned)
         _PaidSwitch(
           paid: state.paid,
-          onChanged: enabled ? controller.setPaid : null,
+          onChanged: enabled ? notifier.setPaid : null,
         ),
       if (kind != EntryKind.planned || state.paid)
         _DateField(
@@ -287,7 +285,7 @@ class _EntryFormScreenState extends ConsumerState<EntryFormScreen> {
           // 기본 월 지출의 지급한 날은 지급 완료 스위치로 비운다.
           onClear: kind == EntryKind.planned || !enabled
               ? null
-              : controller.clearDate,
+              : notifier.clearDate,
           onTap: enabled ? () => _pickDate(state) : null,
         ),
       LabeledField(
@@ -303,7 +301,7 @@ class _EntryFormScreenState extends ConsumerState<EntryFormScreen> {
             errorText: errorOf({EntryProblem.memoTooLong}),
           ),
           textInputAction: TextInputAction.done,
-          onChanged: (_) => controller.textEdited(EntryTextField.memo),
+          onChanged: (_) => notifier.textEdited(EntryTextField.memo),
         ),
       ),
       Padding(
@@ -324,7 +322,7 @@ class _EntryFormScreenState extends ConsumerState<EntryFormScreen> {
                   foregroundColor: scheme.error,
                   minimumSize: const Size(64, 48),
                 ),
-                onPressed: enabled ? controller.trash : null,
+                onPressed: enabled ? notifier.trash : null,
                 icon: const Icon(Icons.delete_outline, size: 20),
                 label: const Text('휴지통에 넣기'),
               ),

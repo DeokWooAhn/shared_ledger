@@ -1,6 +1,6 @@
-import '../../core/model/category.dart';
-import '../../core/model/ledger_entries.dart';
-import '../../core/model/month_ledger.dart';
+import '../../domain/model/category.dart';
+import '../../domain/model/ledger_entries.dart';
+import '../../domain/model/month_ledger.dart';
 
 /// 항목 탭 목록의 한 묶음. 기본 월 지출은 분류마다 묶고, 다른 종류는 제목 없는 한 묶음이다.
 class EntryGroup {

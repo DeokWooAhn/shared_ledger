@@ -34,29 +34,29 @@
 
 ```
 lib/
+  domain/               모델, 월 요약 계산 규칙, 저장소 인터페이스 (순수 Dart)
+  data/                 저장소를 Firestore·Firebase Authentication으로 구현
+  core/                 공용 공급자(Riverpod), 디자인 토큰(design/app.pen)으로 만든 테마, 공용 위젯
+  feature/<기능>/        기능별 화면: View(*_screen.dart) + Notifier(*_notifier.dart)
   main.dart, app.dart   앱 시작점
   router.dart           로그인·가계부 상태에 따라 보여 줄 화면을 정함 (go_router)
-  core/
-    budget/             월 요약 계산 규칙 (순수 Dart)
-    model/              가계부 항목·분류·결제수단·구성원 역할 모델 (순수 Dart)
-    data/               로그인·가계부 저장소 인터페이스, Firebase 구현, Riverpod 공급자
-    theme/              디자인 토큰(design/app.pen)으로 만든 앱 테마
-    widget/             공용 위젯
-  feature/<기능>/        기능별 화면: View(*_screen.dart) + 컨트롤러(*_controller.dart, Riverpod Notifier)
+  di.dart               저장소 인터페이스에 Firebase 구현을 넣음
+testing/                테스트용 가짜 저장소와 도우미
 firestore.rules         보안 규칙
 firestore-tests/        보안 규칙 테스트 (Firestore 에뮬레이터)
 functions/              Cloud Functions (공휴일을 특일 API에서 받아 Firestore에 둔다)
 design/                 화면 디자인(Pencil)과 내보낸 이미지
 ```
 
-폴더 간 의존 규칙은 [AGENTS.md](AGENTS.md)의 '구조', 컬렉션 구조와 역할별 권한은 [docs/firestore.md](docs/firestore.md)에 있습니다.
+Flutter 공식 아키텍처 가이드처럼 패키지 하나 안에서 레이어를 폴더로 나눴습니다.
+폴더 간 의존 규칙은 [AGENTS.md](AGENTS.md)의 '프로젝트 구조'(검사: `test/architecture_test.dart`), 컬렉션 구조와 역할별 권한은 [docs/firestore.md](docs/firestore.md)에 있습니다.
 
 ## 기술 구성
 
 | 영역 | 사용 |
 | --- | --- |
 | 앱 | Flutter 3.47.7 (fvm으로 고정), Dart 3.13 |
-| 상태 관리 / 화면 이동 | Riverpod 3(화면은 MVVM: Notifier 컨트롤러) / go_router |
+| 상태 관리 / 화면 이동 | Riverpod 3(화면은 MVVM: View + Notifier) / go_router |
 | 서버 | Firebase Authentication, Cloud Firestore (asia-northeast3) |
 | 로그인 | google_sign_in, Firebase Apple 로그인 |
 | iOS 의존성 | Swift Package Manager |

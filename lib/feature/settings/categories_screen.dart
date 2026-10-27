@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/data/providers.dart';
-import '../../core/model/category.dart';
+import '../../core/providers/providers.dart';
+import '../../domain/model/category.dart';
 import '../../core/widget/keep_all.dart';
 import '../../core/widget/tab_page.dart';
-import 'category_form_controller.dart';
+import 'category_form_notifier.dart';
 import 'category_sheet.dart';
 import 'setting_form.dart';
 import 'setting_list.dart';

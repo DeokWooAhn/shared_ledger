@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/model/ledger.dart';
+import '../../domain/model/ledger.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widget/keep_all.dart';
 import '../../core/widget/labeled_field.dart';
 import '../../core/widget/sign_out.dart';
-import 'ledger_start_controller.dart';
+import 'ledger_start_notifier.dart';
 
 /// 가계부 이름 검사. 통과하면 null, 아니면 안내 문구.
 String? validateLedgerName(String? value) {
@@ -58,18 +58,18 @@ class _LedgerStartScreenState extends ConsumerState<LedgerStartScreen> {
   void _create() {
     // 가계부 이름은 이 입력란 안에서 끝나는 검사라 폼 검사기로 한다.
     if (!(_createForm.currentState?.validate() ?? false)) return;
-    ref.read(ledgerStartControllerProvider.notifier).create(_name.text);
+    ref.read(ledgerStartNotifierProvider.notifier).create(_name.text);
   }
 
   void _join() =>
-      ref.read(ledgerStartControllerProvider.notifier).join(_code.text);
+      ref.read(ledgerStartNotifierProvider.notifier).join(_code.text);
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final state = ref.watch(ledgerStartControllerProvider);
-    final controller = ref.read(ledgerStartControllerProvider.notifier);
-    ref.listen(ledgerStartControllerProvider.select((s) => s.failure), (
+    final state = ref.watch(ledgerStartNotifierProvider);
+    final notifier = ref.read(ledgerStartNotifierProvider.notifier);
+    ref.listen(ledgerStartNotifierProvider.select((s) => s.failure), (
       _,
       failure,
     ) {
@@ -77,7 +77,7 @@ class _LedgerStartScreenState extends ConsumerState<LedgerStartScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(keepAll(ledgerStartFailureMessage(failure)))),
       );
-      controller.failureShown();
+      notifier.failureShown();
     });
     final codeProblem = state.codeProblem;
     return Scaffold(
@@ -160,7 +160,7 @@ class _LedgerStartScreenState extends ConsumerState<LedgerStartScreen> {
                         autocorrect: false,
                         enableSuggestions: false,
                         textInputAction: TextInputAction.done,
-                        onChanged: (_) => controller.codeEdited(),
+                        onChanged: (_) => notifier.codeEdited(),
                         onSubmitted: (_) => _join(),
                       ),
                     ),

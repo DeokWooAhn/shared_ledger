@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/data/providers.dart';
-import '../../core/model/category.dart';
+import '../../core/providers/providers.dart';
+import '../../domain/model/category.dart';
 import '../../core/widget/keep_all.dart';
 import '../../core/widget/labeled_field.dart';
-import 'category_form_controller.dart';
+import 'category_form_notifier.dart';
 import 'setting_sheet.dart';
 
 /// 분류 추가·고치기 시트. 이름과 저축 집계를 받고, 고칠 때는 숨기거나 다시 보이게 한다.
@@ -20,7 +20,7 @@ class CategorySheet extends ConsumerStatefulWidget {
 }
 
 class _CategorySheetState extends ConsumerState<CategorySheet> {
-  // 입력란 글자는 화면에만 필요한 상태라 위젯이 갖고, 저장할 때 컨트롤러에 넘긴다.
+  // 입력란 글자는 화면에만 필요한 상태라 위젯이 갖고, 저장할 때 Notifier에 넘긴다.
   late final TextEditingController _name = TextEditingController(
     text: widget.args.category?.name ?? '',
   );
@@ -32,15 +32,15 @@ class _CategorySheetState extends ConsumerState<CategorySheet> {
   }
 
   void _save() => ref
-      .read(categoryFormControllerProvider(widget.args).notifier)
+      .read(categoryFormNotifierProvider(widget.args).notifier)
       .save(_name.text);
 
   @override
   Widget build(BuildContext context) {
     final category = widget.args.category;
-    final provider = categoryFormControllerProvider(widget.args);
+    final provider = categoryFormNotifierProvider(widget.args);
     final state = ref.watch(provider);
-    final controller = ref.read(provider.notifier);
+    final notifier = ref.read(provider.notifier);
     ref.listen(provider.select((s) => s.outcome), (_, outcome) {
       if (outcome != null) Navigator.of(context).pop(outcome);
     });
@@ -78,7 +78,7 @@ class _CategorySheetState extends ConsumerState<CategorySheet> {
                     ),
             ),
             textInputAction: TextInputAction.done,
-            onChanged: (_) => controller.nameEdited(),
+            onChanged: (_) => notifier.nameEdited(),
             onSubmitted: (_) => _save(),
           ),
         ),
@@ -88,7 +88,7 @@ class _CategorySheetState extends ConsumerState<CategorySheet> {
           title: const Text('저축으로 집계'),
           subtitle: Text(keepAll('이 분류의 기본 지출을 월 요약의 저축에 더해요.')),
           value: state.countsAsSaving,
-          onChanged: enabled ? controller.setCountsAsSaving : null,
+          onChanged: enabled ? notifier.setCountsAsSaving : null,
         ),
         if (category != null && !category.hidden && usedByTemplates > 0)
           Text(
@@ -108,7 +108,7 @@ class _CategorySheetState extends ConsumerState<CategorySheet> {
           HideButton(
             hidden: category.hidden,
             onPressed: enabled
-                ? () => controller.setHidden(!category.hidden)
+                ? () => notifier.setHidden(!category.hidden)
                 : null,
           ),
       ],

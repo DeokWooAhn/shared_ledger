@@ -42,13 +42,13 @@ description: 심플 공유 가계부(shared_ledger)의 코드를 리뷰할 때 �
 5. **`flutterfire configure`가 `firebase.json`을 한 줄로 압축함.** diff에서 `firebase.json`이 통째로 한 줄이 되면 펼쳐 달라고 한다. → 고치면 좋음
 6. **폼 검사와 서버 오류를 한 입력란에 섞음 (PR #3).** `TextFormField`의 `validator`와 `forceErrorText`를 같이 쓰자,
    참여에 실패한 뒤 같은 코드로 다시 누르면 `validate()`가 이전 오류만 보고 바로 실패해서 첫 누름이 무시됐다.
-   한 입력란의 오류가 폼 검사와 컨트롤러 상태 두 곳에서 오면 → 반드시 고침
+   한 입력란의 오류가 폼 검사와 Notifier 상태 두 곳에서 오면 → 반드시 고침
 7. **버튼에서 부른 `Future`를 버림 (PR #3).** 로그아웃 결과를 아무도 기다리지 않아 실패해도 알 수 없었다.
    `onPressed: () => repo.something()`처럼 결과를 버리는 곳 → 고치면 좋음(오류를 처리하거나 `unawaited`로 드러낸다)
 8. **가짜 저장소가 실제 약속을 어김 (PR #3).** 가짜 참여가 같은 가계부를 새로 더하고, 두 명이 찬 가계부도 받아 줬다.
    가짜를 바꾸거나 새로 만들 때 실제 구현·보안 규칙과 다르게 동작하면 → 반드시 고침(테스트가 거짓 통과한다)
 9. **위젯 `State` 안에 화면 로직이 섞임 (PR #3).** 6·7번이 여기서 나왔다. 저장소 호출, 오류 처리, 진행 상태가 위젯에 있으면
-   컨트롤러로 옮기라고 한다(flutter-screen 스킬). → 고치면 좋음
+   Notifier로 옮기라고 한다(flutter-screen 스킬). → 고치면 좋음
 10. **CI 체크아웃이 토큰을 남김 (PR #1).** `actions/checkout`에 `persist-credentials: false`가 빠지면 → 고치면 좋음
 
 ## 깨지기 쉬운 약속
@@ -57,7 +57,7 @@ description: 심플 공유 가계부(shared_ledger)의 코드를 리뷰할 때 �
 
 - **앱이 쓰는 필드 = 보안 규칙이 받는 필드.** 앱 테스트는 가짜 저장소로 돌아서, 규칙이 받지 않는 필드가 하나만 있어도 실제 쓰기 거부를 못 잡는다.
   쓰기 데이터나 규칙을 바꿨으면 flutter-screen 스킬의 'Firestore 필드·컬렉션을 바꿀 때' 목록이 같이 바뀌었는지 본다. → 반드시 고침
-- **권한 판단이 두 곳에 있다.** `firestore.rules`와 `lib/core/model/ledger.dart`(두 명 제한 포함). 한쪽만 바뀌면 → 반드시 고침
+- **권한 판단이 두 곳에 있다.** `firestore.rules`와 `lib/domain/model/ledger.dart`(두 명 제한 포함). 한쪽만 바뀌면 → 반드시 고침
 - **감사 필드는 서버 시간이다**(`docs/firestore.md`). 기기 시간(`DateTime.now()`)을 쓰면 규칙이 거부한다.
   방금 쓴 문서는 서버 시간이 아직 null이라 정렬·표시에서 처리하는지 본다. → 반드시 고침
 - **휴지통 항목은 합계에서 뺀다**(`docs/plan.md`). 합계·목록 쿼리를 바꿨으면 `deletedAt` 처리를 본다. → 반드시 고침

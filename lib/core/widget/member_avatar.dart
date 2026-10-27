@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../model/member.dart';
+import '../../domain/model/member.dart';
 import '../theme/app_theme.dart';
 
 /// 두 사람의 프로필 동그라미. 둘 다 같은 회색 원에 이름의 첫 글자로 구분한다(나중에 프로필 사진으로 바꾼다).

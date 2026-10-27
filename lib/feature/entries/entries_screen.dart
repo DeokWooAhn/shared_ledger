@@ -1,18 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/data/providers.dart';
-import '../../core/model/category.dart';
-import '../../core/model/ledger_entries.dart';
-import '../../core/model/member.dart';
-import '../../core/model/month_ledger.dart';
-import '../../core/model/payment_method.dart';
+import '../../core/providers/providers.dart';
+import '../../domain/model/category.dart';
+import '../../domain/model/ledger_entries.dart';
+import '../../domain/model/member.dart';
+import '../../domain/model/month_ledger.dart';
+import '../../domain/model/payment_method.dart';
 import '../../core/widget/entry_kind_label.dart';
 import '../../core/widget/keep_all.dart';
 import '../../core/widget/month_header.dart';
 import '../../core/widget/tab_page.dart';
-import '../../core/widget/won.dart';
-import 'entries_controller.dart';
+import '../../domain/format/won.dart';
+import 'entries_notifier.dart';
 import 'entry_kind_tabs.dart';
 import 'entry_list.dart';
 import 'entry_row.dart';
@@ -35,15 +35,12 @@ class EntriesScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final kind = ref.watch(selectedEntryKindProvider);
-    ref.listen(entriesControllerProvider.select((s) => s.failure), (
-      _,
-      failure,
-    ) {
+    ref.listen(entriesNotifierProvider.select((s) => s.failure), (_, failure) {
       if (failure == null) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(keepAll(entriesFailureMessage(failure)))),
       );
-      ref.read(entriesControllerProvider.notifier).failureShown();
+      ref.read(entriesNotifierProvider.notifier).failureShown();
     });
     return TabPage(
       header: MonthHeader(openCalendar: openCalendar),

@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/data/providers.dart';
-import '../../core/model/payment_method.dart';
+import '../../core/providers/providers.dart';
+import '../../domain/model/payment_method.dart';
 import '../../core/widget/keep_all.dart';
 import '../../core/widget/tab_page.dart';
-import 'payment_method_form_controller.dart';
+import 'payment_method_form_notifier.dart';
 import 'payment_method_sheet.dart';
 import 'setting_form.dart';
 import 'setting_list.dart';

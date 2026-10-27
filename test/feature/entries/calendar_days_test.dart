@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:shared_ledger/core/model/ledger_entries.dart';
-import 'package:shared_ledger/core/model/month_ledger.dart';
-import 'package:shared_ledger/core/model/year_month.dart';
+import 'package:shared_ledger/domain/model/ledger_entries.dart';
+import 'package:shared_ledger/domain/model/month_ledger.dart';
+import 'package:shared_ledger/domain/model/year_month.dart';
 import 'package:shared_ledger/feature/entries/calendar_days.dart';
 
 const october = YearMonth(2026, 10);

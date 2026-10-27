@@ -1,19 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:shared_ledger/core/model/activity.dart';
-import 'package:shared_ledger/core/model/auth_user.dart';
-import 'package:shared_ledger/core/model/category.dart';
-import 'package:shared_ledger/core/model/ledger.dart';
-import 'package:shared_ledger/core/model/payment_method.dart';
+import 'package:shared_ledger/domain/model/activity.dart';
+import 'package:shared_ledger/domain/model/auth_user.dart';
+import 'package:shared_ledger/domain/model/category.dart';
+import 'package:shared_ledger/domain/model/ledger.dart';
+import 'package:shared_ledger/domain/model/payment_method.dart';
 import 'package:shared_ledger/core/widget/keep_all.dart';
 import 'package:shared_ledger/feature/entries/entries_screen.dart';
 import 'package:shared_ledger/feature/entries/entry_form_screen.dart';
 import 'package:shared_ledger/feature/home/home_shell.dart';
 import 'package:shared_ledger/feature/settings/activity_screen.dart';
 
-import '../../support/app.dart';
-import '../../support/fakes.dart';
-import '../../support/provider_container.dart';
+import '../../../testing/app.dart';
+import '../../../testing/fakes.dart';
+import '../../../testing/provider_container.dart';
 
 const me = AuthUser(uid: 'me');
 const mine = Ledger(
