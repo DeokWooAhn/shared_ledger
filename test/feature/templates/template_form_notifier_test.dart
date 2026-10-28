@@ -115,21 +115,6 @@ void main() {
       expect(templates.added, isEmpty);
     });
 
-    test('내용은 40자까지 받는다', () {
-      TemplateDraft draft(String title) => TemplateDraft(
-        memberId: 'owner',
-        title: title,
-        categoryId: 'c',
-        paymentMethodId: 'p',
-        dueDay: 1,
-      );
-
-      expect(templateProblemsOf(draft('가' * 40)), isEmpty);
-      expect(templateProblemsOf(draft('가' * 41)), {
-        TemplateProblem.titleTooLong,
-      });
-    });
-
     test('고르거나 글자를 고치면 그 칸의 문제만 지운다', () async {
       final container = await ready();
       final (notifier, _) = notifierOf(container, addArgs);

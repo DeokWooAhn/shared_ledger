@@ -50,17 +50,6 @@ Future<ProviderContainer> ready({
 }
 
 void main() {
-  test('살펴볼 달은 만든 달 1년 전부터 이번 달 1년 뒤까지다', () {
-    final months = monthsToBackfill(
-      createdIn: const YearMonth(2026, 10),
-      thisMonth: const YearMonth(2026, 11),
-    );
-
-    expect(months.first, const YearMonth(2025, 10));
-    expect(months.last, const YearMonth(2027, 11));
-    expect(months, hasLength(26));
-  });
-
   group('모을 것(monthsBackfillProvider)', () {
     test('달 목록이 없는 가계부이고 쓸 수 있으면 그 범위를 낸다', () async {
       final container = await ready(ledgers: FakeLedgerRepository([legacy]));

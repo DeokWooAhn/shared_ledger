@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../domain/repository/entries_repository.dart';
 import '../../core/providers/providers.dart';
+import '../../core/providers/usecases.dart';
 import '../../domain/model/ledger_entries.dart';
 import '../../domain/model/member.dart';
 import '../../domain/model/year_month.dart';
@@ -42,17 +43,6 @@ class EntryFormArgs {
   int get hashCode => Object.hash(kind, month, entry?.id, date);
 }
 
-/// 저장 전에 입력란 아래에 보여 줄 문제.
-enum EntryProblem {
-  amountMissing,
-  titleMissing,
-  titleTooLong,
-  categoryMissing,
-  paymentMethodMissing,
-  cardMissing,
-  memoTooLong,
-}
-
 /// 글자를 고치면 그 칸의 문제를 지우는 입력란.
 enum EntryTextField { amount, title, memo }
 
@@ -72,31 +62,6 @@ enum EntryFormFailure {
 
 /// 입력 화면이 닫히며 알려 줄 결과. 휴지통에 넣었으면 목록이 '되돌리기'를 띄운다.
 enum EntryFormOutcome { saved, trashed }
-
-/// 저장할 값을 검사한다. 문제가 없으면 빈 집합.
-///
-/// 금액은 기본 월 지출만 비울 수 있고(금액 미정), 제목은 카드대금 말고 꼭 적는다.
-/// 길이는 보안 규칙처럼 UTF-16 단위로 센다(`entryTitleMaxLength`).
-Set<EntryProblem> entryProblemsOf(EntryDraft draft) {
-  final kind = draft.kind;
-  final title = draft.title.trim();
-  return {
-    if (draft.amount == null && kind != EntryKind.planned)
-      EntryProblem.amountMissing,
-    if (kind != EntryKind.cardBill && title.isEmpty) EntryProblem.titleMissing,
-    if (kind != EntryKind.cardBill && title.length > entryTitleMaxLength)
-      EntryProblem.titleTooLong,
-    if (kind == EntryKind.planned && draft.categoryId == null)
-      EntryProblem.categoryMissing,
-    if ((kind == EntryKind.planned || kind == EntryKind.extra) &&
-        draft.paymentMethodId == null)
-      EntryProblem.paymentMethodMissing,
-    if (kind == EntryKind.cardBill && draft.cardId == null)
-      EntryProblem.cardMissing,
-    if ((draft.memo?.trim().length ?? 0) > entryMemoMaxLength)
-      EntryProblem.memoTooLong,
-  };
-}
 
 /// 입력 화면 상태. 고른 값(종류·누가·분류·결제수단·카드·날짜)과 진행 상태를 담는다.
 /// 금액·내용·메모 글자는 화면의 입력란이 갖고, 저장할 때 넘겨받는다.
@@ -354,7 +319,10 @@ class EntryFormNotifier extends Notifier<EntryFormState> {
   /// 글자를 고치면 그 칸의 문제를 지운다.
   void textEdited(EntryTextField field) {
     final cleared = switch (field) {
-      EntryTextField.amount => {EntryProblem.amountMissing},
+      EntryTextField.amount => {
+        EntryProblem.amountMissing,
+        EntryProblem.amountNegative,
+      },
       EntryTextField.title => {
         EntryProblem.titleMissing,
         EntryProblem.titleTooLong,
@@ -367,8 +335,8 @@ class EntryFormNotifier extends Notifier<EntryFormState> {
 
   /// 입력란의 [amount]·[title]·[memo] 글자와 고른 값으로 저장한다.
   ///
-  /// 입력에 문제가 있으면 [EntryFormState.problems]로 알리고 저장하지 않는다.
-  /// 새 항목은 서버를 기다리지 않아 오프라인에서도 바로 끝난다. 고치기는 온라인에서만 된다.
+  /// 입력에 문제가 있으면 [EntryFormState.problems]로 알리고 저장하지 않는다([entryProblemsOf]).
+  /// 새 항목은 서버를 기다리지 않아 오프라인에서도 바로 끝난다. 고치기는 온라인에서만 된다(`SaveEntryUseCase`).
   Future<void> save({
     required String amount,
     required String title,
@@ -377,7 +345,6 @@ class EntryFormNotifier extends Notifier<EntryFormState> {
     final uid = ref.read(authUserProvider).value?.uid;
     final ledger = ref.read(currentLedgerProvider);
     if (state.busy || uid == null || ledger == null) return;
-    final ledgerId = ledger.id;
     final trimmedMemo = memo.trim();
     final draft = EntryDraft(
       kind: state.kind,
@@ -401,29 +368,20 @@ class EntryFormNotifier extends Notifier<EntryFormState> {
       return;
     }
     state = state.withStatus(pending: EntryFormAction.save);
-    final repository = ref.read(entriesRepositoryProvider);
     try {
-      final entry = args.entry;
-      if (entry == null) {
-        await repository.add(
-          ledgerId: ledgerId,
-          month: args.month,
-          draft: draft,
-          uid: uid,
-          // 그달에 처음 넣는 항목이면 가계부의 항목 있는 달 목록에 그달을 더한다.
-          recordMonth: ledger.needsToRecord(args.month),
-        );
-      } else {
-        await repository.update(
-          ledgerId: ledgerId,
-          month: args.month,
-          id: entry.id,
-          draft: draft,
-          uid: uid,
-        );
-      }
+      final refused = await ref
+          .read(entryUseCasesProvider)
+          .saveEntry(
+            ledger: ledger,
+            month: args.month,
+            id: args.entry?.id,
+            draft: draft,
+            uid: uid,
+          );
       if (!ref.mounted) return;
-      state = state.withStatus(outcome: EntryFormOutcome.saved);
+      state = refused.isEmpty
+          ? state.withStatus(outcome: EntryFormOutcome.saved)
+          : state.withStatus().copyWith(problems: refused);
     } on EntryWriteException catch (e) {
       if (!ref.mounted) return;
       state = state.withStatus(failure: _failureOf(e.reason));
@@ -443,12 +401,11 @@ class EntryFormNotifier extends Notifier<EntryFormState> {
     state = state.withStatus(pending: EntryFormAction.trash);
     try {
       await ref
-          .read(entriesRepositoryProvider)
-          .trash(
+          .read(entryUseCasesProvider)
+          .trashEntry(
             ledgerId: ledgerId,
             month: args.month,
-            kind: entry.kind,
-            id: entry.id,
+            entry: entry,
             uid: uid,
           );
       if (!ref.mounted) return;

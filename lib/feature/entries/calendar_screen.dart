@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/providers/providers.dart';
+import '../../domain/model/expense_template.dart';
 import '../../domain/model/holidays.dart';
 import '../../domain/model/ledger_entries.dart';
 import '../../domain/model/member.dart';

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_ledger/app.dart';
 import 'package:shared_ledger/core/providers/providers.dart';
+import 'package:shared_ledger/core/providers/repositories.dart';
 import 'package:shared_ledger/core/widget/keep_all.dart';
 import 'package:shared_ledger/core/widget/month_header.dart';
 import 'package:shared_ledger/feature/home/home_shell.dart';

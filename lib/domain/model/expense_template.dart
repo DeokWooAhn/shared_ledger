@@ -130,6 +130,10 @@ class TemplateDraft {
 bool fillsFromTemplates(YearMonth month, {required YearMonth thisMonth}) =>
     month == thisMonth || month == thisMonth.next;
 
+/// 달력에서 [month] 가계부를 새로 만들 때 고정 지출로 채우는지. 이번 달과 앞으로의 달만 채우고, 지난 달은 달만 만든다.
+bool fillsTemplatesOnAdd(YearMonth month, {required YearMonth thisMonth}) =>
+    month.compareTo(thisMonth) >= 0;
+
 /// [templates] 가운데 [ledger]의 달에 아직 기본 월 지출이 없는 것.
 ///
 /// 문서 id가 템플릿 id라서, 휴지통에 넣은 것을 포함해 그 id의 문서가 있으면 다시 만들지 않는다.
@@ -142,4 +146,36 @@ List<ExpenseTemplate> templatesMissingIn(
     for (final template in templates)
       if (!existing.contains(template.id)) template,
   ];
+}
+
+/// 저장 전에 입력란 아래에 보여 줄 문제. 금액은 비워 둘 수 있다(금액 미정).
+enum TemplateProblem {
+  /// 금액은 비우거나 0원부터 적는다(보안 규칙과 같다).
+  amountNegative,
+  titleMissing,
+  titleTooLong,
+  categoryMissing,
+  paymentMethodMissing,
+  dueDayMissing,
+
+  /// 예정일은 1일부터 말일([lastDueDay])까지다(보안 규칙과 같다).
+  dueDayOutOfRange,
+}
+
+/// 저장할 값을 검사한다. 문제가 없으면 빈 집합.
+///
+/// 제목 길이는 항목과 같이 보안 규칙처럼 UTF-16 단위로 센다(`entryTitleMaxLength`).
+Set<TemplateProblem> templateProblemsOf(TemplateDraft draft) {
+  final title = draft.title.trim();
+  final dueDay = draft.dueDay;
+  return {
+    if ((draft.amount ?? 0) < 0) TemplateProblem.amountNegative,
+    if (title.isEmpty) TemplateProblem.titleMissing,
+    if (title.length > entryTitleMaxLength) TemplateProblem.titleTooLong,
+    if (draft.categoryId == null) TemplateProblem.categoryMissing,
+    if (draft.paymentMethodId == null) TemplateProblem.paymentMethodMissing,
+    if (dueDay == null) TemplateProblem.dueDayMissing,
+    if (dueDay != null && (dueDay < 1 || dueDay > lastDueDay))
+      TemplateProblem.dueDayOutOfRange,
+  };
 }

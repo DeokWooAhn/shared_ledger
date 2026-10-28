@@ -13,13 +13,11 @@ import '../../domain/model/month_ledger.dart';
 import '../../domain/model/payment_method.dart';
 import '../../domain/model/year_month.dart';
 import '../../domain/repository/entries_repository.dart';
-import 'repositories.dart';
+import 'clock.dart';
 import 'usecases.dart';
 
-export 'repositories.dart';
-
-/// 지금 시각. 테스트에서 날짜를 고정하려고 공급자로 둔다.
-final clockProvider = Provider<DateTime Function()>((ref) => DateTime.now);
+// 저장소 공급자(repositories.dart)는 내보내지 않는다. 화면과 Notifier는 UseCase 홀더(usecases.dart)로만 저장소에 닿는다.
+export 'clock.dart';
 
 /// 로그인한 사용자. 로그아웃 상태면 null.
 final authUserProvider = StreamProvider<AuthUser?>(
@@ -76,7 +74,7 @@ final paymentMethodsProvider = StreamProvider<List<PaymentMethod>>((ref) {
 final templatesProvider = StreamProvider<List<ExpenseTemplate>>((ref) {
   final ledgerId = ref.watch(currentLedgerProvider.select((l) => l?.id));
   if (ledgerId == null) return Stream.value(const []);
-  return ref.watch(templatesRepositoryProvider).watchTemplates(ledgerId);
+  return ref.watch(templateUseCasesProvider).watchTemplates(ledgerId);
 });
 
 /// 요약·항목 탭(과 휴지통)이 오가는 달. 오래된 것부터 정렬돼 있다.
@@ -131,7 +129,7 @@ class SelectedEntryKindNotifier extends Notifier<EntryKind> {
 
 /// 서버가 받지 않은 새 항목. 오프라인 추가는 기다리지 않아서 거부는 나중에 여기로 온다. 홈 틀이 듣고 알린다.
 final rejectedEntriesProvider = StreamProvider<RejectedEntry>(
-  (ref) => ref.watch(entriesRepositoryProvider).rejectedAdds,
+  (ref) => ref.watch(entryUseCasesProvider).watchRejectedEntries(),
 );
 
 /// 지금 가계부의 [YearMonth] 달 항목(휴지통 제외). 가계부가 없으면 빈 달이다.
@@ -142,7 +140,7 @@ final monthLedgerOfProvider = StreamProvider.autoDispose
     .family<MonthLedger, YearMonth>((ref, month) {
       final ledgerId = ref.watch(currentLedgerProvider.select((l) => l?.id));
       if (ledgerId == null) return Stream.value(const MonthLedger());
-      return ref.watch(entriesRepositoryProvider).watchMonth(ledgerId, month);
+      return ref.watch(entryUseCasesProvider).watchMonth(ledgerId, month);
     });
 
 /// 보고 있는 달의 항목(휴지통 제외). 가계부가 없으면 빈 달이다.

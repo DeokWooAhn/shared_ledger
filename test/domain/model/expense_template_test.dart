@@ -121,4 +121,44 @@ void main() {
       ),
     );
   });
+
+  group('입력 검사', () {
+    test('내용은 40자까지 받는다', () {
+      TemplateDraft draft(String title) => TemplateDraft(
+        memberId: 'owner',
+        title: title,
+        categoryId: 'c',
+        paymentMethodId: 'p',
+        dueDay: 1,
+      );
+
+      expect(templateProblemsOf(draft('가' * 40)), isEmpty);
+      expect(templateProblemsOf(draft('가' * 41)), {
+        TemplateProblem.titleTooLong,
+      });
+    });
+
+    test('금액은 비우거나 0원부터 받고, 예정일은 1일부터 말일까지만 받는다', () {
+      TemplateDraft draft({int? amount, int dueDay = 1}) => TemplateDraft(
+        memberId: 'owner',
+        title: '관리비',
+        amount: amount,
+        categoryId: 'c',
+        paymentMethodId: 'p',
+        dueDay: dueDay,
+      );
+
+      expect(templateProblemsOf(draft()), isEmpty);
+      expect(templateProblemsOf(draft(amount: 0, dueDay: lastDueDay)), isEmpty);
+      expect(templateProblemsOf(draft(amount: -1)), {
+        TemplateProblem.amountNegative,
+      });
+      expect(templateProblemsOf(draft(dueDay: 0)), {
+        TemplateProblem.dueDayOutOfRange,
+      });
+      expect(templateProblemsOf(draft(dueDay: lastDueDay + 1)), {
+        TemplateProblem.dueDayOutOfRange,
+      });
+    });
+  });
 }

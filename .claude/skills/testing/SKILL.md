@@ -12,7 +12,7 @@ description: 심플 공유 가계부(shared_ledger)의 테스트를 쓰거나 �
 | 대상 | 방법 | 정석 레퍼런스 |
 | --- | --- | --- |
 | 계산 규칙, 모델, 검사 함수 | 실제 객체로 단위 테스트 | `test/domain/budget/budget_calculator_test.dart`, `test/domain/model/ledger_test.dart`, `test/domain/model/name_problem_test.dart` |
-| UseCase | 가짜 저장소로 홀더를 바로 만든다 | `test/domain/usecase/ledger/ledger_use_cases_test.dart`, `test/domain/usecase/settings/settings_use_cases_test.dart` |
+| UseCase | 가짜 저장소로 홀더를 바로 만든다 | `test/domain/usecase/ledger/ledger_use_cases_test.dart`, `test/domain/usecase/entry/entry_use_cases_test.dart` |
 | Firestore 변환·쓰기 데이터 | 순수 함수 단위 테스트 | `test/data/ledger/firestore_ledger_repository_test.dart` |
 | Notifier | `ProviderContainer` + 가짜 저장소 | `test/feature/ledger/ledger_start_notifier_test.dart`, 인자를 받는(family) Notifier는 `test/feature/entries/entry_form_notifier_test.dart` |
 | 화면 흐름, 화면 이동 | 위젯 테스트 | `test/widget_test.dart`, `test/router_test.dart` |
@@ -50,6 +50,7 @@ test('숨긴 분류를 포함해 다른 분류와 이름이 같으면 쓰지 않
 ```
 
 - 홀더를 가짜 저장소로 바로 만든다(`LedgerUseCases(FakeLedgerRepository())`). 공급자·`ProviderContainer`는 쓰지 않는다.
+  시간이 필요한 홀더는 `now: () => testNow`를 넘긴다(`EntryUseCases`, `MonthUseCases`).
 - 파일은 영역마다 하나(`test/domain/usecase/<영역>/<영역>_use_cases_test.dart`)이고, UseCase마다 `group`으로 묶는다.
 - 쓰는 UseCase는 세 가지를 본다: 저장소에 넘긴 값(정리한 이름, 맨 뒤 순서 등), 검사에 걸리거나 바뀐 것이 없으면 쓰지 않는 것, 저장소 실패를 그대로 던지는 것(`throwsA(isA<SettingsWriteException>())`).
 - 검사 함수(`nameProblemOf`, `inviteCodeProblemOf`)는 그 모델 파일의 테스트(`test/domain/model/`)에서 경계값을 본다.

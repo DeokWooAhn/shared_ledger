@@ -2,9 +2,9 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/providers/providers.dart';
+import '../../core/providers/usecases.dart';
 import '../../domain/repository/templates_repository.dart';
 import '../../domain/model/expense_template.dart';
-import '../../domain/model/ledger_entries.dart';
 import '../../domain/model/member.dart';
 import '../../core/widget/won_input.dart';
 
@@ -28,15 +28,6 @@ class TemplateFormArgs {
   int get hashCode => template?.id.hashCode ?? 0;
 }
 
-/// 저장 전에 입력란 아래에 보여 줄 문제. 금액은 비워 둘 수 있어서(금액 미정) 문제가 없다.
-enum TemplateProblem {
-  titleMissing,
-  titleTooLong,
-  categoryMissing,
-  paymentMethodMissing,
-  dueDayMissing,
-}
-
 /// 진행 중인 동작.
 enum TemplateFormAction { save, delete }
 
@@ -53,20 +44,6 @@ enum TemplateFormFailure {
 
 /// 입력 화면이 닫히며 알려 줄 결과. 지웠으면 목록이 '되돌리기'를 띄운다.
 enum TemplateFormOutcome { saved, deleted }
-
-/// 저장할 값을 검사한다. 문제가 없으면 빈 집합.
-///
-/// 제목 길이는 항목과 같이 보안 규칙처럼 UTF-16 단위로 센다(`entryTitleMaxLength`).
-Set<TemplateProblem> templateProblemsOf(TemplateDraft draft) {
-  final title = draft.title.trim();
-  return {
-    if (title.isEmpty) TemplateProblem.titleMissing,
-    if (title.length > entryTitleMaxLength) TemplateProblem.titleTooLong,
-    if (draft.categoryId == null) TemplateProblem.categoryMissing,
-    if (draft.paymentMethodId == null) TemplateProblem.paymentMethodMissing,
-    if (draft.dueDay == null) TemplateProblem.dueDayMissing,
-  };
-}
 
 /// 입력 화면 상태. 고른 값(누가·분류·결제수단·예정일)과 진행 상태를 담는다.
 /// 금액·내용 글자는 화면의 입력란이 갖고, 저장할 때 넘겨받는다.
@@ -227,7 +204,18 @@ class TemplateFormNotifier extends Notifier<TemplateFormState> {
     if (state.busy || day < 1 || day > lastDueDay) return;
     state = state.copyWith(
       dueDay: day,
-      problems: {...state.problems}..remove(TemplateProblem.dueDayMissing),
+      problems: state.problems.difference({
+        TemplateProblem.dueDayMissing,
+        TemplateProblem.dueDayOutOfRange,
+      }),
+    );
+  }
+
+  /// 금액 글자를 고치면 그 칸의 문제를 지운다.
+  void amountEdited() {
+    if (!state.problems.contains(TemplateProblem.amountNegative)) return;
+    state = state.copyWith(
+      problems: {...state.problems}..remove(TemplateProblem.amountNegative),
     );
   }
 
@@ -243,7 +231,7 @@ class TemplateFormNotifier extends Notifier<TemplateFormState> {
 
   /// 입력란의 [amount]·[title] 글자와 고른 값으로 저장한다. 금액을 비우면 금액 미정이다.
   ///
-  /// 입력에 문제가 있으면 [TemplateFormState.problems]로 알리고 저장하지 않는다.
+  /// 입력에 문제가 있으면 [TemplateFormState.problems]로 알리고 저장하지 않는다([templateProblemsOf], `SaveTemplateUseCase`).
   Future<void> save({required String amount, required String title}) async {
     final uid = ref.read(authUserProvider).value?.uid;
     final ledgerId = ref.read(currentLedgerProvider)?.id;
@@ -262,21 +250,19 @@ class TemplateFormNotifier extends Notifier<TemplateFormState> {
       return;
     }
     state = state.withStatus(pending: TemplateFormAction.save);
-    final repository = ref.read(templatesRepositoryProvider);
     try {
-      final template = args.template;
-      if (template == null) {
-        await repository.add(ledgerId: ledgerId, draft: draft, uid: uid);
-      } else {
-        await repository.update(
-          ledgerId: ledgerId,
-          id: template.id,
-          draft: draft,
-          uid: uid,
-        );
-      }
+      final refused = await ref
+          .read(templateUseCasesProvider)
+          .saveTemplate(
+            ledgerId: ledgerId,
+            id: args.template?.id,
+            draft: draft,
+            uid: uid,
+          );
       if (!ref.mounted) return;
-      state = state.withStatus(outcome: TemplateFormOutcome.saved);
+      state = refused.isEmpty
+          ? state.withStatus(outcome: TemplateFormOutcome.saved)
+          : state.withStatus().copyWith(problems: refused);
     } on TemplateWriteException catch (e) {
       if (!ref.mounted) return;
       state = state.withStatus(failure: _failureOf(e.reason));
@@ -298,8 +284,8 @@ class TemplateFormNotifier extends Notifier<TemplateFormState> {
     state = state.withStatus(pending: TemplateFormAction.delete);
     try {
       await ref
-          .read(templatesRepositoryProvider)
-          .delete(ledgerId: ledgerId, id: template.id, uid: uid);
+          .read(templateUseCasesProvider)
+          .deleteTemplate(ledgerId: ledgerId, id: template.id, uid: uid);
       if (!ref.mounted) return;
       state = state.withStatus(outcome: TemplateFormOutcome.deleted);
     } on TemplateWriteException catch (e) {

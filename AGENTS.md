@@ -65,7 +65,7 @@ lib/
     format/               원 표기(won)
   data/<영역>/           domain의 저장소를 Firebase로 구현한다. Firestore 구현 + 문서 ↔ 모델 변환 함수
   core/                 여러 기능이 같이 쓰는 것. domain만 본다
-    providers/            공급자: repositories.dart(저장소 자리), usecases.dart(UseCase 홀더),
+    providers/            공급자: repositories.dart(저장소 자리), usecases.dart(UseCase 홀더), clock.dart(지금 시각),
                           providers.dart(로그인·가계부·보고 있는 달 같은 앱 공통 상태)
     theme/                design/app.pen 토큰으로 만든 테마
     widget/               공용 위젯과 화면 도우미(keepAll, signOutWithFeedback, MonthHeader)
@@ -97,6 +97,7 @@ View(*_screen) ─→ Notifier(*_notifier) ─→ UseCase 홀더(core/providers/
 | 앱(lib 바로 아래) | 모두 | 모두 |
 
 - **이 표는 `test/architecture_test.dart`가 검사한다.** 어기면 CI가 실패한다. 새 패키지를 들이면(먼저 승인) 허용 목록도 같이 고친다.
+  표 밖의 규칙 하나도 같이 검사한다: feature는 저장소 자리(`core/providers/repositories.dart`)를 import하지 않고, 아무도 그것을 export하지 않는다.
 - feature끼리 서로 import하지 않는다. 둘 이상이 쓰게 되면 core로, 규칙이면 domain으로 올린다.
 - View와 Notifier는 저장소 구현(data)이나 Firebase를 볼 수 없다. Notifier와 공급자는 저장소도 직접 부르지 않고 UseCase 홀더를 부른다(아래 'UseCase').
 - 어느 화면을 보여줄지는 `router.dart`의 `appGate`·`redirectFor`가 로그인·가계부 상태로 정한다. 화면에서 시작 화면들로 직접 이동하지 않는다.
@@ -105,17 +106,18 @@ View(*_screen) ─→ Notifier(*_notifier) ─→ UseCase 홀더(core/providers/
 ### UseCase (`lib/domain/usecase/<영역>/`)
 
 CalcMoney처럼 업무 규칙과 저장소 호출을 domain의 UseCase에 두고, Notifier는 UseCase만 부른다(2026-10-27).
-항목·달·고정 지출은 구조 개편 ②-2에서 옮기고, 그때 feature가 저장소 공급자를 못 쓰게 `test/architecture_test.dart`로 막는다.
+feature가 저장소 자리(`repositories.dart`)를 import하면 `test/architecture_test.dart`가 실패한다.
 
-- **UseCase 하나 = 파일 하나 = `call()` 하나짜리 클래스**(`save_category_use_case.dart`의 `SaveCategoryUseCase`). 저장소는 생성자로 받는다. 순수 Dart다.
+- **UseCase 하나 = 파일 하나 = `call()` 하나짜리 클래스**(`save_category_use_case.dart`의 `SaveCategoryUseCase`). 저장소와 시간(`DateTime Function() now`)은 생성자로 받는다. 순수 Dart다.
 - **영역마다 홀더 하나**(`settings_use_cases.dart`의 `SettingsUseCases`)가 그 영역 UseCase를 필드로 갖는다. 필드 이름은 클래스 이름에서 `UseCase`를 뺀 것(`saveCategory`).
-  영역: auth, ledger, settings, activity, summary, holiday (②-2에서 entry, month, template).
-- **홀더 공급자는 `lib/core/providers/usecases.dart`**(`settingsUseCasesProvider`)이고 저장소 공급자로 만든다. 그래서 테스트는 지금처럼 저장소 자리에 가짜를 넣으면 된다.
+  영역: auth, ledger, settings, entry, month, template, activity, summary, holiday.
+- **홀더 공급자는 `lib/core/providers/usecases.dart`**(`settingsUseCasesProvider`)이고 저장소 공급자와 `clockProvider`로 만든다. 그래서 테스트는 지금처럼 저장소 자리에 가짜를 넣으면 된다.
 - Notifier와 공급자(`providers.dart`)는 `ref.read(settingsUseCasesProvider).saveCategory(…)`처럼 홀더를 부른다. 저장소 공급자(`xxxRepositoryProvider`)를 읽지 않는다.
 - **입력 검사처럼 바로 답이 나오는 규칙은 domain 함수**(`nameProblemOf`, `categoryNameProblemOf`, `inviteCodeProblemOf`)다. Notifier가 먼저 불러 '진행 중' 없이 문제를 보여 주고,
   쓰는 UseCase도 같은 함수로 다시 검사해서 혼자 불려도 잘못된 값을 쓰지 않는다. 검사에 걸리면 쓰지 않고 문제를 값으로 돌려준다(`Future<NameProblem?>`).
 - 저장소의 실패(`SettingsWriteException` 등)는 UseCase가 그대로 던지고, 화면용 실패로 바꾸는 것은 Notifier다. 참여 실패처럼 입력란 문제로 보여 줄 것만 UseCase가 문제 값으로 바꾼다(`JoinLedgerUseCase`).
 - `AsyncValue`를 묶는 것처럼 Riverpod에 기대는 일과, 화면에 그리려고 묶는 일(`mergeActivities`, `calendar_days`)은 UseCase에 넣지 않는다.
+  공급자가 판단을 UseCase에 맡길 때 구독은 필요할 때만 열리게 값 대신 꺼내는 함수를 넘긴다(`plannedFillProvider` → `PlanMonthFillUseCase`).
 
 ### 지금 쓰지 않는 것
 
@@ -147,7 +149,7 @@ CalcMoney처럼 업무 규칙과 저장소 호출을 domain의 UseCase에 두고
   Notifier는 화면용 실패(`LedgerStartFailure`)를 enum으로 넘긴다.
   화면 문구로 바꾸는 것은 View다(CalcMoney의 "UI 문자열 변환은 presentation에서"와 같다).
 - **금액**은 원 단위 `int`다. `double`로 계산·저장하지 않는다.
-- **시간·난수는 주입한다**(`FirestoreLedgerRepository(now:, random:)`, 공급자·Notifier는 `clockProvider`). 안에서 `DateTime.now()`를 읽으면 테스트가 흔들린다.
+- **시간·난수는 주입한다**(`FirestoreLedgerRepository(now:, random:)`, UseCase는 생성자의 `now`, 공급자·Notifier는 `clockProvider`). 안에서 `DateTime.now()`를 읽으면 테스트가 흔들린다.
 - 저장소 인터페이스, Notifier의 공개 메서드, 공용 위젯에는 무엇을 하는지 한국어 문서 주석을 단다.
 
 ## 화면·상태 작업 (MVVM)
