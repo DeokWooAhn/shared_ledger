@@ -512,7 +512,9 @@ void main() {
       expect(settings.categories.last.hidden, isFalse);
     });
 
-    testWidgets('고정 지출이 쓰는 분류를 고치려 하면 숨겨도 고정 지출은 그대로라고 알린다', (tester) async {
+    testWidgets('반복 설정이 쓰는 분류를 고치려 하면 숨겨도 고정 지출은 그대로 만들어진다고 알린다', (
+      tester,
+    ) async {
       await pumpSettings(
         tester,
         templates: FakeTemplatesRepository(const [phoneBill]),

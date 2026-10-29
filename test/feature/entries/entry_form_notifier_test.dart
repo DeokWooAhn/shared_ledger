@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_ledger/core/providers/providers.dart';
 import 'package:shared_ledger/domain/model/auth_user.dart';
+import 'package:shared_ledger/domain/model/expense_template.dart';
 import 'package:shared_ledger/domain/model/ledger.dart';
 import 'package:shared_ledger/domain/model/ledger_entries.dart';
 import 'package:shared_ledger/domain/model/member.dart';
@@ -19,12 +20,14 @@ const october = YearMonth(2026, 10);
 /// 로그인하고 가계부 목록까지 받은 컨테이너. Notifier가 내 uid와 지금 가계부를 바로 읽을 수 있다.
 Future<ProviderContainer> ready({
   FakeEntriesRepository? entries,
+  FakeTemplatesRepository? templates,
   Ledger ledger = mine,
 }) async {
   final container = createContainer(
     auth: FakeAuthRepository(signedIn: me),
     ledgers: FakeLedgerRepository([ledger]),
     entries: entries,
+    templates: templates,
   );
   await loadSignedInUser(container);
   container.listen(myLedgersProvider, (_, _) {});
@@ -482,6 +485,91 @@ void main() {
 
       expect(entries.trashed, isEmpty);
       expect(container.read(provider).pending, isNull);
+    });
+  });
+
+  group('반복 설정이 있는 고정 지출', () {
+    const rentTemplate = ExpenseTemplate(
+      id: 'template-rent',
+      title: '관리비',
+      categoryId: 'c-living',
+      paymentMethodId: 'p-account',
+      memberId: 'partner',
+      dueDay: 25,
+    );
+
+    EntryFormArgs edit() => EntryFormArgs.edit(entry: rent, month: october);
+
+    Future<(ProviderContainer, FakeEntriesRepository, FakeTemplatesRepository)>
+    withTemplate({
+      List<ExpenseTemplate> templates = const [rentTemplate],
+    }) async {
+      final entries = FakeEntriesRepository({
+        october: const MonthLedger(plannedExpenses: [rent]),
+      });
+      final fake = FakeTemplatesRepository(templates);
+      final container = await ready(entries: entries, templates: fake);
+      return (container, entries, fake);
+    }
+
+    test('목록을 받기 전에 휴지통을 눌렀어도 반복 설정이 있으면 휴지통에 넣지 않는다', () async {
+      final (container, entries, _) = await withTemplate();
+      final provider = entryFormNotifierProvider(edit());
+      recordStates(container, provider);
+
+      await container.read(provider.notifier).trash();
+
+      expect(entries.trashed, isEmpty);
+      expect(container.read(provider).failure, EntryFormFailure.trash);
+      expect(container.read(provider).pending, isNull);
+    });
+
+    test('그만하면 휴지통에 넣은 달과 그만하기 전 반복 설정을 결과로 남긴다', () async {
+      final (container, _, templates) = await withTemplate();
+      final provider = entryFormNotifierProvider(edit());
+      recordStates(container, provider);
+
+      await container.read(provider.notifier).stop();
+
+      expect(templates.templates, isEmpty);
+      final outcome = container.read(provider).outcome;
+      expect(
+        outcome,
+        isA<FixedExpenseStopped>()
+            .having((o) => o.template, 'template', rentTemplate)
+            .having((o) => o.months, 'months', [october]),
+      );
+    });
+
+    test('그사이 상대가 그만했으면 gone을 알리고, 알린 뒤 끈다', () async {
+      final (container, _, _) = await withTemplate(templates: const []);
+      final provider = entryFormNotifierProvider(edit());
+      final states = recordStates(container, provider);
+      final notifier = container.read(provider.notifier);
+
+      await notifier.stop();
+
+      expect(states.first.pending, EntryFormAction.stop);
+      expect(container.read(provider).failure, EntryFormFailure.gone);
+      expect(container.read(provider).pending, isNull);
+      notifier.failureShown();
+      expect(container.read(provider).failure, isNull);
+    });
+
+    test('연결이 없으면 offline을 알리고 반복 설정은 그대로다', () async {
+      final (container, _, templates) = await withTemplate();
+      templates.offline = true;
+      final provider = entryFormNotifierProvider(edit());
+      recordStates(container, provider);
+      final notifier = container.read(provider.notifier);
+
+      await notifier.stop();
+
+      expect(container.read(provider).failure, EntryFormFailure.offline);
+      expect(container.read(provider).pending, isNull);
+      expect(templates.templates, [rentTemplate]);
+      notifier.failureShown();
+      expect(container.read(provider).failure, isNull);
     });
   });
 }

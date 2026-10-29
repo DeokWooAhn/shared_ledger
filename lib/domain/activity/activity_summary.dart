@@ -53,7 +53,7 @@ ActivityDraft entryActivity(
 
 /// 고정 지출 변경 기록. 예: `고정 지출 '월세' 500,000원`, 고쳤으면 `고정 지출 '월세' · 금액 500,000원 → 550,000원, 예정일`
 ///
-/// 지울 고정 지출 문서의 모양이 잘못돼 값을 읽지 못했으면 [template]이 null이고 '고정 지출'만 적는다.
+/// 지울 반복 설정 문서의 모양이 잘못돼 값을 읽지 못했으면 [template]이 null이고 '고정 지출'만 적는다.
 ActivityDraft templateActivity(
   ActivityAction action,
   TemplateDraft? template, {

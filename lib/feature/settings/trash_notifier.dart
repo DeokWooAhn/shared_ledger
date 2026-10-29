@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../domain/repository/entries_repository.dart';
 import '../../core/providers/providers.dart';
 import '../../core/providers/usecases.dart';
-import '../../domain/model/expense_template.dart';
 import '../../domain/model/ledger_entries.dart';
 import '../../domain/model/trashed_entry.dart';
 import '../../domain/model/year_month.dart';
@@ -68,31 +67,35 @@ class TrashNotifier extends Notifier<TrashState> {
   /// [month]의 [entry]를 완전히 지운다. 되살릴 수 없다.
   ///
   /// 반복 설정이 남아 있는 이번 달 이후의 고정 지출([staysInTrash])은 지우면 다시 만들어져서 지우지 않는다.
+  /// 반복 설정 목록을 아직 받지 못했거나 못 받았으면 남아 있는지 알 수 없어서 고정 지출은 지우지 않는다.
   Future<void> purge(LedgerEntry entry, YearMonth month) {
+    final templateIds = _templateIds;
+    if (entry is PlannedExpense && templateIds == null) return Future.value();
+    final known = templateIds ?? const <String>{};
     final thisMonth = YearMonth.of(ref.read(clockProvider)());
     if (staysInTrash(
       entry,
       month: month,
       thisMonth: thisMonth,
-      templateIds: _templateIds,
+      templateIds: known,
     )) {
       return Future.value();
     }
-    return _run(TrashAction.purge, entry, month);
+    return _run(TrashAction.purge, entry, month, templateIds: known);
   }
 
-  // 지금 있는 반복 설정 id. 휴지통 화면이 목록을 구독하고 있어서 보통 이미 받아 두었다.
-  Set<String> get _templateIds => {
-    for (final template
-        in ref.read(templatesProvider).value ?? const <ExpenseTemplate>[])
-      template.id,
+  // 지금 있는 반복 설정 id. 목록을 아직 받지 못했거나 오류면 null이다. 휴지통 화면이 목록을 구독하고 있다.
+  Set<String>? get _templateIds => switch (ref.read(templatesProvider)) {
+    AsyncData(:final value) => {for (final template in value) template.id},
+    _ => null,
   };
 
   Future<void> _run(
     TrashAction action,
     LedgerEntry entry,
-    YearMonth month,
-  ) async {
+    YearMonth month, {
+    Set<String> templateIds = const {},
+  }) async {
     final uid = ref.read(authUserProvider).value?.uid;
     final ledgerId = ref.read(currentLedgerProvider)?.id;
     if (state.busy || uid == null || ledgerId == null) return;
@@ -114,7 +117,7 @@ class TrashNotifier extends Notifier<TrashState> {
             ledgerId: ledgerId,
             month: month,
             entry: entry,
-            templateIds: _templateIds,
+            templateIds: templateIds,
             uid: uid,
           );
       }

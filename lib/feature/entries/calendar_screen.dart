@@ -910,7 +910,7 @@ class _AddMonthDialog extends StatelessWidget {
       content: Text(
         keepAll(
           templateCount > 0
-              ? '추가하면 이 달 가계부가 생기고, 고정 지출 $templateCount개를 이 달 고정 지출로 채워요. 추가할까요?'
+              ? '추가하면 이 달 가계부가 생기고, 고정 지출 $templateCount개도 함께 들어가요. 추가할까요?'
               : '추가하면 이 달 가계부가 생겨서 요약·항목 탭에서도 볼 수 있어요. 추가할까요?',
         ),
       ),

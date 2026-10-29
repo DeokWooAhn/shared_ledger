@@ -465,12 +465,12 @@ void main() {
 
         await tapShown(tester, find.byKey(const Key('calendar-day-empty')));
         expect(
-          findSentence('추가하면 이 달 가계부가 생기고, 고정 지출 1개를 이 달 고정 지출로 채워요. 추가할까요?'),
+          findSentence('추가하면 이 달 가계부가 생기고, 고정 지출 1개도 함께 들어가요. 추가할까요?'),
           findsOneWidget,
         );
         await tester.tap(find.byKey(const Key('add-month-confirm')));
         await settleRoute(tester);
-        // 그달 가계부를 만들며 고정 지출(관리비)을 지급 전 고정 지출로 채우고 달 목록에 더했다.
+        // 그달 가계부를 만들며 반복 설정(관리비)으로 지급 전 고정 지출을 채우고 달 목록에 더했다.
         expect(entries.monthOf(december).plannedExpenses.single.id, 'rent');
         expect(entries.recordedMonths, [december]);
         expect(find.text('2026년 12월 1일'), findsOneWidget);

@@ -513,6 +513,9 @@ class EntryFormNotifier extends Notifier<EntryFormState> {
   }
 
   /// 고치는 항목을 휴지통에 넣는다. 온라인에서만 된다. 반복 설정이 있는 고정 지출은 [stop]으로 그만한다.
+  ///
+  /// 화면이 반복 설정 목록을 받기 전에 눌렸을 수 있어서, 목록을 다시 받아 반복 설정이 있으면 휴지통에 넣지 않는다
+  /// (그 고정 지출만 숨겨지고 반복 설정이 남지 않게). 화면은 목록을 받으면 '그만하기'로 바뀐다.
   Future<void> trash() async {
     final entry = args.entry;
     final uid = ref.read(authUserProvider).value?.uid;
@@ -521,6 +524,11 @@ class EntryFormNotifier extends Notifier<EntryFormState> {
     state = state.withStatus(pending: EntryFormAction.trash);
     try {
       final templates = await _templates();
+      if (templateOf(templates) != null) {
+        if (!ref.mounted) return;
+        state = state.withStatus(failure: EntryFormFailure.trash);
+        return;
+      }
       await ref
           .read(entryUseCasesProvider)
           .trashEntry(

@@ -48,7 +48,7 @@ class _CategorySheetState extends ConsumerState<CategorySheet> {
     final problem = state.problem;
     final failure = state.failure;
     final enabled = !state.busy;
-    // 숨겨도 고정 지출은 이 분류로 계속 고정 지출을 만든다. 쓰는 고정 지출이 있으면 미리 알린다.
+    // 숨겨도 반복 설정은 이 분류로 계속 고정 지출을 만든다. 이 분류를 쓰는 반복 설정이 있으면 미리 알린다.
     final usedByTemplates = category == null
         ? 0
         : (ref.watch(templatesProvider).value ?? const [])

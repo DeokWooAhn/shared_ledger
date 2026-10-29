@@ -50,7 +50,7 @@ void main() {
     });
   });
 
-  test('그달에 만들 고정 지출은 고정 지출 값에 예정일을 붙이고 지급 전이다', () {
+  test('그달에 만들 고정 지출은 반복 설정 값에 예정일을 붙이고 지급 전이다', () {
     final draft = template(amount: 200000).draftFor(const YearMonth(2026, 11));
 
     expect(

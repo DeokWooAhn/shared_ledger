@@ -64,7 +64,7 @@ void main() {
       expect(expense?.isPaid, isTrue);
     });
 
-    test('고정 지출은 고정 지출에서 옮긴 예정일을 읽고, 잘못된 예정일은 비운다', () {
+    test('고정 지출은 반복 설정에서 옮긴 예정일을 읽고, 잘못된 예정일은 비운다', () {
       const data = {
         'memberId': 'owner',
         'categoryId': 'c1',
@@ -275,7 +275,7 @@ void main() {
       expect(data.keys, isNot(contains('memo')));
     });
 
-    test('고정 지출로 만든 고정 지출은 그달 예정일을 담고 지급 전·메모 없이 만든다', () {
+    test('반복 설정으로 만든 고정 지출은 그달 예정일을 담고 지급 전·메모 없이 만든다', () {
       const template = ExpenseTemplate(
         id: 't-rent',
         title: '관리비',

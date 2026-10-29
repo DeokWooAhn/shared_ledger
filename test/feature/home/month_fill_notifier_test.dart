@@ -85,7 +85,7 @@ void main() {
       );
     });
 
-    test('이미 있거나 휴지통에 넣은 고정 지출의 고정 지출은 빼고, 다 있으면 null이다', () async {
+    test('그달 고정 지출이 이미 있거나 휴지통에 있는 반복 설정은 빼고, 다 있으면 null이다', () async {
       final entries = FakeEntriesRepository({
         october: const MonthLedger(plannedIds: {'rent'}),
       });

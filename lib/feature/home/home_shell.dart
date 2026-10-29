@@ -39,7 +39,7 @@ typedef AddEntry =
 ///
 /// 달을 보는 탭(요약·항목)에서는 + 버튼을 둔다. 좁은 화면은 탭 막대 오른쪽, 넓은 화면은 옆 탭 막대 맨 위다.
 /// 탭마다 화면 상태(스크롤 위치 등)를 [StatefulNavigationShell]이 따로 지킨다.
-/// 보고 있는 달(이번 달·다음 달)에 빠진 고정 지출은 어느 탭에 있든 고정 지출로 채운다.
+/// 보고 있는 달(이번 달·다음 달)에 빠진 고정 지출은 어느 탭에 있든 반복 설정으로 채운다.
 class HomeShell extends ConsumerWidget {
   const HomeShell({
     required this.navigationShell,
@@ -78,7 +78,7 @@ class HomeShell extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // 그달을 처음 열거나 고정 지출이 늘면 빠진 고정 지출을 만든다. 탭 화면보다 먼저 듣기 시작해서
+    // 그달을 처음 열거나 반복 설정이 늘면 빠진 고정 지출을 만든다. 탭 화면보다 먼저 듣기 시작해서
     // 처음 값은 늘 불러오는 중(null)이고, 그달 항목과 고정 지출을 받은 뒤 바뀐 값으로 불린다.
     ref.listen(plannedFillProvider, (_, fill) {
       if (fill == null) return;

@@ -70,7 +70,7 @@ lib/
     theme/                design/app.pen 토큰으로 만든 테마
     widget/               공용 위젯과 화면 도우미(keepAll, signOutWithFeedback, MonthHeader)
   feature/<기능>/        화면: <이름>_screen.dart(View) + <이름>_notifier.dart(Notifier)
-                          feature/home은 홈의 탭 틀(요약·항목·고정 지출·설정)
+                          feature/home은 홈의 탭 틀(요약·항목·설정)
   main.dart, app.dart   앱 시작점
   router.dart           화면 이동 규칙(go_router). feature 화면을 모은다
   di.dart               저장소 공급자에 Firebase 구현(data)을 넣는다. data를 아는 곳은 여기뿐이다

@@ -70,7 +70,7 @@ class Income extends LedgerEntry {
   DateTime? get date => receivedOn;
 }
 
-/// 고정 지출. 고정 지출 템플릿에서 매달 만들어진다.
+/// 고정 지출. 반복 설정(템플릿)에서 매달 만들어진다.
 class PlannedExpense extends LedgerEntry {
   const PlannedExpense({
     required this.id,
@@ -99,7 +99,7 @@ class PlannedExpense extends LedgerEntry {
   /// 실제로 빠져나간 날. 카드가 아닌 지출은 이 값이 있어야 현금 유출에 들어간다.
   final DateTime? paidOn;
 
-  /// 고정 지출에서 옮긴 그달 예정일. 직접 더한 고정 지출은 null이다. 계산에는 쓰지 않는다.
+  /// 반복 설정에서 옮긴 그달 예정일. 반복 설정 없이 직접 더한 옛 고정 지출은 null이다. 계산에는 쓰지 않는다.
   final DateTime? dueOn;
   @override
   final String? memo;
@@ -256,7 +256,7 @@ class EntryDraft {
   /// 받은 날·지급한 날·쓴 날·출금일. 고정 지출은 이 값이 있어야 지급 완료다.
   final DateTime? date;
 
-  /// 고정 지출만 쓴다. 고정 지출에서 옮긴 그달 예정일이고, 입력 화면에서는 고치지 않고 그대로 둔다.
+  /// 고정 지출만 쓴다. 반복 설정에서 옮긴 그달 예정일이고, 입력 화면에서는 고치지 않고 그대로 둔다.
   final DateTime? dueOn;
 
   /// 비었으면 null.

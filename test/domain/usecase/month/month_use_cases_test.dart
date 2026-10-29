@@ -36,7 +36,7 @@ const phone = ExpenseTemplate(
   dueDay: 10,
 );
 
-/// [template]로 만든 그달 고정 지출(문서 id가 고정 지출 id).
+/// [template]로 만든 그달 고정 지출(문서 id가 반복 설정 id).
 PlannedExpense plannedOf(ExpenseTemplate template) => PlannedExpense(
   id: template.id,
   categoryId: template.categoryId,
@@ -90,7 +90,7 @@ void main() {
 
     setUp(() => reads = 0);
 
-    test('그달에 아직 고정 지출이 없는 고정 지출만 채울 것으로 낸다', () {
+    test('그달에 아직 고정 지출이 없는 반복 설정만 채울 것으로 낸다', () {
       final fill = plan(
         entries: MonthLedger(plannedExpenses: [plannedOf(rent)]),
       );

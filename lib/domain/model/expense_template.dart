@@ -122,17 +122,17 @@ class TemplateDraft {
       Object.hash(memberId, title, amount, categoryId, paymentMethodId, dueDay);
 }
 
-/// [month]의 고정 지출을 고정 지출로 자동으로 채우는지. 이번 달과 다음 달만 채운다.
+/// [month]의 고정 지출 항목을 반복 설정으로 자동으로 채우는지. 이번 달과 다음 달만 채운다.
 ///
-/// 지난 달은 이미 지나간 기록이라 고정 지출로 덮지 않고, 먼 미래 달은 미리 만들지 않는다.
+/// 지난 달은 이미 지나간 기록이라 반복 설정으로 덮지 않고, 먼 미래 달은 미리 만들지 않는다.
 bool fillsFromTemplates(YearMonth month, {required YearMonth thisMonth}) =>
     month == thisMonth || month == thisMonth.next;
 
-/// 달력에서 [month] 가계부를 새로 만들 때 고정 지출로 채우는지. 이번 달과 앞으로의 달만 채우고, 지난 달은 달만 만든다.
+/// 달력에서 [month] 가계부를 새로 만들 때 반복 설정으로 채우는지. 이번 달과 앞으로의 달만 채우고, 지난 달은 달만 만든다.
 bool fillsTemplatesOnAdd(YearMonth month, {required YearMonth thisMonth}) =>
     month.compareTo(thisMonth) >= 0;
 
-/// [templates] 가운데 [ledger]의 달에 아직 고정 지출이 없는 것.
+/// 반복 설정 [templates] 가운데 [ledger]의 달에 아직 고정 지출 항목이 없는 것.
 ///
 /// 문서 id가 템플릿 id라서, 휴지통에 넣은 것을 포함해 그 id의 문서가 있으면 다시 만들지 않는다.
 List<ExpenseTemplate> templatesMissingIn(

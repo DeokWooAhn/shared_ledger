@@ -197,7 +197,10 @@ class _EntryFormScreenState extends ConsumerState<EntryFormScreen> {
     }
 
     // 고치는 고정 지출이 반복 설정이 있으면 반복 설정과 함께 고치고 그만한다. 새 고정 지출은 반복 설정과 함께 더한다.
-    final template = notifier.templateOf(ref.watch(templatesProvider).value);
+    final templates = ref.watch(templatesProvider);
+    final template = notifier.templateOf(templates.value);
+    // 고치는 고정 지출이 반복 설정이 있는지 아직 모르면 휴지통·그만하기 단추를 둘 다 숨긴다.
+    final templateKnown = kind != EntryKind.planned || templates.hasValue;
     final fixed = kind == EntryKind.planned && (!isEdit || template != null);
     final paidByCard = methods.any(
       (m) => m.id == state.paymentMethodId && m.kind == PaymentKind.card,
@@ -369,7 +372,7 @@ class _EntryFormScreenState extends ConsumerState<EntryFormScreen> {
                 onPressed: enabled ? notifier.stop : null,
                 child: const Text('고정 지출 그만하기'),
               )
-            else if (isEdit)
+            else if (isEdit && templateKnown)
               TextButton.icon(
                 key: const Key('entry-trash'),
                 style: TextButton.styleFrom(

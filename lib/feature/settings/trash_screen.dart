@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/providers/providers.dart';
-import '../../domain/model/expense_template.dart';
 import '../../domain/model/ledger_entries.dart';
 import '../../domain/model/member.dart';
 import '../../domain/model/payment_method.dart';
@@ -138,10 +137,10 @@ class _TrashContent extends ConsumerWidget {
         }
         return bAt.compareTo(aAt);
       });
-    final templateIds = {
-      for (final template
-          in ref.watch(templatesProvider).value ?? const <ExpenseTemplate>[])
-        template.id,
+    // 반복 설정 목록을 받기 전(또는 오류)에는 고정 지출이 남아야 하는지 몰라서 그 줄의 단추를 막는다.
+    final templateIds = switch (ref.watch(templatesProvider)) {
+      AsyncData(:final value) => {for (final template in value) template.id},
+      _ => null,
     };
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -161,15 +160,19 @@ class _TrashContent extends ConsumerWidget {
                   item: item,
                   title: _titleOf(item.entry, methods),
                   member: memberIn(members, _slotOf(item.entry.memberId)),
-                  stays: staysInTrash(
-                    item.entry,
-                    month: month,
-                    thisMonth: YearMonth.of(now),
-                    templateIds: templateIds,
-                  ),
+                  stays:
+                      templateIds != null &&
+                      staysInTrash(
+                        item.entry,
+                        month: month,
+                        thisMonth: YearMonth.of(now),
+                        templateIds: templateIds,
+                      ),
                   now: now,
                   canWrite: canWrite,
-                  busy: state.busy,
+                  busy:
+                      state.busy ||
+                      (templateIds == null && item.entry is PlannedExpense),
                   onRestore: () => notifier.restore(item.entry, month),
                   onPurge: () => _confirmPurge(
                     context,

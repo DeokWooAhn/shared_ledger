@@ -623,7 +623,7 @@ class FakeSettingsRepository with LogsActivity implements SettingsRepository {
 /// [put]으로 바꾸면 구독 중인 곳에 다시 알린다. [MonthLedger.plannedIds]에는 휴지통에 든 고정 지출의 id까지 들어간다.
 /// 쓰기도 실제 약속을 지킨다: 추가는 [offline]이어도 되고, 고치기·휴지통·꺼내기·완전 삭제·고정 지출로 채우기는 [offline]이면
 /// [EntryWriteFailure.offline]으로, 없는 항목(휴지통에 든 항목을 고치거나 휴지통 밖의 항목을 꺼내거나 지울 때 포함)이면
-/// [EntryWriteFailure.notFound]로 실패한다. 고정 지출로 채울 때는 그 id의 고정 지출이 있으면(휴지통 포함) 건너뛴다.
+/// [EntryWriteFailure.notFound]로 실패한다. 반복 설정으로 채울 때는 그 id의 고정 지출이 있으면(휴지통 포함) 건너뛴다.
 /// 휴지통에 넣으면 [now]로 넣은 때와 자동으로 지울 때를 적는다([staysInTrash]면 자동으로 지우지 않는다).
 class FakeEntriesRepository with LogsActivity implements EntriesRepository {
   FakeEntriesRepository([Map<YearMonth, MonthLedger> months = const {}])
@@ -658,7 +658,7 @@ class FakeEntriesRepository with LogsActivity implements EntriesRepository {
   final purged =
       <({String ledgerId, YearMonth month, EntryKind kind, String id})>[];
 
-  /// 고정 지출로 채운 기록. 넘겨받은 고정 지출 id와 실제로 만든 개수를 남긴다.
+  /// 반복 설정으로 채운 기록. 넘겨받은 반복 설정 id와 실제로 만든 개수를 남긴다.
   final filled =
       <
         ({
