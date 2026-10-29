@@ -64,9 +64,20 @@ void main() {
     test('준비가 끝나면 시작 화면들에서 홈으로 옮기고, 다른 화면은 그대로 둔다', () {
       expect(redirectFor(AppGate.ready, Routes.signIn), Routes.home);
       expect(redirectFor(AppGate.ready, Routes.start), Routes.home);
+      expect(redirectFor(AppGate.ready, Routes.startCreate), Routes.home);
+      expect(redirectFor(AppGate.ready, Routes.startJoin), Routes.home);
       expect(redirectFor(AppGate.ready, Routes.home), isNull);
+      expect(redirectFor(AppGate.ready, Routes.months), isNull);
       expect(redirectFor(AppGate.ready, Routes.settings), isNull);
       expect(redirectFor(AppGate.ready, Routes.categories), isNull);
+    });
+
+    test('가계부가 없으면 시작 화면과 그 아래의 만들기·입장 화면에 머문다', () {
+      expect(redirectFor(AppGate.noLedger, Routes.start), isNull);
+      expect(redirectFor(AppGate.noLedger, Routes.startCreate), isNull);
+      expect(redirectFor(AppGate.noLedger, Routes.startJoin), isNull);
+      expect(redirectFor(AppGate.noLedger, Routes.months), Routes.start);
+      expect(redirectFor(AppGate.signedOut, Routes.startJoin), Routes.signIn);
     });
 
     test('탭 화면에 있다가 로그아웃하면 로그인 화면으로 옮긴다', () {

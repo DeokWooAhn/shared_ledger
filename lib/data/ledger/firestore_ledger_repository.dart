@@ -42,10 +42,14 @@ class FirestoreLedgerRepository implements LedgerRepository {
     required String name,
     required String ownerUid,
     required String ownerName,
+    required YearMonth firstMonth,
   }) async {
     final ref = _ledgers.doc();
     final batch = _firestore.batch()
-      ..set(ref, newLedgerData(name: name, ownerUid: ownerUid));
+      ..set(
+        ref,
+        newLedgerData(name: name, ownerUid: ownerUid, firstMonth: firstMonth),
+      );
     for (final doc in defaultSettingDocs(uid: ownerUid, ownerName: ownerName)) {
       batch.set(ref.collection(doc.collection).doc(doc.id), doc.data);
     }
@@ -172,13 +176,14 @@ class FirestoreLedgerRepository implements LedgerRepository {
 Map<String, Object> newLedgerData({
   required String name,
   required String ownerUid,
+  required YearMonth firstMonth,
 }) => {
   'name': name,
   'ownerUid': ownerUid,
   'roles': <String, String>{},
   'memberUids': [ownerUid],
-  // 새 가계부는 항목 있는 달이 아직 없다. 빈 목록이라 따로 모을 필요가 없다.
-  'months': <String>[],
+  // 새 가계부는 처음 고른 달 하나로 시작한다(규칙의 createsMonths). 목록이 있어서 따로 모을 필요가 없다.
+  'months': [firstMonth.id],
   'createdAt': FieldValue.serverTimestamp(),
   'updatedAt': FieldValue.serverTimestamp(),
 };

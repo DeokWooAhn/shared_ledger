@@ -7,6 +7,7 @@ import '../../core/providers/providers.dart';
 import '../../domain/model/member.dart';
 import '../../domain/model/year_month.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/widget/no_months_notice.dart';
 import '../../core/widget/keep_all.dart';
 import '../../core/widget/member_avatar.dart';
 import '../../core/widget/month_header.dart';
@@ -32,6 +33,7 @@ class SummaryScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final summary = ref.watch(monthSummaryProvider);
+    final noMonths = ref.watch(ledgerMonthsProvider)?.isEmpty ?? false;
     return LayoutBuilder(
       builder: (context, constraints) {
         final bodyWidth = constraints.maxWidth - tabPageSidePadding * 2;
@@ -40,14 +42,17 @@ class SummaryScreen extends ConsumerWidget {
           header: MonthHeader(openCalendar: openCalendar),
           maxWidth: twoColumns ? summaryTwoColumnMaxWidth : tabPageMaxWidth,
           children: [
-            switch (summary) {
-              AsyncData(:final value) => _SummaryBody(
-                summary: value,
-                twoColumns: twoColumns,
-              ),
-              AsyncError() => const _SummaryFailed(),
-              AsyncLoading() => const _SummaryLoading(),
-            },
+            if (noMonths)
+              const NoMonthsNotice()
+            else
+              switch (summary) {
+                AsyncData(:final value) => _SummaryBody(
+                  summary: value,
+                  twoColumns: twoColumns,
+                ),
+                AsyncError() => const _SummaryFailed(),
+                AsyncLoading() => const _SummaryLoading(),
+              },
           ],
         );
       },

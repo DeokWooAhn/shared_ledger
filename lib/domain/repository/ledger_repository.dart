@@ -30,11 +30,13 @@ abstract interface class LedgerRepository {
   /// 나를 관리자로 하는 가계부를 만들고 id를 돌려준다.
   ///
   /// 기본 설정(이름표 두 장, 기본 분류·결제수단)도 같이 만든다. 이름표의 내 이름은 [ownerName]이다.
+  /// 처음 쓸 달 [firstMonth]를 가계부의 달 목록에 넣어 만든다. 이번 달이라도 저절로 생기지 않는다.
   /// 둘 중 하나만 생기는 일이 없게 한 번의 일괄 쓰기로 한다.
   Future<String> create({
     required String name,
     required String ownerUid,
     required String ownerName,
+    required YearMonth firstMonth,
   });
 
   /// [ledgerId]에 [role]로 들어올 사람을 위한 초대 코드를 만든다. 관리자만 할 수 있다.

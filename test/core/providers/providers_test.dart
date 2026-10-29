@@ -40,7 +40,7 @@ void main() {
       return container;
     }
 
-    test('항목 있는 달에 이번 달을 더해 오래된 것부터 둔다(다음 달은 항목이 있을 때만)', () async {
+    test('가계부가 있는 달만 오래된 것부터 둔다. 이번 달이라도 추가하지 않았으면 없다', () async {
       final container = await withLedger(
         Ledger(
           id: 'l1',
@@ -52,9 +52,50 @@ void main() {
 
       expect(container.read(ledgerMonthsProvider), const [
         YearMonth(2026, 8),
-        YearMonth(2026, 10),
         YearMonth(2026, 12),
       ]);
+    });
+
+    test('보는 달은 이번 달 가계부가 있으면 이번 달, 없으면 가장 가까운 달에서 시작한다', () async {
+      Future<YearMonth> startOf(Set<YearMonth> months) async =>
+          (await withLedger(
+            Ledger(id: 'l1', name: '우리 가계부', ownerUid: 'me', months: months),
+          )).read(selectedMonthProvider);
+
+      expect(
+        await startOf({const YearMonth(2026, 9), const YearMonth(2026, 10)}),
+        const YearMonth(2026, 10),
+      );
+      // 거리가 같으면(9월·11월) 앞의 달이다.
+      expect(
+        await startOf({const YearMonth(2026, 9), const YearMonth(2026, 11)}),
+        const YearMonth(2026, 9),
+      );
+      expect(
+        await startOf({const YearMonth(2026, 12), const YearMonth(2027, 3)}),
+        const YearMonth(2026, 12),
+      );
+      // 달이 없으면 이번 달이다(요약·항목 탭은 가계부 탭을 안내한다).
+      expect(await startOf({}), const YearMonth(2026, 10));
+    });
+
+    test('달이 하나도 없다가 생기면 보는 달을 그 달로 옮긴다', () async {
+      final ledgers = FakeLedgerRepository([
+        const Ledger(id: 'l1', name: '우리 가계부', ownerUid: 'me', months: {}),
+      ]);
+      final container = createContainer(
+        auth: FakeAuthRepository(signedIn: me),
+        ledgers: ledgers,
+      );
+      await loadSignedInUser(container);
+      container.listen(myLedgersProvider, (_, _) {});
+      await container.read(myLedgersProvider.future);
+      container.listen(selectedMonthProvider, (_, _) {});
+
+      ledgers.addMonth('l1', const YearMonth(2026, 12));
+      await pumpEventQueue();
+
+      expect(container.read(selectedMonthProvider), const YearMonth(2026, 12));
     });
 
     test('달 목록을 아직 모으지 않은 가계부거나 가계부가 없으면 달을 가리지 않는다(null)', () async {

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_ledger/core/widget/month_picker_sheet.dart';
+import 'package:shared_ledger/feature/ledger/join_ledger_screen.dart';
 import 'package:shared_ledger/domain/repository/ledger_repository.dart';
 import 'package:shared_ledger/domain/model/auth_user.dart';
 import 'package:shared_ledger/domain/model/category.dart';
@@ -122,17 +124,67 @@ void main() {
         ledgers: ledgers,
       );
 
+      await openStartPath(tester, const Key('start-create'));
       await enterVisible(tester, const Key('ledger-name'), ' 하늘바다 가계부 ');
       await tapVisible(tester, const Key('create-ledger'));
 
       expect(ledgers.created, [
-        (name: '하늘바다 가계부', ownerUid: 'me', ownerName: '나'),
+        (
+          name: '하늘바다 가계부',
+          ownerUid: 'me',
+          ownerName: '나',
+          firstMonth: const YearMonth(2026, 10),
+        ),
       ]);
       expect(monthTitle(tester), '10월');
 
       await openTab(tester, HomeTab.settings);
       expect(find.text('하늘바다 가계부'), findsOneWidget);
       expect(find.text('관리자'), findsOneWidget);
+    });
+
+    testWidgets('첫 화면은 두 길만 보여 주고, 고르면 그 화면에서 입력하며 뒤로 가면 돌아온다', (tester) async {
+      await pumpApp(
+        tester,
+        auth: FakeAuthRepository(signedIn: me),
+        ledgers: FakeLedgerRepository(),
+      );
+
+      expect(find.byKey(const Key('start-create')), findsOneWidget);
+      expect(find.byKey(const Key('start-join')), findsOneWidget);
+      expect(find.byKey(const Key('ledger-name')), findsNothing);
+      expect(find.byKey(const Key('invite-code')), findsNothing);
+
+      await openStartPath(tester, const Key('start-join'));
+      expect(find.byType(JoinLedgerScreen), findsOneWidget);
+      await tester.tap(find.byKey(const Key('join-back')));
+      await settleRoute(tester);
+      expect(find.byType(LedgerStartScreen), findsOneWidget);
+    });
+
+    testWidgets('첫 달을 다음 달로 고르면 그 달 가계부로 만들고 그 달을 본다', (tester) async {
+      final ledgers = FakeLedgerRepository();
+      await pumpApp(
+        tester,
+        auth: FakeAuthRepository(signedIn: me),
+        ledgers: ledgers,
+      );
+
+      await openStartPath(tester, const Key('start-create'));
+      expect(find.text('2026년 10월'), findsOneWidget);
+      await tapVisible(tester, const Key('first-month'));
+      await tester.drag(
+        find.byKey(const Key('month-picker-months')),
+        const Offset(0, -monthPickerItemExtent),
+      );
+      await settle(tester);
+      await tester.tap(find.byKey(const Key('month-picker-done')));
+      await settle(tester);
+      expect(find.text('2026년 11월'), findsOneWidget);
+      await tapVisible(tester, const Key('create-ledger'));
+
+      expect(ledgers.created.single.firstMonth, const YearMonth(2026, 11));
+      expect(monthTitle(tester), '11월');
     });
 
     testWidgets('가계부 이름이 비어 있으면 만들지 않고 안내한다', (tester) async {
@@ -143,6 +195,7 @@ void main() {
         ledgers: ledgers,
       );
 
+      await openStartPath(tester, const Key('start-create'));
       await enterVisible(tester, const Key('ledger-name'), '   ');
       await tapVisible(tester, const Key('create-ledger'));
 
@@ -162,6 +215,7 @@ void main() {
         ledgers: ledgers,
       );
 
+      await openStartPath(tester, const Key('start-join'));
       await enterVisible(tester, const Key('invite-code'), 'abcd-efgh 23');
       await tapVisible(tester, const Key('join-ledger'));
 
@@ -182,11 +236,12 @@ void main() {
         ledgers: ledgers,
       );
 
+      await openStartPath(tester, const Key('start-join'));
       await enterVisible(tester, const Key('invite-code'), 'ABCDEFGH23');
       await tapVisible(tester, const Key('join-ledger'));
 
       expect(findSentence('기간이 지난 초대 코드예요. 새 코드를 받아 주세요.'), findsOneWidget);
-      expect(find.byType(LedgerStartScreen), findsOneWidget);
+      expect(find.byType(JoinLedgerScreen), findsOneWidget);
     });
 
     testWidgets('초대 코드 모양이 아니면 서버에 묻지 않고 안내한다', (tester) async {
@@ -197,6 +252,7 @@ void main() {
         ledgers: ledgers,
       );
 
+      await openStartPath(tester, const Key('start-join'));
       await enterVisible(tester, const Key('invite-code'), 'abc');
       await tapVisible(tester, const Key('join-ledger'));
 
@@ -218,6 +274,7 @@ void main() {
         ledgers: ledgers,
       );
 
+      await openStartPath(tester, const Key('start-join'));
       await enterVisible(tester, const Key('invite-code'), 'ABCDEFGH23');
       await tapVisible(tester, const Key('join-ledger'));
       expect(
@@ -248,6 +305,7 @@ void main() {
         ledgers: ledgers,
       );
 
+      await openStartPath(tester, const Key('start-join'));
       await enterVisible(tester, const Key('invite-code'), 'ABCDEFGH23');
       await tapVisible(tester, const Key('join-ledger'));
 
@@ -255,7 +313,7 @@ void main() {
         findSentence('이 가계부에는 더 들어갈 수 없어요. 초대한 사람에게 확인해 주세요.'),
         findsOneWidget,
       );
-      expect(find.byType(LedgerStartScreen), findsOneWidget);
+      expect(find.byType(JoinLedgerScreen), findsOneWidget);
     });
 
     testWidgets('로그아웃에 실패하면 안내하고 화면에 남는다', (tester) async {
@@ -276,14 +334,27 @@ void main() {
         ledgers: FakeLedgerRepository(),
       );
 
-      for (final (key, label) in [
-        (const Key('ledger-name'), '가계부 이름'),
-        (const Key('invite-code'), '초대 코드'),
+      for (final (open, back, key, label) in [
+        (
+          const Key('start-create'),
+          const Key('create-back'),
+          const Key('ledger-name'),
+          '가계부 이름',
+        ),
+        (
+          const Key('start-join'),
+          const Key('join-back'),
+          const Key('invite-code'),
+          '초대 코드',
+        ),
       ]) {
+        await openStartPath(tester, open);
         await scrollTo(tester, key);
         final node = tester.getSemantics(find.byKey(key));
         expect(node.label, contains(label));
         expect(node.flagsCollection.isTextField, isTrue);
+        await tester.tap(find.byKey(back));
+        await settleRoute(tester);
       }
       semantics.dispose();
     });
@@ -365,7 +436,7 @@ void main() {
       expect(monthTitle(tester), '9월');
     });
 
-    testWidgets('항목 있는 달과 이번 달만 오가고, 사이의 빈 달은 건너뛰며 끝에서는 화살표를 누를 수 없다', (
+    testWidgets('가계부가 있는 달만 오가고, 사이의 빈 달은 건너뛰며 끝에서는 화살표를 누를 수 없다', (
       tester,
     ) async {
       await pumpApp(
@@ -376,24 +447,41 @@ void main() {
             id: 'l1',
             name: '우리 가계부',
             ownerUid: 'me',
-            months: {const YearMonth(2026, 8)},
+            months: {const YearMonth(2026, 8), const YearMonth(2026, 12)},
           ),
         ]),
       );
       VoidCallback? arrow(String key) =>
           tester.widget<IconButton>(find.byKey(Key(key))).onPressed;
 
-      await tester.tap(find.byKey(const Key('previous-month')));
-      await settle(tester);
+      // 이번 달(10월) 가계부가 없어서 가장 가까운 달(앞의 달 8월)부터 본다.
       expect(monthTitle(tester), '8월');
       expect(arrow('previous-month'), isNull);
+      // 이번 달은 추가하지 않아서 + 버튼도 8월에 적게 한다.
+      expect(find.byKey(const Key('add-entry')), findsOneWidget);
 
       await swipeMonth(tester);
-      expect(monthTitle(tester), '10월');
-      // 다음 달은 항목이 없어서 오가지 않는다.
+      expect(monthTitle(tester), '12월');
       expect(arrow('next-month'), isNull);
       await swipeMonth(tester);
-      expect(monthTitle(tester), '10월');
+      expect(monthTitle(tester), '12월');
+    });
+
+    testWidgets('달이 하나도 없는 가계부는 요약·항목 탭에 가계부 탭을 안내하고 + 버튼을 숨긴다', (
+      tester,
+    ) async {
+      await pumpApp(
+        tester,
+        auth: FakeAuthRepository(signedIn: me),
+        ledgers: FakeLedgerRepository([
+          const Ledger(id: 'l1', name: '우리 가계부', ownerUid: 'me', months: {}),
+        ]),
+      );
+
+      expect(find.byKey(const Key('no-months')), findsOneWidget);
+      expect(find.byKey(const Key('add-entry')), findsNothing);
+      await openTab(tester, HomeTab.entries);
+      expect(find.byKey(const Key('no-months')), findsOneWidget);
     });
 
     testWidgets('글자를 크게 해도 달 이름이 잘리지 않는다', (tester) async {

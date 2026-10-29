@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/providers/providers.dart';
 import '../../core/providers/usecases.dart';
 import '../../domain/model/invite.dart';
+import '../../domain/model/year_month.dart';
 
 /// 진행 중인 동작.
 enum LedgerStartAction { create, join }
@@ -43,16 +44,16 @@ final ledgerStartNotifierProvider =
       LedgerStartNotifier.new,
     );
 
-/// 가계부 시작 화면의 Notifier. 새로 만들거나 초대 코드로 참여한다.
+/// 가계부 시작(만들기·입장 화면)의 Notifier. 새로 만들거나 초대 코드로 참여한다.
 ///
 /// 성공하면 가계부 목록이 바뀌고 화면 이동 규칙(router.dart)이 홈으로 옮긴다.
 class LedgerStartNotifier extends Notifier<LedgerStartState> {
   @override
   LedgerStartState build() => const LedgerStartState();
 
-  /// 나를 관리자로 하는 가계부를 만든다. 이름 검사는 화면의 폼이 끝낸 뒤 부른다.
+  /// 나를 관리자로 하는 가계부를 처음 쓸 달 [firstMonth]와 함께 만든다. 이름 검사는 화면의 폼이 끝낸 뒤 부른다.
   /// 이름 정리와 이름표의 내 이름은 `CreateLedgerUseCase`가 정한다.
-  Future<void> create(String name) async {
+  Future<void> create(String name, {required YearMonth firstMonth}) async {
     final user = ref.read(authUserProvider).value;
     if (state.busy || user == null) return;
     state = LedgerStartState(
@@ -62,7 +63,7 @@ class LedgerStartNotifier extends Notifier<LedgerStartState> {
     try {
       await ref
           .read(ledgerUseCasesProvider)
-          .createLedger(name: name, owner: user);
+          .createLedger(name: name, owner: user, firstMonth: firstMonth);
       if (!ref.mounted) return;
       state = LedgerStartState(codeProblem: state.codeProblem);
     } catch (e) {

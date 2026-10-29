@@ -65,6 +65,12 @@ Future<void> openTab(WidgetTester tester, HomeTab tab) async {
   await settle(tester);
 }
 
+/// 가계부 시작 화면에서 [key]의 길(만들기·입장)을 눌러 그 화면을 연다.
+Future<void> openStartPath(WidgetTester tester, Key key) async {
+  await tester.tap(find.byKey(key));
+  await settleRoute(tester);
+}
+
 /// 항목 탭에서 [kind]가 보이는 칸(수입·지출·카드 대금)을 고른다. 이미 그 칸이면 그대로 둔다.
 Future<void> showEntryTabOf(WidgetTester tester, EntryKind kind) async {
   final tab = EntryTab.values.firstWhere((t) => t.kinds.contains(kind));

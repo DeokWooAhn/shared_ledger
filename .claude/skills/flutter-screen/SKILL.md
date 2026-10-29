@@ -17,7 +17,7 @@ Notifier는 저장소 대신 domain의 UseCase를 영역별 홀더로 부른다(
 | 파일 | 내용 | 정석 레퍼런스 |
 | --- | --- | --- |
 | `<이름>_notifier.dart` | 불변 State, `Notifier`, `NotifierProvider.autoDispose`, 화면용 문제·실패 enum | `lib/feature/ledger/ledger_start_notifier.dart` |
-| `<이름>_screen.dart` | View 위젯, enum → 화면 문구 함수, 화면에서만 쓰는 상태(입력란 컨트롤러·폼 키) | `lib/feature/ledger/ledger_start_screen.dart` |
+| `<이름>_screen.dart` | View 위젯, enum → 화면 문구 함수, 화면에서만 쓰는 상태(입력란 컨트롤러·폼 키) | `lib/feature/ledger/join_ledger_screen.dart`(문구 함수는 같은 기능의 `ledger_start_screen.dart`) |
 
 - 더 작은 예: 로그인(`lib/feature/auth/sign_in_*`), 시트(`lib/feature/settings/invite_*`, 입력란이 있는 시트는 `lib/feature/settings/category_sheet.dart` + `category_form_notifier.dart`)
 - 무엇을 열지 인자를 받는 화면(새 항목·고칠 항목)은 `NotifierProvider.autoDispose.family`로, Notifier가 생성자로 인자를 받는다.
@@ -28,13 +28,13 @@ Notifier는 저장소 대신 domain의 UseCase를 영역별 홀더로 부른다(
 
 ## 탭 화면
 
-홈은 탭 3개다(`HomeTab`: 요약·항목·설정. 가계부 탭은 다음 작업). 틀은 `lib/feature/home/home_shell.dart`, 경로는 `lib/router.dart`의 `StatefulShellRoute.indexedStack`.
+홈은 탭 4개다(`HomeTab`: 요약·항목·가계부·설정). 틀은 `lib/feature/home/home_shell.dart`, 경로는 `lib/router.dart`의 `StatefulShellRoute.indexedStack`.
 
 - 탭 화면은 `TabPage`(`lib/core/widget/tab_page.dart`)로 감싼다. 넓은 화면에서 본문을 가운데 두고, 좁은 화면에서 떠 있는 탭 막대만큼 아래 여백을 둔다.
   두 칸으로 놓는 탭은 `LayoutBuilder`로 칸 수를 정하고 `TabPage(maxWidth:)`를 넓힌다(월 요약: 본문 폭 840 이상이면 두 칸).
 - 머리말은 달을 보는 탭이면 `MonthHeader`, 아니면 `TabTitle`이다. 예: `lib/feature/summary/summary_screen.dart`, `lib/feature/settings/settings_screen.dart`
 - 보고 있는 달은 `selectedMonthProvider`를 읽는다(탭을 옮겨도 같은 달). 오늘 날짜가 필요하면 `clockProvider`.
-  머리말로 오가는 달은 `ledgerMonthsProvider`(항목 있는 달 + 이번 달, 목록을 아직 모으지 않았으면 null)이고, 달력은 모든 달을 보여준다.
+  머리말로 오가는 달은 `ledgerMonthsProvider`(가계부가 있는 달, 이번 달도 추가해야 들어간다. 목록을 아직 모으지 않았으면 null)이고, 달력은 모든 달을 보여준다.
   새 항목을 더하는 쓰기는 `Ledger.needsToRecord(month)`로 그달을 가계부의 달 목록에 같이 더한다(`SaveEntryUseCase`, `docs/firestore.md`의 `months`).
 - 두 사람 표시는 `MemberAvatar`, 이름은 `membersProvider`에서 꺼낸다.
 - 탭을 더하거나 빼면 `HomeTab`과 router.dart의 `Routes.of`·`_tabScreen`을 같이 고친다(`switch`라 빠뜨리면 컴파일 에러).

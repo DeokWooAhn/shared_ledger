@@ -111,15 +111,17 @@ void main() {
       expect(container.read(monthsBackfillProvider), isNull);
     });
 
-    test('항목이 하나도 없으면 빈 목록을 적어 다시 모으지 않게 한다', () async {
+    test('항목이 하나도 없어도 이번 달은 적어서 이어서 쓰고 다시 모으지 않게 한다', () async {
       final ledgers = FakeLedgerRepository([legacy]);
       final container = await ready(ledgers: ledgers);
 
       container.listen(monthsBackfillNotifierProvider, (_, _) {});
       await pumpEventQueue();
 
-      expect(ledgers.recordedMonths.single.months, isEmpty);
-      expect(container.read(currentLedgerProvider)?.months, isEmpty);
+      expect(ledgers.recordedMonths.single.months, {const YearMonth(2026, 10)});
+      expect(container.read(currentLedgerProvider)?.months, {
+        const YearMonth(2026, 10),
+      });
     });
 
     test('오프라인이면 알리지 않고 그만두며, 같은 세션에서는 다시 하지 않는다', () async {

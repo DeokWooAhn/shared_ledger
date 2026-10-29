@@ -59,6 +59,13 @@ service cloud.firestore {
 
     // ---------- 가계부 ----------
 
+    // 가계부를 만들 때 받는 달 목록: 비었거나, 처음 고른 달(yyyy-MM) 하나(2026-10-29).
+    function createsMonths(months) {
+      return months is list
+        && (months.size() == 0
+          || (months.size() == 1 && months[0] is string && months[0].matches('[0-9]{4}-(0[1-9]|1[0-2])')));
+    }
+
     function validName(name) {
       return name is string && name.size() >= 1 && name.size() <= 40;
     }
@@ -82,7 +89,7 @@ service cloud.firestore {
 
       allow create: if signedIn()
         && request.resource.data.keys().hasOnly(['name', 'ownerUid', 'roles', 'memberUids', 'months', 'createdAt', 'updatedAt'])
-        && request.resource.data.get('months', []) == []
+        && createsMonths(request.resource.data.get('months', []))
         && validName(request.resource.data.name)
         && request.resource.data.ownerUid == uid()
         && request.resource.data.roles == {}
