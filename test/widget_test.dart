@@ -427,11 +427,11 @@ void main() {
         ledgers: FakeLedgerRepository([shared]),
       );
 
-      await openTab(tester, HomeTab.templates);
+      await openTab(tester, HomeTab.settings);
 
       expect(
-        tester.getSemantics(find.byKey(HomeTab.templates.key)),
-        isSemantics(label: '고정 지출', isSelected: true, isButton: true),
+        tester.getSemantics(find.byKey(HomeTab.settings.key)),
+        isSemantics(label: '설정', isSelected: true, isButton: true),
       );
       expect(
         tester.getSemantics(find.byKey(HomeTab.summary.key)),
@@ -638,7 +638,7 @@ void main() {
       size: size,
     );
 
-    testWidgets('그달의 남는 현금·지출·저축·카드·기본 월 지출 소계를 보여준다', (tester) async {
+    testWidgets('그달의 남는 현금·지출·저축·카드·고정 지출 소계를 보여준다', (tester) async {
       await pumpSummary(
         tester,
         entries: FakeEntriesRepository({october: designMonth}),
@@ -663,7 +663,7 @@ void main() {
       expect(inCards('99,000원'), findsOneWidget);
       expect(inCards('10월'), findsOneWidget);
       expect(inCards('853,000원'), findsOneWidget);
-      expect(findSentence('이번 달 출금 · 카드대금 2건'), findsOneWidget);
+      expect(findSentence('이번 달 출금 · 카드 대금 2건'), findsOneWidget);
       // 결제수단에 있어도 이번 달에 쓰지 않은 카드는 줄을 만들지 않는다.
       expect(find.byKey(const ValueKey('card-p-account')), findsNothing);
 
@@ -692,7 +692,7 @@ void main() {
       expect(find.byKey(const Key('unpriced-planned')), findsNothing);
     });
 
-    testWidgets('구성원별 막대는 두 사람의 기본 월 지출 비율로 나눠 그린다', (tester) async {
+    testWidgets('구성원별 막대는 두 사람의 고정 지출 비율로 나눠 그린다', (tester) async {
       // 막대 조각에 높이를 주지 않아 막대가 보이지 않은 적이 있다.
       await pumpSummary(
         tester,
@@ -721,7 +721,7 @@ void main() {
       expect(textOf(tester, const Key('planned-total')), '0원');
     });
 
-    testWidgets('금액 미정 기본 지출이 있으면 몇 건이 빠졌는지 알린다', (tester) async {
+    testWidgets('금액 미정 고정 지출이 있으면 몇 건이 빠졌는지 알린다', (tester) async {
       await pumpSummary(
         tester,
         entries: FakeEntriesRepository({
@@ -758,7 +758,7 @@ void main() {
 
       expect(monthTitle(tester), '11월');
       expect(textOf(tester, const Key('remaining-cash')), '1,000원');
-      expect(findSentence('이번 달 출금 · 카드대금 0건'), findsOneWidget);
+      expect(findSentence('이번 달 출금 · 카드 대금 0건'), findsOneWidget);
     });
 
     testWidgets('항목을 불러오지 못하면 안내한다', (tester) async {
@@ -771,7 +771,7 @@ void main() {
       expect(find.byKey(const Key('remaining-cash')), findsNothing);
     });
 
-    testWidgets('넓은 화면에서는 기본 월 지출을 오른쪽 칸에 둔다', (tester) async {
+    testWidgets('넓은 화면에서는 고정 지출을 오른쪽 칸에 둔다', (tester) async {
       await pumpSummary(
         tester,
         entries: FakeEntriesRepository({october: designMonth}),

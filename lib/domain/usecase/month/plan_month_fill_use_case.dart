@@ -15,7 +15,7 @@ class PlannedFill {
   final String ledgerId;
   final YearMonth month;
 
-  /// 그달에 아직 기본 월 지출이 없는 고정 지출.
+  /// 그달에 아직 고정 지출이 없는 고정 지출.
   final List<ExpenseTemplate> templates;
 
   /// 채우면서 가계부의 항목 있는 달 목록에 그달을 더할지([Ledger.needsToRecord]).

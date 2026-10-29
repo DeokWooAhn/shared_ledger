@@ -68,9 +68,9 @@ final paymentMethodsProvider = StreamProvider<List<PaymentMethod>>((ref) {
   return ref.watch(settingsUseCasesProvider).watchPaymentMethods(ledgerId);
 });
 
-/// 지금 가계부의 고정 지출. 가계부가 없으면 빈 목록.
+/// 지금 가계부의 고정 지출 반복 설정. 가계부가 없으면 빈 목록.
 ///
-/// 고정 지출 탭과 새 달을 채우는 홈 틀이 같이 읽어서 구독은 한 벌뿐이다.
+/// 항목 입력 화면, 휴지통, 설정의 분류·결제수단 시트와 새 달을 채우는 홈 틀이 같이 읽어서 구독은 한 벌뿐이다.
 final templatesProvider = StreamProvider<List<ExpenseTemplate>>((ref) {
   final ledgerId = ref.watch(currentLedgerProvider.select((l) => l?.id));
   if (ledgerId == null) return Stream.value(const []);
@@ -111,20 +111,39 @@ class SelectedMonthNotifier extends Notifier<YearMonth> {
   void select(YearMonth month) => state = month;
 }
 
-/// 항목 탭에서 보고 있는 종류. 처음에는 기본 월 지출이다.
+/// 항목 탭의 세 칸. 지출 칸은 고정 지출과 추가 지출을 구역으로 나눠 함께 보여준다.
+enum EntryTab {
+  income([EntryKind.income]),
+  expense([EntryKind.planned, EntryKind.extra]),
+  cardBill([EntryKind.cardBill]);
+
+  const EntryTab(this.kinds);
+
+  /// 이 칸에 보이는 종류. 보이는 순서다.
+  final List<EntryKind> kinds;
+
+  /// + 버튼이 이 칸에서 여는 종류. 지출 칸은 자주 적는 추가 지출이다(입력 화면의 종류 칸에서 바꾼다).
+  EntryKind get addKind => switch (this) {
+    EntryTab.income => EntryKind.income,
+    EntryTab.expense => EntryKind.extra,
+    EntryTab.cardBill => EntryKind.cardBill,
+  };
+}
+
+/// 항목 탭에서 보고 있는 칸. 처음에는 지출이다.
 ///
-/// + 버튼이 항목 탭에서 눌리면 이 종류로 입력 화면을 연다. 탭을 옮겨도 유지된다.
-final selectedEntryKindProvider =
-    NotifierProvider<SelectedEntryKindNotifier, EntryKind>(
-      SelectedEntryKindNotifier.new,
+/// + 버튼이 항목 탭에서 눌리면 이 칸의 [EntryTab.addKind]로 입력 화면을 연다. 탭을 옮겨도 유지된다.
+final selectedEntryTabProvider =
+    NotifierProvider<SelectedEntryTabNotifier, EntryTab>(
+      SelectedEntryTabNotifier.new,
     );
 
-/// 항목 탭에서 보는 종류를 바꾼다.
-class SelectedEntryKindNotifier extends Notifier<EntryKind> {
+/// 항목 탭에서 보는 칸을 바꾼다.
+class SelectedEntryTabNotifier extends Notifier<EntryTab> {
   @override
-  EntryKind build() => EntryKind.planned;
+  EntryTab build() => EntryTab.expense;
 
-  void select(EntryKind kind) => state = kind;
+  void select(EntryTab tab) => state = tab;
 }
 
 /// 서버가 받지 않은 새 항목. 오프라인 추가는 기다리지 않아서 거부는 나중에 여기로 온다. 홈 틀이 듣고 알린다.

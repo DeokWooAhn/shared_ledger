@@ -90,7 +90,7 @@ void main() {
     expect(summary.totals.plannedTotal, 3500);
   });
 
-  test('숨긴 분류는 그달에 쓴 기본 지출이 있을 때만 소계에 넣는다', () {
+  test('숨긴 분류는 그달에 쓴 고정 지출이 있을 때만 소계에 넣는다', () {
     const hiddenPrincipal = Category(
       id: 'c-principal',
       name: '대출원금',
@@ -158,7 +158,7 @@ void main() {
     expect(summary.totals.cardUsage, 383000);
   });
 
-  test('카드 결제수단도 카드대금도 없으면 카드 영역을 숨긴다', () {
+  test('카드 결제수단도 카드 대금도 없으면 카드 영역을 숨긴다', () {
     expect(
       summarize(
         const MonthLedger(),
@@ -179,7 +179,7 @@ void main() {
     expect(withBill.cardBillCount, 1);
   });
 
-  test('숨긴 카드만 있고 그달에 카드로 쓴 돈도 카드대금도 없으면 카드 영역을 숨긴다', () {
+  test('숨긴 카드만 있고 그달에 카드로 쓴 돈도 카드 대금도 없으면 카드 영역을 숨긴다', () {
     const hiddenCard = PaymentMethod(
       id: 'p-sky-card',
       name: '하늘 카드',
@@ -195,7 +195,7 @@ void main() {
     );
   });
 
-  test('금액 미정 기본 지출은 건수를 세고 합계에서는 0원이다', () {
+  test('금액 미정 고정 지출은 건수를 세고 합계에서는 0원이다', () {
     final summary = summarize(
       MonthLedger(
         plannedExpenses: [
@@ -211,7 +211,7 @@ void main() {
     expect(summary.totals.plannedTotal, 1000);
   });
 
-  test('두 사람의 기본 월 지출 소계를 이름표 자리로 꺼낸다', () {
+  test('두 사람의 고정 지출 소계를 이름표 자리로 꺼낸다', () {
     final summary = summarize(
       MonthLedger(
         plannedExpenses: [

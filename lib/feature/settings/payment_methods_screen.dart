@@ -24,7 +24,7 @@ class PaymentMethodsScreen extends ConsumerWidget {
     return TabPage(
       header: const SubPageTitle(
         '결제수단·카드',
-        description: '카드는 카드마다 하나씩 추가해요. 카드로 낸 돈은 다음 달 카드대금으로 빠져나가요.',
+        description: '카드는 카드마다 하나씩 추가해요. 카드로 낸 돈은 다음 달 카드 대금으로 빠져나가요.',
       ),
       children: [
         switch (methods) {

@@ -45,7 +45,7 @@ const rent = PlannedExpense(
 
 void main() {
   group('새 항목', () {
-    test('누가는 나, 날짜는 보는 달이 이번 달이면 오늘로 시작하고 기본 월 지출은 지급 전이다', () async {
+    test('누가는 나, 날짜는 보는 달이 이번 달이면 오늘로 시작하고 고정 지출은 지급 전이다', () async {
       final container = await ready();
 
       final extra = container.read(
@@ -67,7 +67,7 @@ void main() {
       expect(nextMonth.date, isNull);
     });
 
-    test('달력에서 고른 날로 열면 그 날짜로 시작하고, 종류를 바꿔도 유지한다(기본 월 지출은 지급 전)', () async {
+    test('달력에서 고른 날로 열면 그 날짜로 시작하고, 종류를 바꿔도 유지한다(고정 지출은 지급 전)', () async {
       final container = await ready();
       final provider = entryFormNotifierProvider(
         EntryFormArgs.add(
@@ -101,7 +101,7 @@ void main() {
       );
     });
 
-    test('추가지출을 저장하면 보고 있는 달에 더하고 저장 결과로 닫힌다', () async {
+    test('추가 지출을 저장하면 보고 있는 달에 더하고 저장 결과로 닫힌다', () async {
       final entries = FakeEntriesRepository();
       final container = await ready(entries: entries);
       final provider = entryFormNotifierProvider(add(EntryKind.extra));
@@ -211,18 +211,19 @@ void main() {
             .save(amount: '', title: '  ', memo: '');
       }
 
-      // 기본 월 지출은 금액을 비워 둘 수 있다(금액 미정).
+      // 고정 지출은 금액을 비워 둘 수 있다(금액 미정).
       expect(container.read(planned).problems, {
         EntryProblem.titleMissing,
         EntryProblem.categoryMissing,
         EntryProblem.paymentMethodMissing,
+        EntryProblem.dueDayMissing,
       });
       expect(container.read(extra).problems, {
         EntryProblem.amountMissing,
         EntryProblem.titleMissing,
         EntryProblem.paymentMethodMissing,
       });
-      // 카드대금은 제목이 없다.
+      // 카드 대금은 제목이 없다.
       expect(container.read(bill).problems, {
         EntryProblem.amountMissing,
         EntryProblem.cardMissing,
@@ -239,11 +240,13 @@ void main() {
 
       notifier
         ..textEdited(EntryTextField.title)
-        ..selectCategory('c-living');
+        ..selectCategory('c-living')
+        ..selectDueDay(25);
 
       expect(container.read(provider).problems, {
         EntryProblem.paymentMethodMissing,
       });
+      expect(container.read(provider).dueDay, 25);
     });
 
     test('종류를 바꾸면 누가·결제수단은 남기고 분류·날짜는 그 종류의 처음 값으로 돌린다', () async {

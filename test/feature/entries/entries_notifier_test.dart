@@ -130,7 +130,7 @@ void main() {
       return (container, entries);
     }
 
-    test('이번 달 이후의 달이면 고정 지출로 그달 기본 월 지출을 채우고 그달을 달 목록에 더한다', () async {
+    test('이번 달 이후의 달이면 반복 설정으로 그달 고정 지출을 채우고 그달을 달 목록에 더한다', () async {
       final (container, entries) = await ready();
       final states = recordStates(container, entriesNotifierProvider);
 

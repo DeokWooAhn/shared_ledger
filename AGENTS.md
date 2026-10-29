@@ -123,7 +123,7 @@ feature가 저장소 자리(`repositories.dart`)를 import하면 `test/architect
 
 들이려면 먼저 묻는다.
 
-- 코드 생성(`build_runner`, freezed, json_serializable, riverpod_generator)
+- 코드 생성(`build_runner`, freezed, json_serializable, riverpod_generator). 이유는 `docs/plan.md`의 결정 표
 - 다른 상태 관리(Bloc, GetX, provider 패키지). 화면 상태는 Riverpod `Notifier`로 정했다(2026-10-21)
 - 화면 위젯의 `setState`로 서버·공유 상태를 다루기. Notifier로 옮긴다
 - HTTP 클라이언트와 로컬 DB. 앱은 Firestore만 쓰고, 오프라인은 Firestore 캐시로 처리한다
@@ -175,8 +175,9 @@ Flutter의 `TextEditingController`·`ScrollController`와 헷갈리지 않게 �
 - 위젯 밖에서 `await`한 뒤 `BuildContext`를 쓰지 않는다. `await` 전에 `ScaffoldMessenger`를 잡아 두거나(`signOutWithFeedback`) `context.mounted`를 확인한다.
 - 위젯을 돌려주는 private 메서드보다 작은 위젯 클래스로 나눈다(`_OptionCard`, `_ValuePoint`). 바뀌지 않는 위젯은 `const`.
 - 긴 목록은 `ListView.builder`로 만들고, 항목에는 안정적인 id로 `ValueKey`를 준다. 인덱스를 키로 쓰지 않는다.
-- **탭:** 홈은 탭 4개(`HomeTab`)이고 `StatefulShellRoute`가 탭마다 화면 상태를 지킨다. 탭 화면은 `TabPage`로 감싸고,
+- **탭:** 홈은 탭 3개(`HomeTab`: 요약·항목·설정, 가계부 탭은 다음 작업)이고 `StatefulShellRoute`가 탭마다 화면 상태를 지킨다. 탭 화면은 `TabPage`로 감싸고,
   달을 보는 탭은 `MonthHeader`를 머리말로 쓴다. 보고 있는 달은 `selectedMonthProvider` 하나를 모든 탭이 같이 읽는다.
+  항목 탭은 세 칸(`EntryTab`: 수입·지출·카드 대금)이고, 고정 지출은 따로 된 화면 없이 지출 칸과 입력 화면에서 다룬다.
 - **넓은 화면:** 아이패드와 Mac(아이패드 앱)에서도 쓴다. 폭 600 이상이면 탭 막대가 옆(NavigationRail)으로 간다. 본문은 `ConstrainedBox(maxWidth: …)`로 가운데 두고,
   두 칸 배치는 `LayoutBuilder`로 바꾼다(`docs/plan.md`의 '화면'). 플랫폼 분기는 `defaultTargetPlatform`.
 - **테마:** 색은 `Theme.of(context).colorScheme`과 `context.appColors`, 글자는 `textTheme`에서 꺼낸다(`lib/core/theme/app_theme.dart`, 원본은 `design/app.pen`). 화면 디자인은 `design/app/*.png`.

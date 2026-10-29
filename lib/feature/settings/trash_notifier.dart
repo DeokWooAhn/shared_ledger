@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../domain/repository/entries_repository.dart';
 import '../../core/providers/providers.dart';
 import '../../core/providers/usecases.dart';
+import '../../domain/model/expense_template.dart';
 import '../../domain/model/ledger_entries.dart';
 import '../../domain/model/trashed_entry.dart';
 import '../../domain/model/year_month.dart';
@@ -66,14 +67,26 @@ class TrashNotifier extends Notifier<TrashState> {
 
   /// [month]의 [entry]를 완전히 지운다. 되살릴 수 없다.
   ///
-  /// 고정 지출에서 만든 이번 달 이후의 기본 월 지출([staysInTrash])은 지우면 다시 만들어져서 지우지 않는다.
+  /// 반복 설정이 남아 있는 이번 달 이후의 고정 지출([staysInTrash])은 지우면 다시 만들어져서 지우지 않는다.
   Future<void> purge(LedgerEntry entry, YearMonth month) {
     final thisMonth = YearMonth.of(ref.read(clockProvider)());
-    if (staysInTrash(entry, month: month, thisMonth: thisMonth)) {
+    if (staysInTrash(
+      entry,
+      month: month,
+      thisMonth: thisMonth,
+      templateIds: _templateIds,
+    )) {
       return Future.value();
     }
     return _run(TrashAction.purge, entry, month);
   }
+
+  // 지금 있는 반복 설정 id. 휴지통 화면이 목록을 구독하고 있어서 보통 이미 받아 두었다.
+  Set<String> get _templateIds => {
+    for (final template
+        in ref.read(templatesProvider).value ?? const <ExpenseTemplate>[])
+      template.id,
+  };
 
   Future<void> _run(
     TrashAction action,
@@ -101,6 +114,7 @@ class TrashNotifier extends Notifier<TrashState> {
             ledgerId: ledgerId,
             month: month,
             entry: entry,
+            templateIds: _templateIds,
             uid: uid,
           );
       }

@@ -116,7 +116,7 @@ test('…', () async {
   없는 항목(휴지통에 든 항목을 고치거나 휴지통 밖의 항목을 꺼내거나 지울 때 포함)이면 `notFound`로 실패한다.
   휴지통에 넣으면 `now`(기본 `testNow`)로 넣은 때와 자동으로 지울 때를 적는다. 기록은 `added`·`updated`·`trashed`·`restored`·`purged`, 지금 항목은 `monthOf(달)`.
   서버가 새 항목을 나중에 거부하는 경우는 `rejectNextAdd`: 추가는 성공하고 목록에 들어갔다가 조금 뒤 빠지며 `rejectedAdds`로 알린다.
-  고정 지출로 채우기(`fillPlanned`)도 `offline`이면 실패하고, 그 id의 기본 월 지출이 있으면(휴지통 포함, `monthOf(달).plannedIds`) 건너뛴다. 기록은 `filled`.
+  고정 지출로 채우기(`fillPlanned`)도 `offline`이면 실패하고, 그 id의 고정 지출이 있으면(휴지통 포함, `monthOf(달).plannedIds`) 건너뛴다. 기록은 `filled`.
 - 설정(`FakeSettingsRepository`)도 쓰기가 모두 `offline`이면 `SettingsWriteFailure.offline`, 없는 분류·결제수단을 고치면 `notFound`로 실패하고,
   이름표는 없으면 새로 만든다. `put`으로 상대가 바꾼 것처럼 목록을 바꾸고, 기록은 `renamedMembers`·`addedCategories`·`updatedCategories`·
   `addedPaymentMethods`·`renamedPaymentMethods`·`hiddenChanges`. 가계부 이름 바꾸기는 `FakeLedgerRepository`의 `renames`·`offline`.

@@ -5,7 +5,7 @@ import '../model/payment_method.dart';
 import 'budget_calculator.dart';
 import 'budget_summary.dart';
 
-/// 분류 하나의 기본 월 지출 소계. [category]가 null이면 설정에서 지워진 분류에 남은 지출을 모은 것이다.
+/// 분류 하나의 고정 지출 소계. [category]가 null이면 설정에서 지워진 분류에 남은 지출을 모은 것이다.
 typedef CategoryTotal = ({Category? category, int amount});
 
 /// 카드 하나의 이번 달 사용분.
@@ -74,25 +74,25 @@ class MonthSummary {
   /// 시트와 같은 계산 결과(남는 현금, 현금 유입·유출, 이번 달 지출, 저축, 카드, 소계).
   final BudgetSummary totals;
 
-  /// 기본 월 지출의 분류별 소계. 설정의 분류 순서대로 모두 넣고(0원 포함),
+  /// 고정 지출의 분류별 소계. 설정의 분류 순서대로 모두 넣고(0원 포함),
   /// 지워진 분류에 남은 지출이 있으면 맨 뒤에 하나로 모은다. 숨긴 분류는 그달에 쓴 항목이 있을 때만 넣는다.
   final List<CategoryTotal> categories;
 
   /// 이번 달 카드 사용분의 카드별 소계. 쓴 카드만, 결제수단 순서대로.
   final List<CardTotal> cards;
 
-  /// 카드 영역을 보여줄지. 숨기지 않은 카드도, 그달 카드 사용분·카드대금도 없으면 숨긴다.
+  /// 카드 영역을 보여줄지. 숨기지 않은 카드도, 그달 카드 사용분·카드 대금도 없으면 숨긴다.
   final bool showsCards;
 
-  /// 그달 카드대금 건수(저번 달 사용분).
+  /// 그달 카드 대금 건수(저번 달 사용분).
   final int cardBillCount;
 
-  /// 금액이 아직 정해지지 않은 기본 월 지출 건수. 합계에서는 0원으로 친다.
+  /// 금액이 아직 정해지지 않은 고정 지출 건수. 합계에서는 0원으로 친다.
   final int unpricedPlannedCount;
 
   /// 그달에 휴지통 밖의 항목이 하나도 없는지.
   final bool isEmpty;
 
-  /// [slot] 사람의 기본 월 지출 소계.
+  /// [slot] 사람의 고정 지출 소계.
   int plannedOf(MemberSlot slot) => totals.plannedByMember[slot.name] ?? 0;
 }

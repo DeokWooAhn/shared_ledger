@@ -2,6 +2,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_ledger/data/templates/firestore_templates_repository.dart';
 import 'package:shared_ledger/domain/model/expense_template.dart';
+import 'package:shared_ledger/domain/model/ledger_entries.dart';
+import 'package:shared_ledger/domain/model/year_month.dart';
 
 void main() {
   final serverTime = FieldValue.serverTimestamp();
@@ -87,6 +89,70 @@ void main() {
     });
   });
 
+  group('뒤 달의 고정 지출 항목', () {
+    const draft = TemplateDraft(
+      memberId: 'partner',
+      title: ' 관리비 ',
+      amount: 200000,
+      categoryId: 'c-living',
+      paymentMethodId: 'p-account',
+      dueDay: 30,
+    );
+
+    test('반복 설정으로 지급 전 항목을 만들고, 그달에 없는 예정일은 말일로 맞춘다', () {
+      final entry = laterEntryDraft(draft, const YearMonth(2027, 2));
+
+      expect(entry.kind, EntryKind.planned);
+      expect(entry.title, '관리비');
+      expect(entry.amount, 200000);
+      expect(entry.date, isNull);
+      expect(entry.dueOn, DateTime(2027, 2, 28));
+    });
+
+    test('맞출 때는 반복 설정이 정하는 칸만 쓰고, 금액은 바뀌었을 때만 쓴다', () {
+      final same = laterEntryUpdate(
+        draft,
+        const YearMonth(2026, 11),
+        uid: 'me',
+        withAmount: false,
+      );
+      expect(same.keys, {
+        'title',
+        'memberId',
+        'categoryId',
+        'paymentMethodId',
+        'dueOn',
+        'updatedBy',
+        'updatedAt',
+      });
+      expect(same['title'], '관리비');
+      expect(same['dueOn'], '2026-11-30');
+      expect(same['updatedAt'], FieldValue.serverTimestamp());
+
+      final changed = laterEntryUpdate(
+        draft,
+        const YearMonth(2026, 11),
+        uid: 'me',
+        withAmount: true,
+      );
+      expect(changed['amount'], 200000);
+      // 금액을 비우면(금액 미정) 필드를 지운다.
+      final cleared = laterEntryUpdate(
+        const TemplateDraft(
+          memberId: 'owner',
+          title: '관리비',
+          categoryId: 'c-living',
+          paymentMethodId: 'p-account',
+          dueDay: 25,
+        ),
+        const YearMonth(2026, 11),
+        uid: 'me',
+        withAmount: true,
+      );
+      expect(cleared['amount'], FieldValue.delete());
+    });
+  });
+
   group('고정 지출 문서 읽기', () {
     const valid = {
       'title': '관리비',
@@ -118,7 +184,7 @@ void main() {
       );
     });
 
-    test('그달 기본 월 지출을 만드는 데 쓰는 값이 없거나 잘못된 문서는 건너뛴다', () {
+    test('그달 고정 지출을 만드는 데 쓰는 값이 없거나 잘못된 문서는 건너뛴다', () {
       for (final broken in [
         {...valid, 'dueDay': 0},
         {...valid, 'dueDay': 32},

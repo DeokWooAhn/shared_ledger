@@ -78,7 +78,7 @@ void main() {
     expect(summary.cashOut, 10000);
   });
 
-  test('카드로 낸 기본 지출은 지급일이 있어도 현금 유출이 아니라 카드 사용에 들어간다', () {
+  test('카드로 낸 고정 지출은 지급일이 있어도 현금 유출이 아니라 카드 사용에 들어간다', () {
     final summary = _calculator.summarize(
       MonthLedger(
         plannedExpenses: [
@@ -92,7 +92,7 @@ void main() {
     expect(summary.cardUsage, 10000);
   });
 
-  test('추가지출은 날짜가 없어도 카드가 아니면 현금 유출에 들어간다', () {
+  test('추가 지출은 날짜가 없어도 카드가 아니면 현금 유출에 들어간다', () {
     final summary = _calculator.summarize(
       MonthLedger(
         extraExpenses: [
@@ -107,7 +107,7 @@ void main() {
     expect(summary.cardUsage, 3000);
   });
 
-  test('카드대금은 현금 유출과 저번 달 사용분에 들어가고 이번 달 지출에는 들어가지 않는다', () {
+  test('카드 대금은 현금 유출과 저번 달 사용분에 들어가고 이번 달 지출에는 들어가지 않는다', () {
     final summary = _calculator.summarize(
       const MonthLedger(
         cardBills: [
@@ -121,7 +121,7 @@ void main() {
     expect(summary.spending, 0);
   });
 
-  test('저축으로 집계하는 분류의 기본 지출만 저축에 들어간다', () {
+  test('저축으로 집계하는 분류의 고정 지출만 저축에 들어간다', () {
     final summary = _calculator.summarize(
       MonthLedger(
         plannedExpenses: [
@@ -135,7 +135,7 @@ void main() {
     expect(summary.plannedByCategory, {'saving': 200000, 'living': 50000});
   });
 
-  test('금액이 정해지지 않은 기본 지출은 0원으로 친다', () {
+  test('금액이 정해지지 않은 고정 지출은 0원으로 친다', () {
     final summary = _calculator.summarize(
       MonthLedger(
         plannedExpenses: [_planned(amount: null), _planned(amount: 7000)],

@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_ledger/core/providers/providers.dart';
 import 'package:shared_ledger/domain/model/activity.dart';
 import 'package:shared_ledger/domain/model/auth_user.dart';
+import 'package:shared_ledger/domain/model/expense_template.dart';
 import 'package:shared_ledger/domain/model/ledger.dart';
 import 'package:shared_ledger/domain/model/ledger_entries.dart';
 import 'package:shared_ledger/domain/model/month_ledger.dart';
@@ -22,7 +23,7 @@ const snack = ExtraExpense(
   amount: 5000,
 );
 
-// 고정 지출에서 만든 이번 달 기본 월 지출. 지우면 다시 만들어져서 휴지통에 남긴다.
+// 반복 설정이 남아 있는 이번 달 고정 지출. 지우면 다시 만들어져서 휴지통에 남긴다.
 final rent = PlannedExpense(
   id: 'tpl-rent',
   categoryId: 'c1',
@@ -31,6 +32,17 @@ final rent = PlannedExpense(
   paymentMethodId: 'p1',
   amount: 500000,
   dueOn: DateTime(2026, 10, 25),
+);
+
+// [rent]를 만든 반복 설정.
+const rentTemplate = ExpenseTemplate(
+  id: 'tpl-rent',
+  title: '월세',
+  amount: 500000,
+  categoryId: 'c1',
+  paymentMethodId: 'p1',
+  memberId: 'owner',
+  dueDay: 25,
 );
 
 void main() {
@@ -52,11 +64,15 @@ void main() {
         const Ledger(id: 'l1', name: '우리 가계부', ownerUid: 'me'),
       ]),
       entries: repository,
+      templates: FakeTemplatesRepository([rentTemplate]),
       activity: activity,
     );
     await loadSignedInUser(container);
     container.listen(myLedgersProvider, (_, _) {});
     await container.read(myLedgersProvider.future);
+    // 휴지통 화면처럼 반복 설정 목록을 구독해 둔다.
+    container.listen(templatesProvider, (_, _) {});
+    await container.read(templatesProvider.future);
     return (container, repository, activity);
   }
 
@@ -74,7 +90,7 @@ void main() {
     expect(entries.monthOf(october).extraExpenses, [snack]);
     expect(entries.monthOf(october).trashed, isEmpty);
     expect(activity.logged, [
-      const ActivityDraft(ActivityAction.entryRestore, "10월 추가지출 '간식' 5,000원"),
+      const ActivityDraft(ActivityAction.entryRestore, "10월 추가 지출 '간식' 5,000원"),
     ]);
     expect(states, [
       const TrashState(pending: (action: TrashAction.restore, id: 'x1')),
@@ -99,7 +115,7 @@ void main() {
     expect(container.read(trashNotifierProvider), const TrashState());
   });
 
-  test('고정 지출에서 만든 이번 달 기본 월 지출은 완전히 지우지 않는다', () async {
+  test('반복 설정이 남아 있는 이번 달 고정 지출은 완전히 지우지 않는다', () async {
     final (container, entries, activity) = await trashed([rent]);
     final states = recordStates(container, trashNotifierProvider);
 

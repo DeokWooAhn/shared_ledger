@@ -1,21 +1,21 @@
 import 'package:flutter/material.dart';
 
-import '../../domain/model/ledger_entries.dart';
+import '../../core/providers/providers.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widget/entry_kind_label.dart';
 
-/// 네 종류 중 하나를 고르는 세그먼트. 항목 탭과 입력 화면 맨 위에 둔다.
+/// 항목 탭의 세 칸(수입·지출·카드 대금) 중 하나를 고르는 세그먼트. 항목 탭 맨 위에 둔다.
 ///
-/// [onSelect]가 null이면 고를 수 없다(고치기 화면은 종류를 바꾸지 못한다).
+/// [onSelect]가 null이면 고를 수 없다.
 /// 디자인은 칸 높이가 38이지만, 누르는 곳이 48 이상이 되게 막대 높이 전체를 누를 수 있게 한다.
-class EntryKindTabs extends StatelessWidget {
-  const EntryKindTabs({required this.selected, this.onSelect, super.key});
+class EntryTabs extends StatelessWidget {
+  const EntryTabs({required this.selected, this.onSelect, super.key});
 
-  final EntryKind selected;
-  final ValueChanged<EntryKind>? onSelect;
+  final EntryTab selected;
+  final ValueChanged<EntryTab>? onSelect;
 
-  /// 테스트에서 [kind] 칸을 찾을 키.
-  static Key keyOf(EntryKind kind) => Key('entry-kind-${kind.name}');
+  /// 테스트에서 [tab] 칸을 찾을 키.
+  static Key keyOf(EntryTab tab) => Key('entry-tab-${tab.name}');
 
   @override
   Widget build(BuildContext context) {
@@ -32,16 +32,16 @@ class EntryKindTabs extends StatelessWidget {
           height: 48,
           child: Row(
             children: [
-              for (final kind in EntryKind.values)
+              for (final tab in EntryTab.values)
                 Expanded(
                   child: _Segment(
-                    key: keyOf(kind),
-                    label: entryKindLabel(kind),
-                    selected: kind == selected,
-                    onTap: onSelect == null || kind == selected
+                    key: keyOf(tab),
+                    label: entryTabLabel(tab),
+                    selected: tab == selected,
+                    onTap: onSelect == null || tab == selected
                         ? null
-                        : () => onSelect(kind),
-                    enabled: onSelect != null || kind == selected,
+                        : () => onSelect(tab),
+                    enabled: onSelect != null || tab == selected,
                   ),
                 ),
             ],

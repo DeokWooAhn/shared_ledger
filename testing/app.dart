@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_ledger/feature/entries/entry_tabs.dart';
+import 'package:shared_ledger/feature/entries/entries_screen.dart';
+import 'package:shared_ledger/domain/model/ledger_entries.dart';
 import 'package:shared_ledger/app.dart';
 import 'package:shared_ledger/core/providers/providers.dart';
 import 'package:shared_ledger/core/providers/repositories.dart';
@@ -59,6 +62,26 @@ Future<void> pumpApp(
 
 Future<void> openTab(WidgetTester tester, HomeTab tab) async {
   await tester.tap(find.byKey(tab.key));
+  await settle(tester);
+}
+
+/// 항목 탭에서 [kind]가 보이는 칸(수입·지출·카드 대금)을 고른다. 이미 그 칸이면 그대로 둔다.
+Future<void> showEntryTabOf(WidgetTester tester, EntryKind kind) async {
+  final tab = EntryTab.values.firstWhere((t) => t.kinds.contains(kind));
+  await tester.tap(
+    find.descendant(
+      of: find.byType(EntriesScreen),
+      matching: find.byKey(EntryTabs.keyOf(tab)),
+    ),
+  );
+  await settle(tester);
+}
+
+/// 입력 화면의 종류 칸을 눌러 종류 고르기 시트에서 [kind]를 고른다.
+Future<void> chooseEntryKind(WidgetTester tester, EntryKind kind) async {
+  await tester.tap(find.byKey(const Key('entry-kind')));
+  await settle(tester);
+  await tester.tap(find.byKey(Key('entry-kind-${kind.name}')));
   await settle(tester);
 }
 

@@ -5,9 +5,10 @@ import 'year_month.dart';
 /// 예정일 '말일'. 31일로 적고 '말일'로 보여준다. 31일이 없는 달에도 그달 마지막 날이 된다.
 const lastDueDay = 31;
 
-/// 고정 지출(템플릿). 매달 나가는 돈이고, 이 목록으로 그달 기본 월 지출이 만들어진다.
+/// 고정 지출의 반복 설정(템플릿). 매달 나가는 돈이고, 이것으로 달마다 고정 지출 항목이 만들어진다.
 ///
-/// Firestore 문서 id가 그달 기본 월 지출의 문서 id가 된다(`months/{yyyy-MM}/planned/{템플릿 id}`).
+/// 항목 탭에서 고정 지출을 더하면 함께 생기고, 그만하면 지워진다. 따로 보여 주는 화면은 없다.
+/// Firestore 문서 id가 그달 고정 지출의 문서 id가 된다(`months/{yyyy-MM}/planned/{템플릿 id}`).
 class ExpenseTemplate {
   const ExpenseTemplate({
     required this.id,
@@ -36,12 +37,9 @@ class ExpenseTemplate {
   bool get dueOnLastDay => dueDay == lastDueDay;
 
   /// [month]에서의 예정일. 그달에 없는 날(2월 30일)이면 그달 말일이다.
-  DateTime dueOn(YearMonth month) {
-    final last = DateTime(month.year, month.month + 1, 0).day;
-    return DateTime(month.year, month.month, dueDay < last ? dueDay : last);
-  }
+  DateTime dueOn(YearMonth month) => dueDateIn(month, dueDay);
 
-  /// [month]에 만들 기본 월 지출. 지급 전으로 만들고 예정일을 옮긴다.
+  /// [month]에 만들 고정 지출. 지급 전으로 만들고 예정일을 옮긴다.
   EntryDraft draftFor(YearMonth month) => EntryDraft(
     kind: EntryKind.planned,
     memberId: memberId,
@@ -124,7 +122,7 @@ class TemplateDraft {
       Object.hash(memberId, title, amount, categoryId, paymentMethodId, dueDay);
 }
 
-/// [month]의 기본 월 지출을 고정 지출로 자동으로 채우는지. 이번 달과 다음 달만 채운다.
+/// [month]의 고정 지출을 고정 지출로 자동으로 채우는지. 이번 달과 다음 달만 채운다.
 ///
 /// 지난 달은 이미 지나간 기록이라 고정 지출로 덮지 않고, 먼 미래 달은 미리 만들지 않는다.
 bool fillsFromTemplates(YearMonth month, {required YearMonth thisMonth}) =>
@@ -134,7 +132,7 @@ bool fillsFromTemplates(YearMonth month, {required YearMonth thisMonth}) =>
 bool fillsTemplatesOnAdd(YearMonth month, {required YearMonth thisMonth}) =>
     month.compareTo(thisMonth) >= 0;
 
-/// [templates] 가운데 [ledger]의 달에 아직 기본 월 지출이 없는 것.
+/// [templates] 가운데 [ledger]의 달에 아직 고정 지출이 없는 것.
 ///
 /// 문서 id가 템플릿 id라서, 휴지통에 넣은 것을 포함해 그 id의 문서가 있으면 다시 만들지 않는다.
 List<ExpenseTemplate> templatesMissingIn(
@@ -148,34 +146,52 @@ List<ExpenseTemplate> templatesMissingIn(
   ];
 }
 
-/// 저장 전에 입력란 아래에 보여 줄 문제. 금액은 비워 둘 수 있다(금액 미정).
-enum TemplateProblem {
-  /// 금액은 비우거나 0원부터 적는다(보안 규칙과 같다).
-  amountNegative,
-  titleMissing,
-  titleTooLong,
-  categoryMissing,
-  paymentMethodMissing,
-  dueDayMissing,
-
-  /// 예정일은 1일부터 말일([lastDueDay])까지다(보안 규칙과 같다).
-  dueDayOutOfRange,
+/// 매달 [dueDay]일이 [month]에서 며칠인지. 그달에 없는 날(2월 30일)이면 그달 말일이다.
+DateTime dueDateIn(YearMonth month, int dueDay) {
+  final last = DateTime(month.year, month.month + 1, 0).day;
+  return DateTime(month.year, month.month, dueDay < last ? dueDay : last);
 }
 
-/// 저장할 값을 검사한다. 문제가 없으면 빈 집합.
+/// [month]에 넣을 고정 지출 항목. [entry]에 매달 [dueDay]일의 그달 예정일을 붙인다.
+EntryDraft fixedEntryIn(EntryDraft entry, YearMonth month, int dueDay) =>
+    EntryDraft(
+      kind: EntryKind.planned,
+      memberId: entry.memberId,
+      amount: entry.amount,
+      title: entry.title,
+      categoryId: entry.categoryId,
+      paymentMethodId: entry.paymentMethodId,
+      date: entry.date,
+      dueOn: dueDateIn(month, dueDay),
+      memo: entry.memo,
+    );
+
+/// 고정 지출 입력값을 검사한다. 항목 검사([entryProblemsOf])에 매달 예정일(1일~말일, 보안 규칙과 같다)을 더한다.
+Set<EntryProblem> fixedExpenseProblemsOf(
+  EntryDraft draft, {
+  required int? dueDay,
+}) => {
+  ...entryProblemsOf(draft),
+  if (dueDay == null || dueDay < 1 || dueDay > lastDueDay)
+    EntryProblem.dueDayMissing,
+};
+
+/// 고정 지출 항목 [entry]와 매달 예정일 [dueDay]로 만든 반복 설정 값. 금액은 [amount]다.
 ///
-/// 제목 길이는 항목과 같이 보안 규칙처럼 UTF-16 단위로 센다(`entryTitleMaxLength`).
-Set<TemplateProblem> templateProblemsOf(TemplateDraft draft) {
-  final title = draft.title.trim();
-  final dueDay = draft.dueDay;
-  return {
-    if ((draft.amount ?? 0) < 0) TemplateProblem.amountNegative,
-    if (title.isEmpty) TemplateProblem.titleMissing,
-    if (title.length > entryTitleMaxLength) TemplateProblem.titleTooLong,
-    if (draft.categoryId == null) TemplateProblem.categoryMissing,
-    if (draft.paymentMethodId == null) TemplateProblem.paymentMethodMissing,
-    if (dueDay == null) TemplateProblem.dueDayMissing,
-    if (dueDay != null && (dueDay < 1 || dueDay > lastDueDay))
-      TemplateProblem.dueDayOutOfRange,
-  };
-}
+/// 그달 금액만 바꾸는 고치기에서는 [amount]에 반복 설정의 원래 금액을 넘긴다.
+TemplateDraft templateDraftOf(
+  EntryDraft entry, {
+  required int dueDay,
+  required int? amount,
+}) => TemplateDraft(
+  memberId: entry.memberId,
+  title: entry.title.trim(),
+  amount: amount,
+  categoryId: entry.categoryId,
+  paymentMethodId: entry.paymentMethodId,
+  dueDay: dueDay,
+);
+
+/// [months] 가운데 [month]보다 뒤의 달. 오래된 것부터다. 고정 지출을 더하거나 고치거나 그만할 때 이미 만들어진 뒤 달도 같이 맞춘다.
+List<YearMonth> monthsAfter(Iterable<YearMonth>? months, YearMonth month) =>
+    [...?months?.where((m) => m.compareTo(month) > 0)]..sort();

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/providers/providers.dart';
+import '../../domain/model/expense_template.dart';
 import '../../domain/model/ledger_entries.dart';
 import '../../domain/model/member.dart';
 import '../../domain/model/payment_method.dart';
@@ -39,7 +40,7 @@ String trashPurgeLabel(DateTime purgeAt, DateTime now) {
 ///
 /// 보고 있는 달의 휴지통 항목을 최근에 넣은 것부터 보여주고, 달 머리말로 다른 달을 본다. 그달 구독을 요약·항목 탭과
 /// 같이 써서 읽기가 늘지 않는다. 관리자·편집자는 되살리거나 완전히 지우고(확인 후), 보기 전용은 보기만 한다.
-/// 넣은 지 30일이 지나면 자동으로 지워진다. 고정 지출에서 만든 이번 달 이후 기본 월 지출은 남겨 둔다([staysInTrash]).
+/// 넣은 지 30일이 지나면 자동으로 지워진다. 반복 설정이 남아 있는 이번 달 이후 고정 지출은 남겨 둔다([staysInTrash]).
 class TrashScreen extends ConsumerWidget {
   const TrashScreen({super.key});
 
@@ -137,6 +138,11 @@ class _TrashContent extends ConsumerWidget {
         }
         return bAt.compareTo(aAt);
       });
+    final templateIds = {
+      for (final template
+          in ref.watch(templatesProvider).value ?? const <ExpenseTemplate>[])
+        template.id,
+    };
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       spacing: 14,
@@ -159,6 +165,7 @@ class _TrashContent extends ConsumerWidget {
                     item.entry,
                     month: month,
                     thisMonth: YearMonth.of(now),
+                    templateIds: templateIds,
                   ),
                   now: now,
                   canWrite: canWrite,
@@ -185,7 +192,7 @@ class _TrashContent extends ConsumerWidget {
     Income(:final title) ||
     PlannedExpense(:final title) ||
     ExtraExpense(:final title) => title,
-    CardBill(:final cardId) => methods[cardId]?.name ?? '카드대금',
+    CardBill(:final cardId) => methods[cardId]?.name ?? '카드 대금',
   };
 }
 
@@ -208,7 +215,7 @@ class _TrashRow extends StatelessWidget {
   final String title;
   final Member member;
 
-  /// 고정 지출에서 만든 이번 달 이후 기본 월 지출이라 지우지 않고 남겨 두는지.
+  /// 반복 설정이 남아 있는 이번 달 이후 고정 지출이라 지우지 않고 남겨 두는지.
   final bool stays;
   final DateTime now;
   final bool canWrite;

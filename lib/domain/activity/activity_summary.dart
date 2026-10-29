@@ -6,13 +6,13 @@ import '../model/year_month.dart';
 import '../format/won.dart';
 
 // 변경 기록 한 줄(summary)을 만드는 함수. 저장소가 실제로 쓰는 값으로 만들어서 기록과 변경이 어긋나지 않는다.
-// 누가·언제는 따로 저장하고 여기서는 무엇을 바꿨는지만 적는다. 예: `10월 추가지출 '점심' 12,000원`
+// 누가·언제는 따로 저장하고 여기서는 무엇을 바꿨는지만 적는다. 예: `10월 추가 지출 '점심' 12,000원`
 // 요약은 Firestore에만 저장하고 로그에는 남기지 않는다(금액·제목이 들어 있다).
 
 /// 항목 변경 기록. [entry]는 쓴 뒤의 값(휴지통·되살리기·완전 삭제는 그 항목의 값)이다.
 ///
 /// 고쳤으면 [before]와 견줘 바뀐 칸을 붙인다. 제목·금액이 바뀌면 앞뒤 값을, 다른 칸은 이름만 적는다.
-/// 예: `10월 추가지출 '점심' · 금액 12,000원 → 15,000원, 쓴 날`
+/// 예: `10월 추가 지출 '점심' · 금액 12,000원 → 15,000원, 쓴 날`
 /// 문서를 읽지 못했으면(모양이 잘못된 문서) [entry]가 null이고 달과 종류만 적는다.
 ActivityDraft entryActivity(
   ActivityAction action, {
@@ -145,9 +145,9 @@ String clampActivitySummary(String summary) {
 
 String _entryKindLabel(EntryKind kind) => switch (kind) {
   EntryKind.income => '수입',
-  EntryKind.planned => '기본 월 지출',
-  EntryKind.extra => '추가지출',
-  EntryKind.cardBill => '카드대금',
+  EntryKind.planned => '고정 지출',
+  EntryKind.extra => '추가 지출',
+  EntryKind.cardBill => '카드 대금',
 };
 
 String _entryDateLabel(EntryKind kind) => switch (kind) {

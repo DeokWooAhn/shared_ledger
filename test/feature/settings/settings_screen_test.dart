@@ -17,7 +17,6 @@ import 'package:shared_ledger/feature/settings/payment_methods_screen.dart';
 import 'package:shared_ledger/feature/settings/rename_sheet.dart';
 import 'package:shared_ledger/feature/settings/setting_sheet.dart';
 import 'package:shared_ledger/feature/settings/settings_screen.dart';
-import 'package:shared_ledger/feature/templates/templates_screen.dart';
 
 import '../../../testing/app.dart';
 import '../../../testing/fakes.dart';
@@ -71,7 +70,7 @@ FakeSettingsRepository settingsOf({
   paymentMethods: paymentMethods,
 );
 
-// 공용 카드로 낸 10월 기본 지출과 추가지출.
+// 공용 카드로 낸 10월 고정 지출과 추가 지출.
 final cardMonth = MonthLedger(
   plannedExpenses: [
     PlannedExpense(
@@ -196,13 +195,13 @@ Future<void> tapInEntryForm(WidgetTester tester, Key key) async {
   await settle(tester);
 }
 
-/// 항목 탭에서 [kind] 종류를 고르고 + 버튼으로 입력 화면을 연다.
+/// 항목 탭에서 [kind]가 보이는 칸을 고르고 + 버튼으로 입력 화면을 연다. 칸이 여는 종류가 아니면 종류 칸에서 고른다.
 Future<void> openEntryForm(WidgetTester tester, EntryKind kind) async {
   await openTab(tester, HomeTab.entries);
-  await tester.tap(inEntries(find.byKey(Key('entry-kind-${kind.name}'))));
-  await settle(tester);
+  await showEntryTabOf(tester, kind);
   await tester.tap(find.byKey(const Key('add-entry')));
   await settleRoute(tester);
+  if (kind == EntryKind.planned) await chooseEntryKind(tester, kind);
 }
 
 void main() {
@@ -297,7 +296,7 @@ void main() {
       expect(ledgers.renames, isEmpty);
     });
 
-    testWidgets('편집자는 가계부 이름은 못 바꾸고, 이름표를 바꾸면 항목 입력과 고정 지출에 바뀐 이름이 보인다', (
+    testWidgets('편집자는 가계부 이름은 못 바꾸고, 이름표를 바꾸면 항목 입력에 바뀐 이름이 보인다', (
       tester,
     ) async {
       final settings = settingsOf();
@@ -319,15 +318,6 @@ void main() {
 
       expect(settings.renamedMembers.single.slot, MemberSlot.partner);
       expect(inSettings(find.text('파도 (나)')), findsOneWidget);
-
-      await openTab(tester, HomeTab.templates);
-      expect(
-        find.descendant(
-          of: find.byType(TemplatesScreen),
-          matching: find.text('공용 카드 · 파도'),
-        ),
-        findsOneWidget,
-      );
 
       await openEntryForm(tester, EntryKind.extra);
       expect(
@@ -475,7 +465,7 @@ void main() {
         findsOneWidget,
       );
 
-      // 새 기본 지출에서는 고를 수 없다.
+      // 새 고정 지출에서는 고를 수 없다.
       await openEntryForm(tester, EntryKind.planned);
       expect(
         inEntryForm(find.byKey(const Key('entry-category-c-living'))),
@@ -555,7 +545,9 @@ void main() {
   });
 
   group('결제수단·카드', () {
-    testWidgets('카드를 추가하면 그 카드로 카드대금과 카드 지출을 적고, 요약에 카드별로 보인다', (tester) async {
+    testWidgets('카드를 추가하면 그 카드로 카드 대금과 카드 지출을 적고, 요약에 카드별로 보인다', (
+      tester,
+    ) async {
       final settings = settingsOf(paymentMethods: const [account]);
       final entries = FakeEntriesRepository();
       await pumpSettings(tester, settings: settings, entries: entries);
@@ -581,7 +573,7 @@ void main() {
       ));
       expect(inMethods(find.text('하늘 카드')), findsOneWidget);
 
-      // 카드대금: 저번 달에 그 카드로 쓴 돈이 이번 달에 빠져나간다.
+      // 카드 대금: 저번 달에 그 카드로 쓴 돈이 이번 달에 빠져나간다.
       await openEntryForm(tester, EntryKind.cardBill);
       await tester.enterText(
         inEntryForm(find.byKey(const Key('entry-amount'))),
@@ -629,11 +621,11 @@ void main() {
         ),
         findsOneWidget,
       );
-      // 카드 지출은 이번 달 현금 유출이 아니고, 카드대금만 빠져나간다.
+      // 카드 지출은 이번 달 현금 유출이 아니고, 카드 대금만 빠져나간다.
       expect(textOf(tester, const Key('cash-out')), '320,000원');
     });
 
-    testWidgets('카드 이름을 바꾸면 항목·요약·고정 지출 탭에 바뀐 이름으로 보인다', (tester) async {
+    testWidgets('카드 이름을 바꾸면 항목·요약 탭에 바뀐 이름으로 보인다', (tester) async {
       final settings = settingsOf();
       await pumpSettings(
         tester,
@@ -664,8 +656,7 @@ void main() {
       ));
 
       await openTab(tester, HomeTab.entries);
-      await tester.tap(inEntries(find.byKey(const Key('entry-kind-extra'))));
-      await settle(tester);
+      await showEntryTabOf(tester, EntryKind.extra);
       expect(inEntries(find.text('바다 카드')), findsOneWidget);
 
       await openTab(tester, HomeTab.summary);
@@ -674,15 +665,6 @@ void main() {
         find.descendant(
           of: find.byKey(const ValueKey('card-p-shared')),
           matching: find.text('바다 카드'),
-        ),
-        findsOneWidget,
-      );
-
-      await openTab(tester, HomeTab.templates);
-      expect(
-        find.descendant(
-          of: find.byType(TemplatesScreen),
-          matching: find.text('바다 카드 · 바다'),
         ),
         findsOneWidget,
       );

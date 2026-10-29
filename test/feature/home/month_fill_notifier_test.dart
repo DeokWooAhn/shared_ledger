@@ -85,7 +85,7 @@ void main() {
       );
     });
 
-    test('이미 있거나 휴지통에 넣은 기본 월 지출의 고정 지출은 빼고, 다 있으면 null이다', () async {
+    test('이미 있거나 휴지통에 넣은 고정 지출의 고정 지출은 빼고, 다 있으면 null이다', () async {
       final entries = FakeEntriesRepository({
         october: const MonthLedger(plannedIds: {'rent'}),
       });
@@ -195,7 +195,7 @@ void main() {
   });
 
   group('채우기(MonthFillNotifier)', () {
-    test('빠진 고정 지출로 그달 기본 월 지출을 만들고, 다 채우면 채울 것이 없어진다', () async {
+    test('빠진 반복 설정으로 그달 고정 지출을 만들고, 다 채우면 채울 것이 없어진다', () async {
       final entries = FakeEntriesRepository();
       final container = await ready(entries: entries);
       final states = recordStates(container, monthFillNotifierProvider);
@@ -340,7 +340,7 @@ void main() {
       expect(entries.filled, isEmpty);
     });
 
-    test('이미 있는 기본 월 지출은 저장소가 건너뛰어 덮어쓰지 않는다', () async {
+    test('이미 있는 고정 지출은 저장소가 건너뛰어 덮어쓰지 않는다', () async {
       // 그사이 상대가 먼저 만들고 금액을 고친 관리비.
       const edited = PlannedExpense(
         id: 'rent',

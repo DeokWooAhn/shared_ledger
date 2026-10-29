@@ -24,7 +24,7 @@ class CategoriesScreen extends ConsumerWidget {
     return TabPage(
       header: const SubPageTitle(
         '분류',
-        description: '기본 월 지출을 이 분류로 묶어요. 저축으로 집계하는 분류는 월 요약의 저축에 더해요.',
+        description: '고정 지출을 이 분류로 묶어요. 저축으로 집계하는 분류는 월 요약의 저축에 더해요.',
       ),
       children: [
         switch (categories) {

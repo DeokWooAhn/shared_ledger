@@ -5,7 +5,7 @@ const categoryNameMaxLength = 20;
 
 /// 지출 분류 (예: 대출원금, 대출이자, 저축/투자, 소비).
 ///
-/// 가계부마다 직접 정한다. [countsAsSaving]이 켜진 분류의 기본 지출은
+/// 가계부마다 직접 정한다. [countsAsSaving]이 켜진 분류의 고정 지출은
 /// 월 요약의 '저축'에 합산된다.
 class Category {
   const Category({

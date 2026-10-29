@@ -620,10 +620,10 @@ class FakeSettingsRepository with LogsActivity implements SettingsRepository {
 /// 화면 테스트용 가짜 항목 저장소. 넣어 둔 달의 항목을 돌려주고, 없는 달은 빈 달이다.
 ///
 /// 실제 저장소처럼 휴지통 항목은 목록에서 빼고 [MonthLedger.trashed]에 둔 [MonthLedger]를 넣는다.
-/// [put]으로 바꾸면 구독 중인 곳에 다시 알린다. [MonthLedger.plannedIds]에는 휴지통에 든 기본 월 지출의 id까지 들어간다.
+/// [put]으로 바꾸면 구독 중인 곳에 다시 알린다. [MonthLedger.plannedIds]에는 휴지통에 든 고정 지출의 id까지 들어간다.
 /// 쓰기도 실제 약속을 지킨다: 추가는 [offline]이어도 되고, 고치기·휴지통·꺼내기·완전 삭제·고정 지출로 채우기는 [offline]이면
 /// [EntryWriteFailure.offline]으로, 없는 항목(휴지통에 든 항목을 고치거나 휴지통 밖의 항목을 꺼내거나 지울 때 포함)이면
-/// [EntryWriteFailure.notFound]로 실패한다. 고정 지출로 채울 때는 그 id의 기본 월 지출이 있으면(휴지통 포함) 건너뛴다.
+/// [EntryWriteFailure.notFound]로 실패한다. 고정 지출로 채울 때는 그 id의 고정 지출이 있으면(휴지통 포함) 건너뛴다.
 /// 휴지통에 넣으면 [now]로 넣은 때와 자동으로 지울 때를 적는다([staysInTrash]면 자동으로 지우지 않는다).
 class FakeEntriesRepository with LogsActivity implements EntriesRepository {
   FakeEntriesRepository([Map<YearMonth, MonthLedger> months = const {}])
@@ -812,31 +812,69 @@ class FakeEntriesRepository with LogsActivity implements EntriesRepository {
     required EntryKind kind,
     required String id,
     required String uid,
+    bool keep = false,
   }) async {
     _checkOnline();
     final entry = _live(month, kind, id);
     trashed.add((ledgerId: ledgerId, month: month, kind: kind, id: id));
+    _moveToTrash(month, entry, keep: keep);
+    _logEntry(ActivityAction.entryTrash, month, entry, uid);
+  }
+
+  void _moveToTrash(YearMonth month, LedgerEntry entry, {required bool keep}) {
     final at = now();
-    final stays = staysInTrash(
-      entry,
-      month: month,
-      thisMonth: YearMonth.of(at),
-    );
     _edit(
       month,
-      kind,
-      (entries) => [...entries.where((e) => e.id != id)],
+      entry.kind,
+      (entries) => [...entries.where((e) => e.id != entry.id)],
       trash: (items) => [
         ...items,
         TrashedEntry(
           entry: entry,
           deletedAt: at,
-          purgeAt: stays ? null : at.add(trashRetention),
+          purgeAt: keep ? null : at.add(trashRetention),
         ),
       ],
     );
-    _logEntry(ActivityAction.entryTrash, month, entry, uid);
   }
+
+  // 아래는 가짜 고정 지출 저장소가 고정 지출을 더하거나 고치거나 그만할 때 쓴다. 실제는 같은 트랜잭션이라
+  // 변경 기록은 고정 지출 저장소가 남기고, 여기서는 남기지 않는다.
+
+  /// 휴지통 밖에 있는 [month]의 [id] 고정 지출. 없으면 null.
+  PlannedExpense? livePlanned(YearMonth month, String id) =>
+      monthOf(month).plannedExpenses.where((e) => e.id == id).firstOrNull;
+
+  /// [month]의 [id] 고정 지출을 [draft]로 만들거나 바꾼다.
+  void putPlanned(YearMonth month, String id, EntryDraft draft) => _edit(
+    month,
+    EntryKind.planned,
+    (entries) => [...entries.where((e) => e.id != id), _entryOf(id, draft)],
+  );
+
+  /// [month]의 [id] 고정 지출을 휴지통에 넣는다. 자동으로 지워지게 한다.
+  void trashPlanned(YearMonth month, String id) {
+    final entry = livePlanned(month, id);
+    if (entry != null) _moveToTrash(month, entry, keep: false);
+  }
+
+  /// [month]의 [id] 고정 지출이 휴지통에 있으면 꺼낸다.
+  void restorePlanned(YearMonth month, String id) {
+    final item = monthOf(month).trashed
+        .where((i) => i.entry.kind == EntryKind.planned && i.entry.id == id)
+        .firstOrNull;
+    if (item == null) return;
+    _edit(
+      month,
+      EntryKind.planned,
+      (entries) => [...entries, item.entry],
+      trash: (items) => [...items.where((i) => i != item)],
+    );
+  }
+
+  /// [month]를 항목 있는 달 목록에 더한다(고정 지출을 더할 때 같은 트랜잭션).
+  void recordMonth(String ledgerId, YearMonth month) =>
+      _recordMonth(ledgerId, month);
 
   @override
   Future<void> restore({
@@ -974,7 +1012,7 @@ class FakeEntriesRepository with LogsActivity implements EntriesRepository {
           .firstOrNull ??
       (throw const EntryWriteException(EntryWriteFailure.notFound));
 
-  // [kind] 목록과 휴지통을 바꾼다. 완전히 지운 문서([forget])는 실제처럼 기본 월 지출 id에서도 빠진다.
+  // [kind] 목록과 휴지통을 바꾼다. 완전히 지운 문서([forget])는 실제처럼 고정 지출 id에서도 빠진다.
   void _edit(
     YearMonth month,
     EntryKind kind,
@@ -1060,10 +1098,11 @@ class FakeEntriesRepository with LogsActivity implements EntriesRepository {
   }
 }
 
-/// 화면 테스트용 가짜 고정 지출 저장소. 어느 가계부를 물어도 같은 목록을 돌려준다.
+/// 화면 테스트용 가짜 고정 지출 저장소. 어느 가계부를 물어도 같은 반복 설정 목록을 돌려준다.
 ///
+/// 고정 지출을 더하거나 고치거나 그만하면 잇는 가짜 항목 저장소([entries], [linkActivity]가 잇는다)의 그달 항목도 같이 바꾼다.
 /// 실제 저장소처럼 쓰기는 모두 [offline]이면 [TemplateWriteFailure.offline]으로 실패하고,
-/// 없는 고정 지출을 고치거나 지우면 [TemplateWriteFailure.notFound]로 실패한다. 되돌리기는 같은 id가 있으면 그대로 둔다.
+/// 없는 반복 설정이나 휴지통 밖에 없는 그달 항목을 고치거나 그만하면 [TemplateWriteFailure.notFound]로 실패한다.
 class FakeTemplatesRepository with LogsActivity implements TemplatesRepository {
   FakeTemplatesRepository([List<ExpenseTemplate> initial = const []])
     : _templates = [...initial];
@@ -1071,12 +1110,45 @@ class FakeTemplatesRepository with LogsActivity implements TemplatesRepository {
   final List<ExpenseTemplate> _templates;
   final _changes = StreamController<void>.broadcast();
 
+  /// 그달 항목을 같이 바꿀 가짜 항목 저장소. [linkActivity]가 잇는다.
+  FakeEntriesRepository? entries;
+
   /// 쓴 기록.
-  final added = <({String ledgerId, TemplateDraft draft, String uid})>[];
+  final added =
+      <
+        ({
+          String ledgerId,
+          YearMonth month,
+          TemplateDraft draft,
+          EntryDraft entry,
+          List<YearMonth> laterMonths,
+          String uid,
+        })
+      >[];
   final updated =
-      <({String ledgerId, String id, TemplateDraft draft, String uid})>[];
-  final deleted = <({String ledgerId, String id, String uid})>[];
-  final restored = <({String ledgerId, String id, String uid})>[];
+      <
+        ({
+          String ledgerId,
+          String id,
+          YearMonth month,
+          TemplateDraft draft,
+          EntryDraft entry,
+          List<YearMonth> laterMonths,
+          String uid,
+        })
+      >[];
+  final stopped =
+      <
+        ({
+          String ledgerId,
+          String id,
+          YearMonth month,
+          List<YearMonth> laterMonths,
+          String uid,
+        })
+      >[];
+  final resumed =
+      <({String ledgerId, String id, List<YearMonth> months, String uid})>[];
 
   /// 구독한 가계부 id.
   final watched = <String>[];
@@ -1087,7 +1159,7 @@ class FakeTemplatesRepository with LogsActivity implements TemplatesRepository {
   /// true면 다음 쓰기가 [TemplateWriteException]이 아닌 오류(권한 등)로 실패한다.
   bool failNextWrite = false;
 
-  /// 지금 고정 지출 목록.
+  /// 지금 반복 설정 목록.
   List<ExpenseTemplate> get templates => List.unmodifiable(_templates);
 
   /// 그사이 상대가 고친 것처럼 목록을 바꾼다. 구독 중인 곳에 다시 알린다.
@@ -1112,13 +1184,29 @@ class FakeTemplatesRepository with LogsActivity implements TemplatesRepository {
   @override
   Future<String> add({
     required String ledgerId,
+    required YearMonth month,
     required TemplateDraft draft,
+    required EntryDraft entry,
+    required List<YearMonth> laterMonths,
     required String uid,
+    bool recordMonth = false,
   }) async {
     _checkOnline();
-    added.add((ledgerId: ledgerId, draft: draft, uid: uid));
+    added.add((
+      ledgerId: ledgerId,
+      month: month,
+      draft: draft,
+      entry: entry,
+      laterMonths: laterMonths,
+      uid: uid,
+    ));
     final id = 'template-new-${added.length}';
     put([..._templates, _templateOf(id, draft)]);
+    entries?.putPlanned(month, id, entry);
+    for (final later in laterMonths) {
+      entries?.putPlanned(later, id, laterEntryOf(draft, later));
+    }
+    if (recordMonth) entries?.recordMonth(ledgerId, month);
     logActivity(templateActivity(ActivityAction.templateCreate, draft), uid);
     return id;
   }
@@ -1127,36 +1215,104 @@ class FakeTemplatesRepository with LogsActivity implements TemplatesRepository {
   Future<void> update({
     required String ledgerId,
     required String id,
+    required YearMonth month,
     required TemplateDraft draft,
+    required EntryDraft entry,
+    required List<YearMonth> laterMonths,
     required String uid,
   }) async {
     _checkOnline();
     final before = _existing(id);
-    updated.add((ledgerId: ledgerId, id: id, draft: draft, uid: uid));
-    logActivity(
-      templateActivity(
-        ActivityAction.templateUpdate,
-        draft,
-        before: TemplateDraft.of(before),
-      ),
-      uid,
-    );
+    final entryBefore = _liveEntry(month, id);
+    updated.add((
+      ledgerId: ledgerId,
+      id: id,
+      month: month,
+      draft: draft,
+      entry: entry,
+      laterMonths: laterMonths,
+      uid: uid,
+    ));
+    final beforeDraft = TemplateDraft.of(before);
     put([
       for (final template in _templates)
         template.id == id ? _templateOf(id, draft) : template,
     ]);
+    entries?.putPlanned(month, id, entry);
+    for (final later in laterMonths) {
+      final current = entries?.livePlanned(later, id);
+      if (current == null || current.isPaid) continue;
+      final next = laterEntryOf(draft, later);
+      entries?.putPlanned(
+        later,
+        id,
+        EntryDraft(
+          kind: EntryKind.planned,
+          memberId: next.memberId,
+          amount: beforeDraft.amount != draft.amount
+              ? next.amount
+              : current.amount,
+          title: next.title,
+          categoryId: next.categoryId,
+          paymentMethodId: next.paymentMethodId,
+          dueOn: next.dueOn,
+          memo: current.memo,
+        ),
+      );
+    }
+    if (beforeDraft != draft) {
+      logActivity(
+        templateActivity(
+          ActivityAction.templateUpdate,
+          draft,
+          before: beforeDraft,
+        ),
+        uid,
+      );
+    }
+    if (entryBefore == null || EntryDraft.of(entryBefore) != entry) {
+      logActivity(
+        entryActivity(
+          ActivityAction.entryUpdate,
+          month: month,
+          kind: EntryKind.planned,
+          entry: entry,
+          before: entryBefore == null ? null : EntryDraft.of(entryBefore),
+        ),
+        uid,
+      );
+    }
   }
 
   @override
-  Future<void> delete({
+  Future<List<YearMonth>> stop({
     required String ledgerId,
     required String id,
+    required YearMonth month,
+    required List<YearMonth> laterMonths,
     required String uid,
   }) async {
     _checkOnline();
     final template = _existing(id);
-    deleted.add((ledgerId: ledgerId, id: id, uid: uid));
+    final entry = _liveEntry(month, id);
+    stopped.add((
+      ledgerId: ledgerId,
+      id: id,
+      month: month,
+      laterMonths: laterMonths,
+      uid: uid,
+    ));
+    final trashed = [
+      if (entry?.isPaid != true) month,
+      for (final later in laterMonths)
+        if (entries?.livePlanned(later, id) case final current?
+            when !current.isPaid)
+          later,
+    ];
     put([..._templates.where((t) => t.id != id)]);
+    for (final trashedMonth in trashed) {
+      entries?.trashPlanned(trashedMonth, id);
+    }
     logActivity(
       templateActivity(
         ActivityAction.templateDelete,
@@ -1164,16 +1320,26 @@ class FakeTemplatesRepository with LogsActivity implements TemplatesRepository {
       ),
       uid,
     );
+    return trashed;
   }
 
   @override
-  Future<void> restore({
+  Future<void> resume({
     required String ledgerId,
     required ExpenseTemplate template,
+    required List<YearMonth> months,
     required String uid,
   }) async {
     _checkOnline();
-    restored.add((ledgerId: ledgerId, id: template.id, uid: uid));
+    resumed.add((
+      ledgerId: ledgerId,
+      id: template.id,
+      months: months,
+      uid: uid,
+    ));
+    for (final month in months) {
+      entries?.restorePlanned(month, template.id);
+    }
     if (_templates.any((t) => t.id == template.id)) return;
     put([..._templates, template]);
     logActivity(
@@ -1199,7 +1365,15 @@ class FakeTemplatesRepository with LogsActivity implements TemplatesRepository {
       _templates.where((t) => t.id == id).firstOrNull ??
       (throw const TemplateWriteException(TemplateWriteFailure.notFound));
 
-  // 저장한 문서를 다시 읽은 것과 같은 고정 지출. 실제 저장소는 제목 앞뒤 공백을 뺀다.
+  // 휴지통 밖의 그달 항목. 잇는 항목 저장소가 있는데 항목이 없으면 실제처럼 notFound로 실패한다.
+  PlannedExpense? _liveEntry(YearMonth month, String id) {
+    final entries = this.entries;
+    if (entries == null) return null;
+    return entries.livePlanned(month, id) ??
+        (throw const TemplateWriteException(TemplateWriteFailure.notFound));
+  }
+
+  // 저장한 문서를 다시 읽은 것과 같은 반복 설정. 실제 저장소는 제목 앞뒤 공백을 뺀다.
   static ExpenseTemplate _templateOf(String id, TemplateDraft draft) =>
       ExpenseTemplate(
         id: id,
@@ -1210,6 +1384,10 @@ class FakeTemplatesRepository with LogsActivity implements TemplatesRepository {
         memberId: draft.memberId,
         dueDay: draft.dueDay ?? lastDueDay,
       );
+
+  /// 뒤 달에 넣는 항목. 실제 저장소의 `laterEntryDraft`와 같다.
+  static EntryDraft laterEntryOf(TemplateDraft draft, YearMonth month) =>
+      _templateOf('', draft).draftFor(month);
 }
 
 /// 화면 테스트용 가짜 변경 기록 저장소. 다른 가짜 저장소가 쓸 때 [log]로 기록을 더한다([LogsActivity]).

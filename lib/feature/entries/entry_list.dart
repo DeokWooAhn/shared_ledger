@@ -2,7 +2,7 @@ import '../../domain/model/category.dart';
 import '../../domain/model/ledger_entries.dart';
 import '../../domain/model/month_ledger.dart';
 
-/// 항목 탭 목록의 한 묶음. 기본 월 지출은 분류마다 묶고, 다른 종류는 제목 없는 한 묶음이다.
+/// 항목 탭 목록의 한 묶음. 고정 지출은 분류마다 묶고, 다른 종류는 제목 없는 한 묶음이다.
 class EntryGroup {
   const EntryGroup({
     required this.entries,
@@ -12,7 +12,7 @@ class EntryGroup {
     this.key = 'all',
   });
 
-  /// 묶음 제목. 기본 월 지출은 분류 이름('분류 없음' 포함)이고, 다른 종류는 null이다.
+  /// 묶음 제목. 고정 지출은 분류 이름('분류 없음' 포함)이고, 다른 종류는 null이다.
   final String? title;
 
   /// 저축으로 세는 분류의 묶음인지. '저축' 표시를 붙인다.
@@ -26,7 +26,7 @@ class EntryGroup {
   final String key;
 }
 
-/// 항목 탭에 그릴 한 종류의 목록. 건수와 합계, 기본 월 지출이면 지급 전 건수까지 담는다.
+/// 항목 탭에 그릴 한 종류의 목록. 건수와 합계, 고정 지출이면 지급 전 건수까지 담는다.
 class EntryList {
   const EntryList({
     required this.groups,
@@ -37,7 +37,7 @@ class EntryList {
 
   /// 한 달 항목에서 [kind] 종류의 목록을 만든다.
   ///
-  /// 기본 월 지출은 설정의 분류 순서로 묶고, 설정에서 지워진 분류에 남은 항목은 맨 뒤 '분류 없음'에 모은다.
+  /// 고정 지출은 설정의 분류 순서로 묶고, 설정에서 지워진 분류에 남은 항목은 맨 뒤 '분류 없음'에 모은다.
   /// 묶음 안에서는 제목 순서다. 다른 종류는 날짜가 늦은 것부터, 날짜가 없으면 맨 뒤다.
   factory EntryList.of(
     EntryKind kind,
@@ -94,7 +94,7 @@ class EntryList {
   final int count;
   final int total;
 
-  /// 지급하지 않은 기본 월 지출 건수. 다른 종류는 0이다.
+  /// 지급하지 않은 고정 지출 건수. 다른 종류는 0이다.
   final int unpaidCount;
 
   bool get isEmpty => count == 0;

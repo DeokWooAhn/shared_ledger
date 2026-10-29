@@ -28,7 +28,7 @@ void main() {
       expect(summary.cardUsage, 538500);
     });
 
-    test('10월 기본 월 지출 소계', () {
+    test('10월 고정 지출 소계', () {
       final summary = calculator.summarize(october2026);
 
       expect(summary.plannedTotal, 3436100);
@@ -57,7 +57,7 @@ void main() {
       expect(summary.cardUsage, 498100);
     });
 
-    test('11월 기본 월 지출 소계', () {
+    test('11월 고정 지출 소계', () {
       final summary = calculator.summarize(november2026);
 
       expect(summary.plannedTotal, 3496100);

@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_ledger/domain/model/auth_user.dart';
 import 'package:shared_ledger/domain/model/category.dart';
 import 'package:shared_ledger/domain/model/ledger.dart';
+import 'package:shared_ledger/domain/model/expense_template.dart';
 import 'package:shared_ledger/domain/model/ledger_entries.dart';
 import 'package:shared_ledger/domain/model/month_ledger.dart';
 import 'package:shared_ledger/domain/model/payment_method.dart';
@@ -45,7 +46,7 @@ const cardBill = CardBill(
   cardId: 'p-shared',
   amount: 500000,
 );
-// 고정 지출에서 만든 이번 달 기본 월 지출. 지우면 다시 만들어져서 휴지통에 남긴다.
+// 반복 설정이 남아 있는 이번 달 고정 지출. 지우면 다시 만들어져서 휴지통에 남긴다.
 final management = PlannedExpense(
   id: 'tpl-management',
   categoryId: 'c-living',
@@ -53,6 +54,16 @@ final management = PlannedExpense(
   title: '관리비',
   paymentMethodId: 'p-account',
   dueOn: DateTime(2026, 10, 25),
+);
+
+// [management]를 만든 반복 설정. 남아 있으면 그 고정 지출은 지우면 다시 만들어진다.
+const managementTemplate = ExpenseTemplate(
+  id: 'tpl-management',
+  title: '관리비',
+  categoryId: 'c-living',
+  paymentMethodId: 'p-account',
+  memberId: 'owner',
+  dueDay: 25,
 );
 
 FakeSettingsRepository settings() => FakeSettingsRepository(
@@ -74,7 +85,13 @@ FakeEntriesRepository trashOf(
         TrashedEntry(
           entry: entry,
           deletedAt: DateTime(2026, 10, 14, 10),
-          purgeAt: staysInTrash(entry, month: month, thisMonth: october)
+          purgeAt:
+              staysInTrash(
+                entry,
+                month: month,
+                thisMonth: october,
+                templateIds: {managementTemplate.id},
+              )
               ? null
               : DateTime(2026, 11, 13, 10),
         ),
@@ -87,6 +104,7 @@ Future<void> pumpTrashApp(
   required FakeEntriesRepository entries,
   Ledger ledger = mine,
   FakeActivityRepository? activity,
+  FakeTemplatesRepository? templates,
   Size size = phoneSize,
 }) => pumpApp(
   tester,
@@ -94,6 +112,7 @@ Future<void> pumpTrashApp(
   ledgers: FakeLedgerRepository([ledger]),
   settings: settings(),
   entries: entries,
+  templates: templates ?? FakeTemplatesRepository(const [managementTemplate]),
   activity: activity,
   size: size,
 );
@@ -134,7 +153,7 @@ void main() {
       await tester.tap(
         find.descendant(
           of: find.byType(EntriesScreen),
-          matching: find.byKey(const Key('entry-kind-extra')),
+          matching: find.byKey(const Key('entry-tab-expense')),
         ),
       );
       await settle(tester);
@@ -170,7 +189,7 @@ void main() {
       await settleRoute(tester);
 
       expect(inTrash(find.text('점심')), findsOneWidget);
-      expect(inTrash(find.text('추가지출 · 10/15에 넣음')), findsOneWidget);
+      expect(inTrash(find.text('추가 지출 · 10/15에 넣음')), findsOneWidget);
       expect(inTrash(findSentence('30일 뒤 자동으로 지워져요')), findsOneWidget);
 
       await tapShown(tester, inTrash(find.byKey(const Key('restore-lunch'))));
@@ -183,7 +202,7 @@ void main() {
       expect(find.text('점심'), findsOneWidget);
     });
 
-    testWidgets('최근에 넣은 것부터 보여주고, 카드대금은 카드 이름을 제목으로 쓴다', (tester) async {
+    testWidgets('최근에 넣은 것부터 보여주고, 카드 대금은 카드 이름을 제목으로 쓴다', (tester) async {
       final entries = FakeEntriesRepository({
         october: MonthLedger(
           trashed: [
@@ -225,10 +244,10 @@ void main() {
       expect(entries.purged.single.id, 'lunch');
       expect(inTrash(find.text('점심')), findsNothing);
       expect(findSentence('완전히 지웠어요.'), findsOneWidget);
-      expect(activity.logged.single.summary, "10월 추가지출 '점심' 12,000원");
+      expect(activity.logged.single.summary, "10월 추가 지출 '점심' 12,000원");
     });
 
-    testWidgets('고정 지출에서 만든 이번 달 기본 지출은 완전 삭제 없이 남겨 둔다고 알린다', (tester) async {
+    testWidgets('반복 설정이 남아 있는 이번 달 고정 지출은 완전 삭제 없이 남겨 둔다고 알린다', (tester) async {
       await pumpTrashApp(tester, entries: trashOf([management]));
       await openTrash(tester);
 
