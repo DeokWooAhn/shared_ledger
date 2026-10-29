@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_ledger/domain/model/year_month.dart';
 import 'package:shared_ledger/domain/model/auth_user.dart';
 import 'package:shared_ledger/domain/model/invite.dart';
 import 'package:shared_ledger/domain/model/ledger.dart';
@@ -42,11 +43,17 @@ void main() {
       final id = await useCases.createLedger(
         name: ' 하늘바다 가계부 ',
         owner: const AuthUser(uid: 'me', displayName: ' 가나다라마바사아자차카 '),
+        firstMonth: const YearMonth(2026, 11),
       );
 
       expect(id, 'ledger-1');
       expect(ledgers.created, [
-        (name: '하늘바다 가계부', ownerUid: 'me', ownerName: '가나다라마바사아자차'),
+        (
+          name: '하늘바다 가계부',
+          ownerUid: 'me',
+          ownerName: '가나다라마바사아자차',
+          firstMonth: const YearMonth(2026, 11),
+        ),
       ]);
     });
 
@@ -56,6 +63,7 @@ void main() {
       await LedgerUseCases(ledgers).createLedger(
         name: '우리 가계부',
         owner: const AuthUser(uid: 'me'),
+        firstMonth: const YearMonth(2026, 10),
       );
 
       expect(ledgers.created.single.ownerName, '나');

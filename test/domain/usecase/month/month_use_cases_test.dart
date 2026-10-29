@@ -273,7 +273,7 @@ void main() {
       expect(useCases.planMonthsBackfill(ledger: null, canWrite: true), isNull);
     });
 
-    test('범위에서 항목(휴지통 포함)이 있는 달만 찾아 가계부에 적는다', () async {
+    test('범위에서 항목(휴지통 포함)이 있는 달과 이번 달을 가계부에 적는다', () async {
       final entries = FakeEntriesRepository({
         september: const MonthLedger(
           extraExpenses: [
@@ -295,7 +295,8 @@ void main() {
 
       expect(entries.scannedMonths, [september, october]);
       expect(ledgers.recordedMonths.single.ledgerId, 'l1');
-      expect(ledgers.recordedMonths.single.months, {september});
+      // 옛 가계부는 이번 달을 늘 보여 줬으니 이번 달도 이어서 쓴다.
+      expect(ledgers.recordedMonths.single.months, {september, october});
     });
 
     test('연결이 없으면 적지 않고 저장소의 실패를 그대로 던진다', () async {

@@ -214,7 +214,7 @@ void main() {
       expect(container.read(plannedFillProvider), isNull);
     });
 
-    test('달 목록에 없는 달을 채우면 그달을 달 목록에 같이 더한다', () async {
+    test('가계부를 추가하지 않은 달은 이번 달이라도 채우지 않는다', () async {
       final entries = FakeEntriesRepository();
       final container = await ready(
         entries: entries,
@@ -225,14 +225,10 @@ void main() {
           months: {const YearMonth(2026, 9)},
         ),
       );
-      final fill = container.read(plannedFillProvider);
-      expect(fill?.recordMonth, isTrue);
+      container.read(selectedMonthProvider.notifier).select(october);
 
-      await container.read(monthFillNotifierProvider.notifier).fill(fill!);
-      await pumpEventQueue();
-
-      expect(entries.recordedMonths, [october]);
-      expect(container.read(currentLedgerProvider)?.months, contains(october));
+      expect(container.read(plannedFillProvider), isNull);
+      expect(entries.recordedMonths, isEmpty);
     });
 
     test('달 목록을 아직 모으지 않은 가계부면 채워도 달 목록에 더하지 않는다', () async {

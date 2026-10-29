@@ -104,7 +104,10 @@ class FakeLedgerRepository with LogsActivity implements LedgerRepository {
 
   final List<Ledger> _ledgers;
   final _changes = StreamController<void>.broadcast();
-  final created = <({String name, String ownerUid, String ownerName})>[];
+  final created =
+      <
+        ({String name, String ownerUid, String ownerName, YearMonth firstMonth})
+      >[];
   final invites = <({String ledgerId, MemberRole role, String createdBy})>[];
   final joins = <({String code, String uid})>[];
 
@@ -181,14 +184,22 @@ class FakeLedgerRepository with LogsActivity implements LedgerRepository {
     required String name,
     required String ownerUid,
     required String ownerName,
+    required YearMonth firstMonth,
   }) async {
     if (failNextCreate) {
       failNextCreate = false;
       _fail('create');
     }
-    created.add((name: name, ownerUid: ownerUid, ownerName: ownerName));
+    created.add((
+      name: name,
+      ownerUid: ownerUid,
+      ownerName: ownerName,
+      firstMonth: firstMonth,
+    ));
     final id = 'ledger-${created.length}';
-    _ledgers.add(Ledger(id: id, name: name, ownerUid: ownerUid));
+    _ledgers.add(
+      Ledger(id: id, name: name, ownerUid: ownerUid, months: {firstMonth}),
+    );
     _changes.add(null);
     return id;
   }

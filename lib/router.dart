@@ -10,6 +10,9 @@ import 'domain/model/ledger.dart';
 import 'domain/model/ledger_entries.dart';
 import 'domain/model/year_month.dart';
 import 'core/widget/loading_screen.dart';
+import 'feature/months/months_screen.dart';
+import 'feature/ledger/join_ledger_screen.dart';
+import 'feature/ledger/create_ledger_screen.dart';
 import 'feature/auth/sign_in_screen.dart';
 import 'feature/entries/calendar_screen.dart';
 import 'feature/entries/entries_screen.dart';
@@ -29,9 +32,14 @@ abstract final class Routes {
   static const signIn = '/sign-in';
   static const start = '/start';
 
+  /// 가계부 시작의 만들기·입장 화면. 시작 화면 위로 쌓여 뒤로 가면 시작 화면으로 돌아온다.
+  static const startCreate = '$start/create';
+  static const startJoin = '$start/join';
+
   // 홈의 탭. 가계부가 있으면 요약 탭에서 시작한다.
   static const summary = '/';
   static const entries = '/entries';
+  static const months = '/months';
   static const settings = '/settings';
   static const home = summary;
 
@@ -52,6 +60,7 @@ abstract final class Routes {
   static String of(HomeTab tab) => switch (tab) {
     HomeTab.summary => summary,
     HomeTab.entries => entries,
+    HomeTab.months => months,
     HomeTab.settings => settings,
   };
 }
@@ -62,6 +71,7 @@ Widget _tabScreen(HomeTab tab) => switch (tab) {
     openForm: _openEntryForm,
     openCalendar: _openCalendar,
   ),
+  HomeTab.months => const MonthsScreen(openSummary: _openSummary),
   HomeTab.settings => const SettingsScreen(
     openCategories: _openCategories,
     openPaymentMethods: _openPaymentMethods,
@@ -90,7 +100,7 @@ List<RouteBase> _tabRoutes(HomeTab tab) => switch (tab) {
       builder: (_, _) => const ActivityScreen(),
     ),
   ],
-  HomeTab.summary || HomeTab.entries => const [],
+  HomeTab.summary || HomeTab.entries || HomeTab.months => const [],
 };
 
 // 하위 GoRoute의 path는 앞의 탭 경로를 뺀 나머지다. 예: '/settings/categories' → 'categories'
@@ -108,6 +118,14 @@ void _openTrash(BuildContext context) =>
 
 void _openActivity(BuildContext context) =>
     unawaited(context.push<void>(Routes.activity));
+
+void _openSummary(BuildContext context) => context.go(Routes.summary);
+
+void _openCreateLedger(BuildContext context) =>
+    unawaited(context.push<void>(Routes.startCreate));
+
+void _openJoinLedger(BuildContext context) =>
+    unawaited(context.push<void>(Routes.startJoin));
 
 void _openCalendar(BuildContext context) =>
     unawaited(context.push<void>(Routes.calendar));
@@ -147,9 +165,19 @@ String? redirectFor(AppGate gate, String location) {
     AppGate.noLedger => Routes.start,
     AppGate.ready => null,
   };
-  if (target != null) return location == target ? null : target;
-  const entryRoutes = {Routes.loading, Routes.signIn, Routes.start};
-  return entryRoutes.contains(location) ? Routes.home : null;
+  // 가계부 시작은 만들기·입장 화면(`/start/…`)까지 한 묶음이다.
+  bool inStart(String location) =>
+      location == Routes.start || location.startsWith('${Routes.start}/');
+  if (target != null) {
+    final there = target == Routes.start
+        ? inStart(location)
+        : location == target;
+    return there ? null : target;
+  }
+  const entryRoutes = {Routes.loading, Routes.signIn};
+  return entryRoutes.contains(location) || inStart(location)
+      ? Routes.home
+      : null;
 }
 
 final appGateProvider = Provider<AppGate>(
@@ -175,7 +203,23 @@ final routerProvider = Provider<GoRouter>((ref) {
     routes: [
       GoRoute(path: Routes.loading, builder: (_, _) => const LoadingScreen()),
       GoRoute(path: Routes.signIn, builder: (_, _) => const SignInScreen()),
-      GoRoute(path: Routes.start, builder: (_, _) => const LedgerStartScreen()),
+      GoRoute(
+        path: Routes.start,
+        builder: (_, _) => const LedgerStartScreen(
+          openCreate: _openCreateLedger,
+          openJoin: _openJoinLedger,
+        ),
+        routes: [
+          GoRoute(
+            path: _subPath(Routes.startCreate),
+            builder: (_, _) => const CreateLedgerScreen(),
+          ),
+          GoRoute(
+            path: _subPath(Routes.startJoin),
+            builder: (_, _) => const JoinLedgerScreen(),
+          ),
+        ],
+      ),
       // 탭마다 화면 상태를 지키는 홈. branch 순서가 HomeTab 순서와 같아야 한다.
       StatefulShellRoute.indexedStack(
         builder: (_, _, navigationShell) =>

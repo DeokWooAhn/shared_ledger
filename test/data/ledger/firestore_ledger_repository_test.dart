@@ -6,7 +6,11 @@ import 'package:shared_ledger/domain/model/year_month.dart';
 
 void main() {
   test('새 가계부 문서는 보안 규칙이 받는 필드만, 나를 관리자로 담는다', () {
-    final data = newLedgerData(name: '우리 가계부', ownerUid: 'me');
+    final data = newLedgerData(
+      name: '우리 가계부',
+      ownerUid: 'me',
+      firstMonth: const YearMonth(2026, 11),
+    );
 
     // firestore.rules의 ledgers create 규칙과 같은 필드 목록.
     expect(data.keys.toSet(), {
@@ -19,8 +23,8 @@ void main() {
       'updatedAt',
     });
     expect(data['name'], '우리 가계부');
-    // 새 가계부는 항목 있는 달이 아직 없어서 빈 목록이다(따로 모으지 않는다).
-    expect(data['months'], isEmpty);
+    // 새 가계부는 처음 고른 달 하나로 시작한다(규칙의 createsMonths). 따로 모으지 않는다.
+    expect(data['months'], ['2026-11']);
     expect(data['ownerUid'], 'me');
     expect(data['roles'], isEmpty);
     expect(data['memberUids'], ['me']);

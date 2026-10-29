@@ -20,6 +20,7 @@ const wideLayoutMinWidth = 600.0;
 enum HomeTab {
   summary('요약', Icons.pie_chart_outline),
   entries('항목', Icons.format_list_bulleted),
+  months('가계부', Icons.menu_book_outlined),
   settings('설정', Icons.settings_outlined);
 
   const HomeTab(this.label, this.icon);
@@ -58,12 +59,15 @@ class HomeShell extends ConsumerWidget {
     initialLocation: tab.index == navigationShell.currentIndex,
   );
 
-  // + 버튼은 쓸 수 있는 사람에게 요약·항목 탭에서만 보인다. 항목 탭에서는 보던 칸의 종류(지출 칸은 추가 지출),
+  // + 버튼은 쓸 수 있는 사람에게 요약·항목 탭에서만, 보고 있는 달의 가계부가 있을 때만 보인다(가계부는 가계부 탭에서 추가한다).
+  // 달 목록을 아직 모으지 않은 옛 가계부(null)는 가리지 않는다. 항목 탭에서는 보던 칸의 종류(지출 칸은 추가 지출),
   // 요약 탭에서는 추가 지출로 연다. 고정 지출은 입력 화면의 종류 칸에서 고른다.
   VoidCallback? _addEntry(BuildContext context, WidgetRef ref) {
     final canWrite = ref.watch(myRoleProvider)?.canWrite ?? false;
     final tab = _current;
-    if (!canWrite) return null;
+    final months = ref.watch(ledgerMonthsProvider);
+    final month = ref.watch(selectedMonthProvider);
+    if (!canWrite || (months != null && !months.contains(month))) return null;
     return switch (tab) {
       HomeTab.summary || HomeTab.entries => () => onAddEntry(
         context,
@@ -72,7 +76,7 @@ class HomeShell extends ConsumerWidget {
             : EntryKind.extra,
         ref.read(selectedMonthProvider),
       ),
-      HomeTab.settings => null,
+      HomeTab.months || HomeTab.settings => null,
     };
   }
 

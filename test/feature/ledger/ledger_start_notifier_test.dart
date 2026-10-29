@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_ledger/domain/model/year_month.dart';
 import 'package:shared_ledger/domain/repository/ledger_repository.dart';
 import 'package:shared_ledger/domain/model/auth_user.dart';
 import 'package:shared_ledger/domain/model/invite.dart';
@@ -15,6 +16,8 @@ const partnerLedger = Ledger(
   ownerUid: 'partner',
 );
 
+const november = YearMonth(2026, 11);
+
 void main() {
   group('가계부 만들기', () {
     test('이름의 앞뒤 공백을 빼고 나를 관리자로 만든다', () async {
@@ -28,10 +31,15 @@ void main() {
 
       await container
           .read(ledgerStartNotifierProvider.notifier)
-          .create(' 하늘바다 가계부 ');
+          .create(' 하늘바다 가계부 ', firstMonth: november);
 
       expect(ledgers.created, [
-        (name: '하늘바다 가계부', ownerUid: 'me', ownerName: '나'),
+        (
+          name: '하늘바다 가계부',
+          ownerUid: 'me',
+          ownerName: '나',
+          firstMonth: november,
+        ),
       ]);
       expect(states, [
         const LedgerStartState(pending: LedgerStartAction.create),
@@ -52,7 +60,7 @@ void main() {
 
       await container
           .read(ledgerStartNotifierProvider.notifier)
-          .create('우리 가계부');
+          .create('우리 가계부', firstMonth: november);
 
       expect(ledgers.created.single.ownerName, '가나다라마바사아자차');
     });
@@ -66,7 +74,7 @@ void main() {
       recordStates(container, ledgerStartNotifierProvider);
       final notifier = container.read(ledgerStartNotifierProvider.notifier);
 
-      await notifier.create('우리 가계부');
+      await notifier.create('우리 가계부', firstMonth: november);
       expect(
         container.read(ledgerStartNotifierProvider).failure,
         LedgerStartFailure.create,

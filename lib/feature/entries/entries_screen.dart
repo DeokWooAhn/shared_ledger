@@ -7,6 +7,7 @@ import '../../domain/model/ledger_entries.dart';
 import '../../domain/model/member.dart';
 import '../../domain/model/month_ledger.dart';
 import '../../domain/model/payment_method.dart';
+import '../../core/widget/no_months_notice.dart';
 import '../../core/widget/entry_kind_label.dart';
 import '../../core/widget/keep_all.dart';
 import '../../core/widget/month_header.dart';
@@ -51,7 +52,10 @@ class EntriesScreen extends ConsumerWidget {
           onSelect: ref.read(selectedEntryTabProvider.notifier).select,
         ),
         const SizedBox(height: 14),
-        _EntriesBody(tab: tab, openForm: openForm),
+        if (ref.watch(ledgerMonthsProvider)?.isEmpty ?? false)
+          const NoMonthsNotice()
+        else
+          _EntriesBody(tab: tab, openForm: openForm),
       ],
     );
   }

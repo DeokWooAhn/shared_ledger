@@ -1212,10 +1212,15 @@ describe('공휴일', () => {
 
 describe('항목 있는 달 목록 (months)', () => {
   // 앱은 그달에 처음 항목을 넣을 때 arrayUnion으로 더하고, 목록이 없던 가계부는 처음 열 때 한 번 모아 적는다.
-  test('새 가계부는 빈 목록으로 만들 수 있고, 달을 미리 넣어 만들 수는 없다', async () => {
+  test('새 가계부는 빈 목록이나 처음 고른 달 하나로 만들 수 있고, 그 밖의 달 목록으로는 만들 수 없다', async () => {
     const db = firestoreAs(NEWCOMER);
     await assertSucceeds(setDoc(ledgerRef(db, 'l-months'), newLedger(NEWCOMER, { months: [] })));
-    await assertFails(setDoc(ledgerRef(db, 'l-months-2'), newLedger(NEWCOMER, { months: [MONTH] })));
+    // 가계부를 만들 때 고른 첫 달 하나는 같이 받는다(2026-10-29).
+    await assertSucceeds(setDoc(ledgerRef(db, 'l-months-2'), newLedger(NEWCOMER, { months: [MONTH] })));
+    await assertFails(setDoc(ledgerRef(db, 'l-months-3'), newLedger(NEWCOMER, { months: [MONTH, '2026-11'] })));
+    await assertFails(setDoc(ledgerRef(db, 'l-months-4'), newLedger(NEWCOMER, { months: ['2026-13'] })));
+    await assertFails(setDoc(ledgerRef(db, 'l-months-5'), newLedger(NEWCOMER, { months: [202610] })));
+    await assertFails(setDoc(ledgerRef(db, 'l-months-6'), newLedger(NEWCOMER, { months: MONTH })));
   });
 
   test('관리자와 편집자는 달을 더할 수 있고, 보기 전용과 구성원이 아닌 사람은 못 한다', async () => {

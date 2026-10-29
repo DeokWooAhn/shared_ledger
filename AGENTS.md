@@ -70,7 +70,7 @@ lib/
     theme/                design/app.pen 토큰으로 만든 테마
     widget/               공용 위젯과 화면 도우미(keepAll, signOutWithFeedback, MonthHeader)
   feature/<기능>/        화면: <이름>_screen.dart(View) + <이름>_notifier.dart(Notifier)
-                          feature/home은 홈의 탭 틀(요약·항목·설정)
+                          feature/home은 홈의 탭 틀(요약·항목·가계부·설정)
   main.dart, app.dart   앱 시작점
   router.dart           화면 이동 규칙(go_router). feature 화면을 모은다
   di.dart               저장소 공급자에 Firebase 구현(data)을 넣는다. data를 아는 곳은 여기뿐이다
@@ -159,7 +159,7 @@ MVVM의 ViewModel 역할은 Riverpod `Notifier`를 상속한 클래스가 맡는
 `XxxNotifier`, 파일은 `<이름>_notifier.dart`, 공급자는 `xxxNotifierProvider`로 짓는다(2026-10-27, 그전에는 `XxxController`).
 Flutter의 `TextEditingController`·`ScrollController`와 헷갈리지 않게 하려는 것이다.
 
-- **화면 하나 = View + Notifier.** `ledger_start_screen.dart` + `ledger_start_notifier.dart`가 정석이다.
+- **화면 하나 = View + Notifier.** `join_ledger_screen.dart` + `ledger_start_notifier.dart`가 정석이다(만들기·입장 두 화면이 Notifier 하나를 같이 쓴다).
   Notifier가 맡을 동작이 없는 화면(`settings_screen.dart`: 시트 열기와 `signOutWithFeedback`만 씀)은 Notifier 없이 공급자만 읽는다.
 - **Notifier**는 Riverpod `Notifier<불변 State>`이고 `NotifierProvider.autoDispose`로 만든다. 사용자 동작은 메서드로 받는다.
   `await` 뒤에는 `ref.mounted`를 확인한 뒤 상태를 바꾼다(화면이 사라지면 Notifier도 해제된다).
@@ -175,7 +175,7 @@ Flutter의 `TextEditingController`·`ScrollController`와 헷갈리지 않게 �
 - 위젯 밖에서 `await`한 뒤 `BuildContext`를 쓰지 않는다. `await` 전에 `ScaffoldMessenger`를 잡아 두거나(`signOutWithFeedback`) `context.mounted`를 확인한다.
 - 위젯을 돌려주는 private 메서드보다 작은 위젯 클래스로 나눈다(`_OptionCard`, `_ValuePoint`). 바뀌지 않는 위젯은 `const`.
 - 긴 목록은 `ListView.builder`로 만들고, 항목에는 안정적인 id로 `ValueKey`를 준다. 인덱스를 키로 쓰지 않는다.
-- **탭:** 홈은 탭 3개(`HomeTab`: 요약·항목·설정, 가계부 탭은 다음 작업)이고 `StatefulShellRoute`가 탭마다 화면 상태를 지킨다. 탭 화면은 `TabPage`로 감싸고,
+- **탭:** 홈은 탭 4개(`HomeTab`: 요약·항목·가계부·설정)이고 `StatefulShellRoute`가 탭마다 화면 상태를 지킨다. 탭 화면은 `TabPage`로 감싸고,
   달을 보는 탭은 `MonthHeader`를 머리말로 쓴다. 보고 있는 달은 `selectedMonthProvider` 하나를 모든 탭이 같이 읽는다.
   항목 탭은 세 칸(`EntryTab`: 수입·지출·카드 대금)이고, 고정 지출은 따로 된 화면 없이 지출 칸과 입력 화면에서 다룬다.
 - **넓은 화면:** 아이패드와 Mac(아이패드 앱)에서도 쓴다. 폭 600 이상이면 탭 막대가 옆(NavigationRail)으로 간다. 본문은 `ConstrainedBox(maxWidth: …)`로 가운데 두고,

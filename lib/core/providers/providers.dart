@@ -77,20 +77,21 @@ final templatesProvider = StreamProvider<List<ExpenseTemplate>>((ref) {
   return ref.watch(templateUseCasesProvider).watchTemplates(ledgerId);
 });
 
-/// 요약·항목 탭(과 휴지통)이 오가는 달. 오래된 것부터 정렬돼 있다.
+/// 가계부가 있는 달(가계부 탭에서 추가했거나 항목이 들어간 적 있는 달, [Ledger.months]). 오래된 것부터 정렬돼 있다.
 ///
-/// 항목이 들어간 적 있는 달([Ledger.months])에 이번 달을 더한 것이다. 다음 달도 항목이 없으면 넣지 않는다
-/// (달력에서 그달 가계부를 만들면 고정 지출이 채워지며 들어온다).
+/// 요약·항목 탭(과 휴지통)은 이 달들만 오가고, 가계부 탭이 이 목록을 보여준다. 이번 달이라도 추가하지 않았으면 없다.
 /// 목록을 아직 모으지 않은 가계부(months가 null)거나 가계부가 없으면 null이고, 그때는 달을 가리지 않는다.
 /// 달력은 이 목록과 상관없이 모든 달을 보여준다.
 final ledgerMonthsProvider = Provider<List<YearMonth>?>((ref) {
   final months = ref.watch(currentLedgerProvider.select((l) => l?.months));
   if (months == null) return null;
-  final thisMonth = YearMonth.of(ref.watch(clockProvider)());
-  return {...months, thisMonth}.toList()..sort();
+  return [...months]..sort();
 });
 
-/// 요약·항목 탭이 같이 보는 달. 처음에는 이번 달이고, 탭을 옮겨도 유지된다.
+/// 요약·항목 탭이 같이 보는 달. 탭을 옮겨도 유지된다.
+///
+/// 처음에는 가계부가 있는 달 가운데 이번 달에 가장 가까운 달이다(이번 달이 있으면 이번 달, [nearestMonth]).
+/// 달 목록이 바뀌어 보던 달이 목록에서 빠지면(다른 가계부로 옮김 등) 다시 가장 가까운 달로 옮긴다.
 final selectedMonthProvider =
     NotifierProvider<SelectedMonthNotifier, YearMonth>(
       SelectedMonthNotifier.new,
@@ -99,7 +100,18 @@ final selectedMonthProvider =
 /// 보고 있는 달을 바꾼다.
 class SelectedMonthNotifier extends Notifier<YearMonth> {
   @override
-  YearMonth build() => YearMonth.of(ref.read(clockProvider)());
+  YearMonth build() {
+    ref.listen(ledgerMonthsProvider, (_, months) {
+      if (months == null || months.isEmpty || months.contains(state)) return;
+      state = nearestMonth(months, state) ?? state;
+    });
+    final thisMonth = YearMonth.of(ref.read(clockProvider)());
+    return nearestMonth(
+          ref.read(ledgerMonthsProvider) ?? const [],
+          thisMonth,
+        ) ??
+        thisMonth;
+  }
 
   /// 다음 달로 간다.
   void next() => state = state.next;
