@@ -48,6 +48,34 @@ ExtraExpense _extra({String paymentMethodId = 'account', int amount = 10000}) =>
     );
 
 void main() {
+  test('추가 수입은 적으면 바로 현금 유입이 되고, 고정 수입은 받은 것만 들어간다', () {
+    final summary = _calculator.summarize(
+      MonthLedger(
+        incomes: const [
+          Income(id: 'i1', memberId: 'm1', title: '중고 거래', amount: 50000),
+        ],
+        fixedIncomes: [
+          FixedIncome(
+            id: 'f1',
+            memberId: 'm1',
+            title: '월급',
+            amount: 3000000,
+            receivedOn: DateTime(2026, 10, 24),
+          ),
+          // 받기 전이라 0원으로 친다.
+          const FixedIncome(
+            id: 'f2',
+            memberId: 'm2',
+            title: '월급',
+            amount: 2000000,
+          ),
+        ],
+      ),
+    );
+
+    expect(summary.cashIn, 3050000);
+  });
+
   test('수입 합계가 현금 유입이 된다', () {
     final summary = _calculator.summarize(
       const MonthLedger(

@@ -18,9 +18,13 @@ class BudgetCalculator {
   final Map<String, PaymentMethod> _paymentMethods;
 
   BudgetSummary summarize(MonthLedger ledger) {
+    // 추가 수입은 적으면 바로, 고정 수입은 받음 완료일 때만 현금 유입이다(고정 지출의 지급 완료와 같다).
     var cashIn = 0;
     for (final income in ledger.incomes) {
       cashIn += income.amount;
+    }
+    for (final income in ledger.fixedIncomes) {
+      if (income.isReceived) cashIn += income.amount;
     }
 
     var plannedTotal = 0;

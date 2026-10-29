@@ -254,7 +254,7 @@ void main() {
       expect(inTrash(find.text('관리비')), findsOneWidget);
       expect(inTrash(find.text('금액 미정')), findsOneWidget);
       expect(
-        inTrash(findSentence('고정 지출에서 만든 항목이라 지우면 다시 생겨요. 휴지통에 남겨 둬요.')),
+        inTrash(findSentence('매달 만드는 고정 지출이라 지우면 다시 생겨요. 휴지통에 남겨 둬요.')),
         findsOneWidget,
       );
       expect(

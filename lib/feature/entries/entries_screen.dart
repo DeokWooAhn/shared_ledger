@@ -20,7 +20,8 @@ import 'entry_row.dart';
 
 /// 항목 탭(design/app/04). 보고 있는 달의 항목을 세 칸(수입·지출·카드 대금)으로 나눠 보여준다.
 ///
-/// 지출 칸은 고정 지출과 추가 지출을 구역으로 나눈다. 고정 지출은 분류마다 묶고 지급 전 항목에 표시를 붙인다.
+/// 수입 칸은 고정 수입과 추가 수입을, 지출 칸은 고정 지출과 추가 지출을 구역으로 나눈다. 고정 지출은 분류마다 묶는다.
+/// 지급 전 고정 지출과 받기 전 고정 수입에는 표시를 붙인다.
 /// 항목을 누르면 입력 화면에서 고친다(보기 전용은 못 고친다).
 class EntriesScreen extends ConsumerWidget {
   const EntriesScreen({
@@ -126,7 +127,7 @@ class _EntriesContent extends ConsumerWidget {
       );
     }
     final methods = {for (final method in paymentMethods) method.id: method};
-    // 종류가 둘인 칸(지출)은 종류마다 제목·건수·합계를 단 구역으로 나누고, 맨 위에는 칸 전체의 건수와 합계를 둔다.
+    // 종류가 둘인 칸(수입·지출)은 종류마다 제목·건수·합계를 단 구역으로 나누고, 맨 위에는 칸 전체의 건수와 합계를 둔다.
     final sectioned = lists.length > 1;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -135,7 +136,7 @@ class _EntriesContent extends ConsumerWidget {
         _ListSummary(
           count: lists.fold(0, (sum, section) => sum + section.$2.count),
           total: lists.fold(0, (sum, section) => sum + section.$2.total),
-          unpaidCount: sectioned ? 0 : lists.single.$2.unpaidCount,
+          pendingCount: sectioned ? 0 : lists.single.$2.pendingCount,
         ),
         for (final (kind, list) in lists)
           if (!list.isEmpty) ...[
@@ -176,17 +177,17 @@ class _EntriesContent extends ConsumerWidget {
   }
 }
 
-/// 칸 전체의 건수, 지급 전 건수, 합계 한 줄. 구역으로 나눈 칸은 지급 전 건수를 구역 제목에 단다.
+/// 칸 전체의 건수, 지급 전 건수, 합계 한 줄. 구역으로 나눈 칸은 지급 전·받기 전 건수를 구역 제목에 단다.
 class _ListSummary extends StatelessWidget {
   const _ListSummary({
     required this.count,
     required this.total,
-    required this.unpaidCount,
+    required this.pendingCount,
   });
 
   final int count;
   final int total;
-  final int unpaidCount;
+  final int pendingCount;
 
   @override
   Widget build(BuildContext context) {
@@ -212,9 +213,9 @@ class _ListSummary extends StatelessWidget {
                   color: theme.colorScheme.onSurfaceVariant,
                 ),
               ),
-              if (unpaidCount > 0)
+              if (pendingCount > 0)
                 StatusPill(
-                  '지급 전 $unpaidCount건',
+                  '지급 전 $pendingCount건',
                   key: const Key('entries-unpaid'),
                 ),
             ],
@@ -230,7 +231,8 @@ class _ListSummary extends StatelessWidget {
   }
 }
 
-/// 지출 칸의 구역 제목(고정 지출·추가 지출). 종류 이름, 건수, 지급 전 건수, 합계를 단다.
+/// 수입·지출 칸의 구역 제목(고정 수입·추가 수입, 고정 지출·추가 지출). 종류 이름, 건수, 합계를 달고,
+/// 고정 지출은 지급 전 건수, 고정 수입은 받기 전 건수를 단다.
 class _SectionHeader extends StatelessWidget {
   const _SectionHeader({required this.kind, required this.list, super.key});
 
@@ -266,11 +268,16 @@ class _SectionHeader extends StatelessWidget {
                     color: theme.colorScheme.onSurfaceVariant,
                   ),
                 ),
-                if (list.unpaidCount > 0)
-                  StatusPill(
-                    '지급 전 ${list.unpaidCount}건',
-                    key: const Key('entries-unpaid'),
-                  ),
+                if (list.pendingCount > 0)
+                  kind == EntryKind.fixedIncome
+                      ? StatusPill(
+                          '받기 전 ${list.pendingCount}건',
+                          key: const Key('entries-unreceived'),
+                        )
+                      : StatusPill(
+                          '지급 전 ${list.pendingCount}건',
+                          key: const Key('entries-unpaid'),
+                        ),
               ],
             ),
           ),

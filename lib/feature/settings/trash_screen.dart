@@ -39,7 +39,7 @@ String trashPurgeLabel(DateTime purgeAt, DateTime now) {
 ///
 /// 보고 있는 달의 휴지통 항목을 최근에 넣은 것부터 보여주고, 달 머리말로 다른 달을 본다. 그달 구독을 요약·항목 탭과
 /// 같이 써서 읽기가 늘지 않는다. 관리자·편집자는 되살리거나 완전히 지우고(확인 후), 보기 전용은 보기만 한다.
-/// 넣은 지 30일이 지나면 자동으로 지워진다. 반복 설정이 남아 있는 이번 달 이후 고정 지출은 남겨 둔다([staysInTrash]).
+/// 넣은 지 30일이 지나면 자동으로 지워진다. 반복 설정이 남아 있는 이번 달 이후 고정 지출·고정 수입은 남겨 둔다([staysInTrash]).
 class TrashScreen extends ConsumerWidget {
   const TrashScreen({super.key});
 
@@ -137,7 +137,7 @@ class _TrashContent extends ConsumerWidget {
         }
         return bAt.compareTo(aAt);
       });
-    // 반복 설정 목록을 받기 전(또는 오류)에는 고정 지출이 남아야 하는지 몰라서 그 줄의 단추를 막는다.
+    // 반복 설정 목록을 받기 전(또는 오류)에는 고정 지출·고정 수입이 남아야 하는지 몰라서 그 줄의 단추를 막는다.
     final templateIds = switch (ref.watch(templatesProvider)) {
       AsyncData(:final value) => {for (final template in value) template.id},
       _ => null,
@@ -193,6 +193,7 @@ class _TrashContent extends ConsumerWidget {
     Map<String, PaymentMethod> methods,
   ) => switch (entry) {
     Income(:final title) ||
+    FixedIncome(:final title) ||
     PlannedExpense(:final title) ||
     ExtraExpense(:final title) => title,
     CardBill(:final cardId) => methods[cardId]?.name ?? '카드 대금',
@@ -218,7 +219,7 @@ class _TrashRow extends StatelessWidget {
   final String title;
   final Member member;
 
-  /// 반복 설정이 남아 있는 이번 달 이후 고정 지출이라 지우지 않고 남겨 두는지.
+  /// 반복 설정이 남아 있는 이번 달 이후 고정 지출·고정 수입이라 지우지 않고 남겨 두는지.
   final bool stays;
   final DateTime now;
   final bool canWrite;
@@ -239,7 +240,7 @@ class _TrashRow extends StatelessWidget {
       deletedAt == null ? '방금 넣음' : '${deletedAt.month}/${deletedAt.day}에 넣음',
     ].join(' · ');
     final note = stays
-        ? '고정 지출에서 만든 항목이라 지우면 다시 생겨요. 휴지통에 남겨 둬요.'
+        ? '매달 만드는 ${entryKindLabel(entry.kind)}이라 지우면 다시 생겨요. 휴지통에 남겨 둬요.'
         : purgeAt == null
         ? null
         : trashPurgeLabel(purgeAt, now);

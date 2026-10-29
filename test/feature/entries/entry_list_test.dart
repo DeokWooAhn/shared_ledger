@@ -69,8 +69,42 @@ void main() {
     test('건수·합계·지급 전 건수를 센다', () {
       expect(list.count, 5);
       expect(list.total, 908000);
-      expect(list.unpaidCount, 2);
+      expect(list.pendingCount, 2);
       expect(list.isEmpty, isFalse);
+    });
+  });
+
+  group('고정 수입 목록', () {
+    test('분류 없이 한 묶음에 제목 순서이고, 받기 전 건수를 센다', () {
+      final ledger = MonthLedger(
+        fixedIncomes: [
+          const FixedIncome(
+            id: '월급',
+            memberId: 'owner',
+            title: '월급',
+            amount: 3000000,
+          ),
+          FixedIncome(
+            id: '수당',
+            memberId: 'partner',
+            title: '수당',
+            amount: 200000,
+            receivedOn: DateTime(2026, 10, 10),
+          ),
+        ],
+      );
+
+      final list = EntryList.of(
+        EntryKind.fixedIncome,
+        ledger,
+        categories: categories,
+      );
+
+      expect(list.groups.single.title, isNull);
+      expect(list.groups.single.entries.map((e) => e.id), ['수당', '월급']);
+      expect(list.count, 2);
+      expect(list.total, 3200000);
+      expect(list.pendingCount, 1);
     });
   });
 
@@ -100,7 +134,7 @@ void main() {
         '간식',
       ]);
       expect(list.total, 133000);
-      expect(list.unpaidCount, 0);
+      expect(list.pendingCount, 0);
     });
 
     test('항목이 없으면 묶음도 없고 비어 있다', () {

@@ -631,10 +631,11 @@ class FakeSettingsRepository with LogsActivity implements SettingsRepository {
 /// 화면 테스트용 가짜 항목 저장소. 넣어 둔 달의 항목을 돌려주고, 없는 달은 빈 달이다.
 ///
 /// 실제 저장소처럼 휴지통 항목은 목록에서 빼고 [MonthLedger.trashed]에 둔 [MonthLedger]를 넣는다.
-/// [put]으로 바꾸면 구독 중인 곳에 다시 알린다. [MonthLedger.plannedIds]에는 휴지통에 든 고정 지출의 id까지 들어간다.
-/// 쓰기도 실제 약속을 지킨다: 추가는 [offline]이어도 되고, 고치기·휴지통·꺼내기·완전 삭제·고정 지출로 채우기는 [offline]이면
+/// [put]으로 바꾸면 구독 중인 곳에 다시 알린다. [MonthLedger.plannedIds]·[MonthLedger.fixedIncomeIds]에는 휴지통에 든
+/// 고정 지출·고정 수입의 id까지 들어간다.
+/// 쓰기도 실제 약속을 지킨다: 추가는 [offline]이어도 되고, 고치기·휴지통·꺼내기·완전 삭제·반복 설정으로 채우기는 [offline]이면
 /// [EntryWriteFailure.offline]으로, 없는 항목(휴지통에 든 항목을 고치거나 휴지통 밖의 항목을 꺼내거나 지울 때 포함)이면
-/// [EntryWriteFailure.notFound]로 실패한다. 반복 설정으로 채울 때는 그 id의 고정 지출이 있으면(휴지통 포함) 건너뛴다.
+/// [EntryWriteFailure.notFound]로 실패한다. 반복 설정으로 채울 때는 그 종류에 그 id의 항목이 있으면(휴지통 포함) 건너뛴다.
 /// 휴지통에 넣으면 [now]로 넣은 때와 자동으로 지울 때를 적는다([staysInTrash]면 자동으로 지우지 않는다).
 class FakeEntriesRepository with LogsActivity implements EntriesRepository {
   FakeEntriesRepository([Map<YearMonth, MonthLedger> months = const {}])
@@ -849,41 +850,41 @@ class FakeEntriesRepository with LogsActivity implements EntriesRepository {
     );
   }
 
-  // 아래는 가짜 고정 지출 저장소가 고정 지출을 더하거나 고치거나 그만할 때 쓴다. 실제는 같은 트랜잭션이라
-  // 변경 기록은 고정 지출 저장소가 남기고, 여기서는 남기지 않는다.
+  // 아래는 가짜 반복 설정 저장소가 고정 지출·고정 수입을 더하거나 고치거나 그만할 때 쓴다. 실제는 같은 트랜잭션이라
+  // 변경 기록은 반복 설정 저장소가 남기고, 여기서는 남기지 않는다.
 
-  /// 휴지통 밖에 있는 [month]의 [id] 고정 지출. 없으면 null.
-  PlannedExpense? livePlanned(YearMonth month, String id) =>
-      monthOf(month).plannedExpenses.where((e) => e.id == id).firstOrNull;
+  /// 휴지통 밖에 있는 [month]의 [kind] 항목 [id]. 없으면 null.
+  LedgerEntry? liveFixed(YearMonth month, EntryKind kind, String id) =>
+      _entriesOf(monthOf(month), kind).where((e) => e.id == id).firstOrNull;
 
-  /// [month]의 [id] 고정 지출을 [draft]로 만들거나 바꾼다.
-  void putPlanned(YearMonth month, String id, EntryDraft draft) => _edit(
+  /// [month]의 [id] 항목을 [draft]로 만들거나 바꾼다. 종류는 [draft]의 종류다.
+  void putFixed(YearMonth month, String id, EntryDraft draft) => _edit(
     month,
-    EntryKind.planned,
+    draft.kind,
     (entries) => [...entries.where((e) => e.id != id), _entryOf(id, draft)],
   );
 
-  /// [month]의 [id] 고정 지출을 휴지통에 넣는다. 자동으로 지워지게 한다.
-  void trashPlanned(YearMonth month, String id) {
-    final entry = livePlanned(month, id);
+  /// [month]의 [kind] 항목 [id]를 휴지통에 넣는다. 자동으로 지워지게 한다.
+  void trashFixed(YearMonth month, EntryKind kind, String id) {
+    final entry = liveFixed(month, kind, id);
     if (entry != null) _moveToTrash(month, entry, keep: false);
   }
 
-  /// [month]의 [id] 고정 지출이 휴지통에 있으면 꺼낸다.
-  void restorePlanned(YearMonth month, String id) {
+  /// [month]의 [kind] 항목 [id]가 휴지통에 있으면 꺼낸다.
+  void restoreFixed(YearMonth month, EntryKind kind, String id) {
     final item = monthOf(month).trashed
-        .where((i) => i.entry.kind == EntryKind.planned && i.entry.id == id)
+        .where((i) => i.entry.kind == kind && i.entry.id == id)
         .firstOrNull;
     if (item == null) return;
     _edit(
       month,
-      EntryKind.planned,
+      kind,
       (entries) => [...entries, item.entry],
       trash: (items) => [...items.where((i) => i != item)],
     );
   }
 
-  /// [month]를 항목 있는 달 목록에 더한다(고정 지출을 더할 때 같은 트랜잭션).
+  /// [month]를 항목 있는 달 목록에 더한다(고정 지출·고정 수입을 더할 때 같은 트랜잭션).
   void recordMonth(String ledgerId, YearMonth month) =>
       _recordMonth(ledgerId, month);
 
@@ -937,11 +938,7 @@ class FakeEntriesRepository with LogsActivity implements EntriesRepository {
     bool recordMonth = false,
   }) async {
     _checkOnline();
-    final existing = monthOf(month).plannedIds;
-    final missing = [
-      for (final template in templates)
-        if (!existing.contains(template.id)) template,
-    ];
+    final missing = templatesMissingIn(monthOf(month), templates);
     filled.add((
       ledgerId: ledgerId,
       month: month,
@@ -949,18 +946,10 @@ class FakeEntriesRepository with LogsActivity implements EntriesRepository {
       created: missing.length,
       uid: uid,
     ));
-    if (missing.isNotEmpty) {
-      _edit(
-        month,
-        EntryKind.planned,
-        (entries) => [
-          ...entries,
-          for (final template in missing)
-            _entryOf(template.id, template.draftFor(month)),
-        ],
-      );
+    for (final template in missing) {
+      putFixed(month, template.id, template.draftFor(month));
     }
-    // 실제처럼 고정 지출이 없거나 다 있어도 그달을 달 목록에 더한다.
+    // 실제처럼 반복 설정이 없거나 다 있어도 그달을 달 목록에 더한다.
     if (recordMonth) _recordMonth(ledgerId, month);
     return missing.length;
   }
@@ -976,6 +965,7 @@ class FakeEntriesRepository with LogsActivity implements EntriesRepository {
       for (final month in months)
         if (monthOf(month) case final ledger
             when ledger.incomes.isNotEmpty ||
+                ledger.fixedIncomes.isNotEmpty ||
                 ledger.plannedExpenses.isNotEmpty ||
                 ledger.extraExpenses.isNotEmpty ||
                 ledger.cardBills.isNotEmpty ||
@@ -1023,7 +1013,7 @@ class FakeEntriesRepository with LogsActivity implements EntriesRepository {
           .firstOrNull ??
       (throw const EntryWriteException(EntryWriteFailure.notFound));
 
-  // [kind] 목록과 휴지통을 바꾼다. 완전히 지운 문서([forget])는 실제처럼 고정 지출 id에서도 빠진다.
+  // [kind] 목록과 휴지통을 바꾼다. 완전히 지운 문서([forget])는 실제처럼 고정 지출·고정 수입 id에서도 빠진다.
   void _edit(
     YearMonth month,
     EntryKind kind,
@@ -1040,6 +1030,9 @@ class FakeEntriesRepository with LogsActivity implements EntriesRepository {
         incomes: kind == EntryKind.income
             ? entries.whereType<Income>().toList()
             : ledger.incomes,
+        fixedIncomes: kind == EntryKind.fixedIncome
+            ? entries.whereType<FixedIncome>().toList()
+            : ledger.fixedIncomes,
         plannedExpenses: kind == EntryKind.planned
             ? entries.whereType<PlannedExpense>().toList()
             : ledger.plannedExpenses,
@@ -1051,6 +1044,7 @@ class FakeEntriesRepository with LogsActivity implements EntriesRepository {
             : ledger.cardBills,
         trashed: trashed,
         plannedIds: {...ledger.plannedIds}..remove(forget),
+        fixedIncomeIds: {...ledger.fixedIncomeIds}..remove(forget),
       ),
     );
   }
@@ -1058,6 +1052,7 @@ class FakeEntriesRepository with LogsActivity implements EntriesRepository {
   static List<LedgerEntry> _entriesOf(MonthLedger ledger, EntryKind kind) =>
       switch (kind) {
         EntryKind.income => ledger.incomes,
+        EntryKind.fixedIncome => ledger.fixedIncomes,
         EntryKind.planned => ledger.plannedExpenses,
         EntryKind.extra => ledger.extraExpenses,
         EntryKind.cardBill => ledger.cardBills,
@@ -1075,6 +1070,15 @@ class FakeEntriesRepository with LogsActivity implements EntriesRepository {
         title: title,
         amount: draft.amount ?? 0,
         receivedOn: draft.date,
+        memo: note,
+      ),
+      EntryKind.fixedIncome => FixedIncome(
+        id: id,
+        memberId: draft.memberId,
+        title: title,
+        amount: draft.amount ?? 0,
+        receivedOn: draft.date,
+        dueOn: draft.dueOn,
         memo: note,
       ),
       EntryKind.planned => PlannedExpense(
@@ -1109,9 +1113,9 @@ class FakeEntriesRepository with LogsActivity implements EntriesRepository {
   }
 }
 
-/// 화면 테스트용 가짜 고정 지출 저장소. 어느 가계부를 물어도 같은 반복 설정 목록을 돌려준다.
+/// 화면 테스트용 가짜 반복 설정 저장소. 어느 가계부를 물어도 같은 반복 설정 목록을 돌려준다.
 ///
-/// 고정 지출을 더하거나 고치거나 그만하면 잇는 가짜 항목 저장소([entries], [linkActivity]가 잇는다)의 그달 항목도 같이 바꾼다.
+/// 고정 지출·고정 수입을 더하거나 고치거나 그만하면 잇는 가짜 항목 저장소([entries], [linkActivity]가 잇는다)의 그달 항목도 같이 바꾼다.
 /// 실제 저장소처럼 쓰기는 모두 [offline]이면 [TemplateWriteFailure.offline]으로 실패하고,
 /// 없는 반복 설정이나 휴지통 밖에 없는 그달 항목을 고치거나 그만하면 [TemplateWriteFailure.notFound]로 실패한다.
 class FakeTemplatesRepository with LogsActivity implements TemplatesRepository {
@@ -1213,9 +1217,9 @@ class FakeTemplatesRepository with LogsActivity implements TemplatesRepository {
     ));
     final id = 'template-new-${added.length}';
     put([..._templates, _templateOf(id, draft)]);
-    entries?.putPlanned(month, id, entry);
+    entries?.putFixed(month, id, entry);
     for (final later in laterMonths) {
-      entries?.putPlanned(later, id, laterEntryOf(draft, later));
+      entries?.putFixed(later, id, laterEntryOf(draft, later));
     }
     if (recordMonth) entries?.recordMonth(ledgerId, month);
     logActivity(templateActivity(ActivityAction.templateCreate, draft), uid);
@@ -1234,7 +1238,8 @@ class FakeTemplatesRepository with LogsActivity implements TemplatesRepository {
   }) async {
     _checkOnline();
     final before = _existing(id);
-    final entryBefore = _liveEntry(month, id);
+    final kind = draft.kind;
+    final entryBefore = _liveEntry(month, kind, id);
     updated.add((
       ledgerId: ledgerId,
       id: id,
@@ -1249,16 +1254,16 @@ class FakeTemplatesRepository with LogsActivity implements TemplatesRepository {
       for (final template in _templates)
         template.id == id ? _templateOf(id, draft) : template,
     ]);
-    entries?.putPlanned(month, id, entry);
+    entries?.putFixed(month, id, entry);
     for (final later in laterMonths) {
-      final current = entries?.livePlanned(later, id);
-      if (current == null || current.isPaid) continue;
+      final current = entries?.liveFixed(later, kind, id);
+      if (current == null || fixedEntrySettled(current)) continue;
       final next = laterEntryOf(draft, later);
-      entries?.putPlanned(
+      entries?.putFixed(
         later,
         id,
         EntryDraft(
-          kind: EntryKind.planned,
+          kind: kind,
           memberId: next.memberId,
           amount: beforeDraft.amount != draft.amount
               ? next.amount
@@ -1286,7 +1291,7 @@ class FakeTemplatesRepository with LogsActivity implements TemplatesRepository {
         entryActivity(
           ActivityAction.entryUpdate,
           month: month,
-          kind: EntryKind.planned,
+          kind: kind,
           entry: entry,
           before: entryBefore == null ? null : EntryDraft.of(entryBefore),
         ),
@@ -1305,7 +1310,8 @@ class FakeTemplatesRepository with LogsActivity implements TemplatesRepository {
   }) async {
     _checkOnline();
     final template = _existing(id);
-    final entry = _liveEntry(month, id);
+    final kind = template.kind;
+    final entry = _liveEntry(month, kind, id);
     stopped.add((
       ledgerId: ledgerId,
       id: id,
@@ -1314,15 +1320,15 @@ class FakeTemplatesRepository with LogsActivity implements TemplatesRepository {
       uid: uid,
     ));
     final trashed = [
-      if (entry?.isPaid != true) month,
+      if (entry == null || !fixedEntrySettled(entry)) month,
       for (final later in laterMonths)
-        if (entries?.livePlanned(later, id) case final current?
-            when !current.isPaid)
+        if (entries?.liveFixed(later, kind, id) case final current?
+            when !fixedEntrySettled(current))
           later,
     ];
     put([..._templates.where((t) => t.id != id)]);
     for (final trashedMonth in trashed) {
-      entries?.trashPlanned(trashedMonth, id);
+      entries?.trashFixed(trashedMonth, kind, id);
     }
     logActivity(
       templateActivity(
@@ -1349,7 +1355,7 @@ class FakeTemplatesRepository with LogsActivity implements TemplatesRepository {
       uid: uid,
     ));
     for (final month in months) {
-      entries?.restorePlanned(month, template.id);
+      entries?.restoreFixed(month, template.kind, template.id);
     }
     if (_templates.any((t) => t.id == template.id)) return;
     put([..._templates, template]);
@@ -1377,24 +1383,27 @@ class FakeTemplatesRepository with LogsActivity implements TemplatesRepository {
       (throw const TemplateWriteException(TemplateWriteFailure.notFound));
 
   // 휴지통 밖의 그달 항목. 잇는 항목 저장소가 있는데 항목이 없으면 실제처럼 notFound로 실패한다.
-  PlannedExpense? _liveEntry(YearMonth month, String id) {
+  LedgerEntry? _liveEntry(YearMonth month, EntryKind kind, String id) {
     final entries = this.entries;
     if (entries == null) return null;
-    return entries.livePlanned(month, id) ??
+    return entries.liveFixed(month, kind, id) ??
         (throw const TemplateWriteException(TemplateWriteFailure.notFound));
   }
 
-  // 저장한 문서를 다시 읽은 것과 같은 반복 설정. 실제 저장소는 제목 앞뒤 공백을 뺀다.
-  static ExpenseTemplate _templateOf(String id, TemplateDraft draft) =>
-      ExpenseTemplate(
-        id: id,
-        title: draft.title.trim(),
-        amount: draft.amount,
-        categoryId: draft.categoryId ?? '',
-        paymentMethodId: draft.paymentMethodId ?? '',
-        memberId: draft.memberId,
-        dueDay: draft.dueDay ?? lastDueDay,
-      );
+  // 저장한 문서를 다시 읽은 것과 같은 반복 설정. 실제 저장소는 제목 앞뒤 공백을 빼고, 고정 수입은 분류·결제수단이 없다.
+  static ExpenseTemplate _templateOf(String id, TemplateDraft draft) {
+    final income = draft.kind == EntryKind.fixedIncome;
+    return ExpenseTemplate(
+      id: id,
+      kind: draft.kind,
+      title: draft.title.trim(),
+      amount: draft.amount,
+      categoryId: income ? null : draft.categoryId ?? '',
+      paymentMethodId: income ? null : draft.paymentMethodId ?? '',
+      memberId: draft.memberId,
+      dueDay: draft.dueDay ?? lastDueDay,
+    );
+  }
 
   /// 뒤 달에 넣는 항목. 실제 저장소의 `laterEntryDraft`와 같다.
   static EntryDraft laterEntryOf(TemplateDraft draft, YearMonth month) =>

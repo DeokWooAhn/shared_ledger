@@ -5,7 +5,7 @@ import '../../repository/entries_repository.dart';
 
 /// [month]의 [entry]를 휴지통에 넣는다. 목록과 합계에서 빠진다. 온라인에서만 되고, 못 하면 [EntryWriteException]을 던진다.
 ///
-/// [templateIds]는 지금 있는 반복 설정 id다. 반복 설정이 남아 있는 이번 달 이후의 고정 지출은 지우면 다시 만들어져서
+/// [templateIds]는 지금 있는 반복 설정 id다. 반복 설정이 남아 있는 이번 달 이후의 고정 지출·고정 수입은 지우면 다시 만들어져서
 /// 자동으로 지우지 않게 남긴다([staysInTrash]).
 class TrashEntryUseCase {
   const TrashEntryUseCase(this._entries, this._now);

@@ -225,8 +225,44 @@ void main() {
     expect(summary.plannedOf(MemberSlot.partner), 598000);
   });
 
+  test('받기 전 고정 수입 건수를 센다', () {
+    final summary = summarize(
+      MonthLedger(
+        fixedIncomes: [
+          const FixedIncome(
+            id: 'f1',
+            memberId: 'owner',
+            title: '월급',
+            amount: 3000000,
+          ),
+          FixedIncome(
+            id: 'f2',
+            memberId: 'partner',
+            title: '월급',
+            amount: 2000000,
+            receivedOn: DateTime(2026, 10, 25),
+          ),
+        ],
+      ),
+    );
+
+    expect(summary.unreceivedFixedIncomeCount, 1);
+    expect(summary.totals.cashIn, 2000000);
+  });
+
   test('항목이 하나도 없는 달만 빈 달이다', () {
     expect(summarize(const MonthLedger()).isEmpty, isTrue);
+    // 받기 전 고정 수입만 있어도 빈 달이 아니다.
+    expect(
+      summarize(
+        const MonthLedger(
+          fixedIncomes: [
+            FixedIncome(id: 'f1', memberId: 'owner', title: '월급', amount: 1),
+          ],
+        ),
+      ).isEmpty,
+      isFalse,
+    );
     expect(
       summarize(
         const MonthLedger(
