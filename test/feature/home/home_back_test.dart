@@ -9,7 +9,6 @@ import 'package:shared_ledger/feature/home/home_shell.dart';
 import 'package:shared_ledger/feature/settings/categories_screen.dart';
 import 'package:shared_ledger/feature/settings/settings_screen.dart';
 import 'package:shared_ledger/feature/summary/summary_screen.dart';
-import 'package:shared_ledger/feature/templates/templates_screen.dart';
 
 import '../../../testing/app.dart';
 import '../../../testing/fakes.dart';
@@ -55,13 +54,13 @@ void main() {
   testWidgets('요약이 아닌 탭의 첫 화면에서 뒤로 가면 앱을 닫지 않고 요약 탭으로 간다', (tester) async {
     final exits = recordExits(tester);
     await pumpHome(tester);
-    await openTab(tester, HomeTab.templates);
-    expect(find.byType(TemplatesScreen), findsOneWidget);
+    await openTab(tester, HomeTab.settings);
+    expect(find.byType(SettingsScreen), findsOneWidget);
 
     await pressBack(tester);
 
     expect(find.byType(SummaryScreen), findsOneWidget);
-    expect(find.byType(TemplatesScreen), findsNothing);
+    expect(find.byType(SettingsScreen), findsNothing);
     expect(exitHint, findsNothing);
     expect(exits, isEmpty);
   });

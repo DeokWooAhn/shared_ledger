@@ -20,7 +20,7 @@ const summaryTwoColumnMinWidth = 840.0;
 /// 두 칸일 때 본문의 최대 폭.
 const summaryTwoColumnMaxWidth = 960.0;
 
-/// 월 요약 탭. 보고 있는 달의 남는 현금, 이번 달 지출·저축, 카드, 기본 월 지출 소계를 보여준다.
+/// 월 요약 탭. 보고 있는 달의 남는 현금, 이번 달 지출·저축, 카드, 고정 지출 소계를 보여준다.
 ///
 /// 저장소를 부르는 동작이 없어 Notifier 없이 [monthSummaryProvider]만 읽는다.
 class SummaryScreen extends ConsumerWidget {
@@ -279,7 +279,7 @@ class _MetricTiles extends StatelessWidget {
               label: '이번 달 지출',
               amount: totals.spending,
               amountKey: const Key('spending'),
-              caption: '기본 지출 + 추가지출',
+              caption: '고정 지출 + 추가 지출',
             ),
           ),
           Expanded(
@@ -350,7 +350,7 @@ class _MetricTile extends StatelessWidget {
   }
 }
 
-/// 카드: 이번 달 사용분(다음 달 청구 예정)과 카드별 소계, 저번 달 사용분(이번 달 카드대금).
+/// 카드: 이번 달 사용분(다음 달 청구 예정)과 카드별 소계, 저번 달 사용분(이번 달 카드 대금).
 class _CardSection extends StatelessWidget {
   const _CardSection({required this.summary, required this.month});
 
@@ -422,7 +422,7 @@ class _CardSection extends StatelessWidget {
               key: const Key('card-bills'),
               month: month,
               title: '저번 달 사용분',
-              caption: '이번 달 출금 · 카드대금 ${summary.cardBillCount}건',
+              caption: '이번 달 출금 · 카드 대금 ${summary.cardBillCount}건',
               amount: totals.cardBillTotal,
             ),
           ],
@@ -504,7 +504,7 @@ class _CardUsageRow extends StatelessWidget {
   }
 }
 
-/// 기본 월 지출: 합계, 분류별 막대, 구성원별 막대.
+/// 고정 지출: 합계, 분류별 막대, 구성원별 막대.
 class _PlannedSection extends StatelessWidget {
   const _PlannedSection({required this.summary, required this.members});
 
@@ -540,7 +540,7 @@ class _PlannedSection extends StatelessWidget {
                   children: [
                     const _SectionTitle(
                       icon: Icons.event_available_outlined,
-                      title: '기본 월 지출',
+                      title: '고정 지출',
                     ),
                     Text(
                       won(total),
@@ -627,7 +627,7 @@ class _SectionTitle extends StatelessWidget {
   }
 }
 
-/// 분류 하나의 이름·금액과 기본 월 지출에서 차지하는 비율 막대.
+/// 분류 하나의 이름·금액과 고정 지출에서 차지하는 비율 막대.
 /// 저축으로 세는 분류는 '저축' 표시를 붙이고 막대를 진하게 칠한다(색만으로 구분하지 않는다).
 class _CategoryBar extends StatelessWidget {
   const _CategoryBar({
@@ -743,7 +743,7 @@ class _ShareBar extends StatelessWidget {
   }
 }
 
-/// 두 사람의 기본 월 지출을 한 막대에 나눠 그린다. 관리자는 진하게, 상대는 흐리게.
+/// 두 사람의 고정 지출을 한 막대에 나눠 그린다. 관리자는 진하게, 상대는 흐리게.
 class _MemberSplit extends StatelessWidget {
   const _MemberSplit({required this.owner, required this.partner});
 

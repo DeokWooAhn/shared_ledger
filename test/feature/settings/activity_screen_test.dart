@@ -108,12 +108,12 @@ void main() {
       final activity = FakeActivityRepository();
       await pumpActivityApp(tester, activity: activity);
 
-      // 항목 탭에서 추가지출을 더한다.
+      // 항목 탭에서 추가 지출을 더한다.
       await openTab(tester, HomeTab.entries);
       await tester.tap(
         find.descendant(
           of: find.byType(EntriesScreen),
-          matching: find.byKey(const Key('entry-kind-extra')),
+          matching: find.byKey(const Key('entry-tab-expense')),
         ),
       );
       await settle(tester);
@@ -157,12 +157,15 @@ void main() {
       expect(inRow(updated.id, find.text('수정')), findsOneWidget);
       expect(inRow(updated.id, find.text('오전 9:01')), findsOneWidget);
       expect(
-        inRow(updated.id, findSentence("10월 추가지출 '점심' · 금액 12,000원 → 15,000원")),
+        inRow(
+          updated.id,
+          findSentence("10월 추가 지출 '점심' · 금액 12,000원 → 15,000원"),
+        ),
         findsOneWidget,
       );
       expect(inRow(created.id, find.text('추가')), findsOneWidget);
       expect(
-        inRow(created.id, findSentence("10월 추가지출 '점심' 12,000원")),
+        inRow(created.id, findSentence("10월 추가 지출 '점심' 12,000원")),
         findsOneWidget,
       );
       expect(
@@ -198,7 +201,7 @@ void main() {
           id: 'partner',
           actorUid: 'partner-uid',
           action: ActivityAction.entryTrash,
-          summary: "10월 추가지출 '점심' 12,000원",
+          summary: "10월 추가 지출 '점심' 12,000원",
           at: DateTime(2026, 10, 14, 20),
         ),
       ]);
@@ -215,14 +218,14 @@ void main() {
           id: 'done',
           actorUid: 'me',
           action: ActivityAction.entryCreate,
-          summary: "10월 추가지출 '점심' 12,000원",
+          summary: "10월 추가 지출 '점심' 12,000원",
           at: DateTime(2026, 10, 15, 8),
         ),
         const Activity(
           id: 'pending',
           actorUid: 'me',
           action: ActivityAction.entryCreate,
-          summary: "10월 추가지출 '커피' 4,500원",
+          summary: "10월 추가 지출 '커피' 4,500원",
         ),
       ]);
       await pumpActivityApp(tester, activity: activity);
@@ -324,7 +327,7 @@ void main() {
           id: 'a1',
           actorUid: 'partner-uid',
           action: ActivityAction.entryTrash,
-          summary: "10월 추가지출 '점심' 12,000원",
+          summary: "10월 추가 지출 '점심' 12,000원",
           at: DateTime(2026, 10, 15, 8, 40),
         ),
       ]);
@@ -339,7 +342,7 @@ void main() {
         '바다',
         '휴지통',
         '오전 8:40',
-        keepAll("10월 추가지출 '점심' 12,000원"),
+        keepAll("10월 추가 지출 '점심' 12,000원"),
       ]);
       semantics.dispose();
     });

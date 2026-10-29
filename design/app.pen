@@ -165,7 +165,7 @@
         {
           "type": "frame",
           "id": "xGun6",
-          "name": "Tab 고정 지출",
+          "name": "Tab 가계부",
           "width": "fill_container",
           "height": "fill_container",
           "cornerRadius": 25,
@@ -177,19 +177,19 @@
             {
               "type": "icon",
               "id": "O6v36x",
-              "name": "Icon 고정 지출",
+              "name": "Icon 가계부",
               "width": 22,
               "height": 22,
-              "icon": "repeat",
+              "icon": "book-open",
               "library": "lucide",
               "fill": "$text-muted"
             },
             {
               "type": "text",
               "id": "qwWaE",
-              "name": "Label 고정 지출",
+              "name": "Label 가계부",
               "fill": "$text-muted",
-              "content": "고정 지출",
+              "content": "가계부",
               "fontFamily": "$font",
               "fontSize": 10,
               "fontWeight": "600"
@@ -474,6 +474,7 @@
       },
       "clip": true,
       "width": 390,
+      "height": 844,
       "fill": "$bg-app",
       "layout": "vertical",
       "children": [
@@ -489,6 +490,7 @@
           "id": "spMgP",
           "name": "Content",
           "width": "fill_container",
+          "height": "fill_container",
           "layout": "vertical",
           "gap": 16,
           "padding": [
@@ -541,148 +543,135 @@
             },
             {
               "type": "frame",
-              "id": "b1YMT",
-              "name": "Create Card",
+              "id": "iMgF7",
+              "name": "Choices",
               "width": "fill_container",
-              "fill": "$card",
-              "cornerRadius": 20,
+              "height": "fill_container",
               "layout": "vertical",
-              "gap": 16,
-              "padding": 20,
+              "gap": 12,
               "children": [
                 {
                   "type": "frame",
-                  "id": "H4Nyj",
-                  "name": "Option Header",
+                  "id": "Hts19",
+                  "name": "Choice 가계부 만들기",
                   "width": "fill_container",
-                  "gap": 12,
-                  "alignItems": "center",
+                  "height": "fill_container",
+                  "fill": "$hero",
+                  "cornerRadius": 24,
+                  "layout": "vertical",
+                  "padding": 24,
+                  "justifyContent": "space_between",
                   "children": [
                     {
                       "type": "frame",
-                      "id": "N0XdwH",
+                      "id": "BVVE6",
                       "name": "Icon Circle",
-                      "width": 40,
-                      "height": 40,
-                      "fill": "$primary-soft",
-                      "cornerRadius": 20,
+                      "width": 52,
+                      "height": 52,
+                      "fill": "#FFFFFF26",
+                      "cornerRadius": 26,
                       "justifyContent": "center",
                       "alignItems": "center",
                       "children": [
                         {
                           "type": "icon",
-                          "id": "AyRDL",
+                          "id": "yuSxR",
                           "name": "Icon",
-                          "width": 20,
-                          "height": 20,
+                          "width": 24,
+                          "height": 24,
                           "icon": "plus",
                           "library": "lucide",
-                          "fill": "$accent-text"
+                          "fill": "$on-primary"
                         }
                       ]
                     },
                     {
                       "type": "frame",
-                      "id": "lb0og",
-                      "name": "Option Text",
+                      "id": "Pum6I",
+                      "name": "Bottom",
                       "width": "fill_container",
-                      "layout": "vertical",
-                      "gap": 2,
+                      "gap": 12,
+                      "alignItems": "end",
                       "children": [
                         {
-                          "type": "text",
-                          "id": "XacLZ",
-                          "name": "Title",
-                          "fill": "$text-primary",
-                          "textGrowth": "fixed-width",
+                          "type": "frame",
+                          "id": "uKebj",
+                          "name": "Text",
                           "width": "fill_container",
-                          "content": "새로 만들기",
-                          "fontFamily": "$font",
-                          "fontSize": 17,
-                          "fontWeight": "700"
+                          "layout": "vertical",
+                          "gap": 6,
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "lqvLD",
+                              "name": "Title",
+                              "fill": "$on-primary",
+                              "textGrowth": "fixed-width",
+                              "width": "fill_container",
+                              "content": "가계부 만들기",
+                              "lineHeight": 1.25,
+                              "fontFamily": "$font",
+                              "fontSize": 24,
+                              "fontWeight": "700"
+                            },
+                            {
+                              "type": "text",
+                              "id": "o0xxE",
+                              "name": "Desc",
+                              "fill": "$hero-sub",
+                              "textGrowth": "fixed-width",
+                              "width": "fill_container",
+                              "content": "새 가계부를 만들고\n상대를 초대해요",
+                              "lineHeight": 1.45,
+                              "fontFamily": "$font",
+                              "fontSize": 15,
+                              "fontWeight": "normal"
+                            }
+                          ]
                         },
                         {
-                          "type": "text",
-                          "id": "OH1Sx",
-                          "name": "Desc",
-                          "fill": "$text-secondary",
-                          "textGrowth": "fixed-width",
-                          "width": "fill_container",
-                          "content": "내가 관리자가 돼요",
-                          "fontFamily": "$font",
-                          "fontSize": 13,
-                          "fontWeight": "normal"
+                          "type": "icon",
+                          "id": "nv7Ij",
+                          "name": "Arrow",
+                          "width": 24,
+                          "height": 24,
+                          "icon": "arrow-right",
+                          "library": "lucide",
+                          "fill": "$on-primary"
                         }
                       ]
                     }
                   ]
                 },
                 {
-                  "id": "R3Gm7",
-                  "type": "ref",
-                  "ref": "tw7vY",
-                  "name": "Input 가계부 이름",
-                  "width": "fill_container",
-                  "descendants": {
-                    "xpUjf": {
-                      "content": "가계부 이름"
-                    },
-                    "d45SLs": {
-                      "content": "우리 가계부",
-                      "fill": "$text-primary"
-                    }
-                  }
-                },
-                {
-                  "id": "UDkbk",
-                  "type": "ref",
-                  "ref": "ggnyx",
-                  "name": "Button 만들기",
-                  "width": "fill_container",
-                  "descendants": {
-                    "E1BvU3": {
-                      "content": "만들기"
-                    }
-                  }
-                }
-              ]
-            },
-            {
-              "type": "frame",
-              "id": "b3h0wH",
-              "name": "Join Card",
-              "width": "fill_container",
-              "fill": "$card",
-              "cornerRadius": 20,
-              "layout": "vertical",
-              "gap": 16,
-              "padding": 20,
-              "children": [
-                {
                   "type": "frame",
-                  "id": "hTQWN",
-                  "name": "Option Header",
+                  "id": "RbMW7",
+                  "name": "Choice 초대 코드로 입장",
                   "width": "fill_container",
-                  "gap": 12,
-                  "alignItems": "center",
+                  "height": "fill_container",
+                  "fill": "$card",
+                  "cornerRadius": 24,
+                  "layout": "vertical",
+                  "padding": 24,
+                  "justifyContent": "space_between",
                   "children": [
                     {
                       "type": "frame",
-                      "id": "V0ABdc",
+                      "id": "V9qtNo",
                       "name": "Icon Circle",
-                      "width": 40,
-                      "height": 40,
+                      "width": 52,
+                      "height": 52,
                       "fill": "$primary-soft",
-                      "cornerRadius": 20,
+                      "cornerRadius": 26,
                       "justifyContent": "center",
                       "alignItems": "center",
                       "children": [
                         {
                           "type": "icon",
-                          "id": "z1Z6cF",
+                          "id": "veGG2",
                           "name": "Icon",
-                          "width": 20,
-                          "height": 20,
+                          "width": 24,
+                          "height": 24,
                           "icon": "ticket",
                           "library": "lucide",
                           "fill": "$accent-text"
@@ -691,79 +680,61 @@
                     },
                     {
                       "type": "frame",
-                      "id": "aDURC",
-                      "name": "Option Text",
+                      "id": "rpo3h",
+                      "name": "Bottom",
                       "width": "fill_container",
-                      "layout": "vertical",
-                      "gap": 2,
+                      "gap": 12,
+                      "alignItems": "end",
                       "children": [
                         {
-                          "type": "text",
-                          "id": "HIAlM",
-                          "name": "Title",
-                          "fill": "$text-primary",
-                          "textGrowth": "fixed-width",
+                          "type": "frame",
+                          "id": "cuF22",
+                          "name": "Text",
                           "width": "fill_container",
-                          "content": "초대 코드로 참여",
-                          "fontFamily": "$font",
-                          "fontSize": 17,
-                          "fontWeight": "700"
+                          "layout": "vertical",
+                          "gap": 6,
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "gw1jI",
+                              "name": "Title",
+                              "fill": "$text-primary",
+                              "textGrowth": "fixed-width",
+                              "width": "fill_container",
+                              "content": "초대 코드로 입장",
+                              "lineHeight": 1.25,
+                              "fontFamily": "$font",
+                              "fontSize": 24,
+                              "fontWeight": "700"
+                            },
+                            {
+                              "type": "text",
+                              "id": "kKua8",
+                              "name": "Desc",
+                              "fill": "$text-secondary",
+                              "textGrowth": "fixed-width",
+                              "width": "fill_container",
+                              "content": "상대가 만든 가계부에\n코드로 들어가요",
+                              "lineHeight": 1.45,
+                              "fontFamily": "$font",
+                              "fontSize": 15,
+                              "fontWeight": "normal"
+                            }
+                          ]
                         },
                         {
-                          "type": "text",
-                          "id": "l1ggf",
-                          "name": "Desc",
-                          "fill": "$text-secondary",
-                          "textGrowth": "fixed-width",
-                          "width": "fill_container",
-                          "content": "받은 코드를 넣으면 바로 같이 써요",
-                          "fontFamily": "$font",
-                          "fontSize": 13,
-                          "fontWeight": "normal"
+                          "type": "icon",
+                          "id": "VkbLK",
+                          "name": "Arrow",
+                          "width": 24,
+                          "height": 24,
+                          "icon": "arrow-right",
+                          "library": "lucide",
+                          "fill": "$text-secondary"
                         }
                       ]
                     }
                   ]
-                },
-                {
-                  "id": "Y1Ouq",
-                  "type": "ref",
-                  "ref": "tw7vY",
-                  "name": "Input 초대 코드",
-                  "width": "fill_container",
-                  "descendants": {
-                    "xpUjf": {
-                      "content": "초대 코드"
-                    },
-                    "d45SLs": {
-                      "content": "받은 코드를 붙여 넣어 주세요",
-                      "fill": "$text-muted"
-                    }
-                  }
-                },
-                {
-                  "type": "text",
-                  "id": "v5yXpl",
-                  "name": "Helper",
-                  "fill": "$text-muted",
-                  "textGrowth": "fixed-width",
-                  "width": "fill_container",
-                  "content": "초대 코드는 만든 날부터 7일 동안 쓸 수 있어요.",
-                  "fontFamily": "$font",
-                  "fontSize": 12,
-                  "fontWeight": "normal"
-                },
-                {
-                  "id": "bRNfX",
-                  "type": "ref",
-                  "ref": "yspRU",
-                  "name": "Button 참여하기",
-                  "width": "fill_container",
-                  "descendants": {
-                    "kBcBB": {
-                      "content": "참여하기"
-                    }
-                  }
                 }
               ]
             },
@@ -1172,7 +1143,7 @@
                       "fill": "$text-muted",
                       "textGrowth": "fixed-width",
                       "width": "fill_container",
-                      "content": "기본 지출 + 추가지출",
+                      "content": "고정 지출 + 추가 지출",
                       "fontFamily": "$font",
                       "fontSize": 11,
                       "fontWeight": "normal"
@@ -1434,7 +1405,7 @@
                       "content": "저번 달 사용분"
                     },
                     "wbd4n": {
-                      "content": "이번 달 출금 · 카드대금 2건"
+                      "content": "이번 달 출금 · 카드 대금 2건"
                     },
                     "QuIii": {
                       "content": "853,000원"
@@ -1485,7 +1456,7 @@
                           "id": "ePXZD",
                           "name": "Title",
                           "fill": "$text-primary",
-                          "content": "기본 월 지출",
+                          "content": "고정 지출",
                           "fontFamily": "$font",
                           "fontSize": 16,
                           "fontWeight": "700"
@@ -2541,7 +2512,7 @@
               "children": [
                 {
                   "type": "frame",
-                  "id": "NYvyp",
+                  "id": "z1LzZ",
                   "name": "Seg 수입",
                   "width": "fill_container",
                   "height": 38,
@@ -2551,20 +2522,20 @@
                   "children": [
                     {
                       "type": "text",
-                      "id": "WmwiC",
+                      "id": "VvFkj",
                       "name": "Label",
                       "fill": "$text-secondary",
                       "content": "수입",
                       "fontFamily": "$font",
-                      "fontSize": 13,
+                      "fontSize": 14,
                       "fontWeight": "500"
                     }
                   ]
                 },
                 {
                   "type": "frame",
-                  "id": "eVpcc",
-                  "name": "Seg 기본 지출",
+                  "id": "PxJmK",
+                  "name": "Seg 지출",
                   "width": "fill_container",
                   "height": 38,
                   "fill": "$segment-on",
@@ -2584,20 +2555,20 @@
                   "children": [
                     {
                       "type": "text",
-                      "id": "DLjPn",
+                      "id": "NenIe",
                       "name": "Label",
                       "fill": "$text-primary",
-                      "content": "기본 지출",
+                      "content": "지출",
                       "fontFamily": "$font",
-                      "fontSize": 13,
+                      "fontSize": 14,
                       "fontWeight": "700"
                     }
                   ]
                 },
                 {
                   "type": "frame",
-                  "id": "IhbnP",
-                  "name": "Seg 추가지출",
+                  "id": "RWDaC",
+                  "name": "Seg 카드 대금",
                   "width": "fill_container",
                   "height": 38,
                   "cornerRadius": 10,
@@ -2606,34 +2577,12 @@
                   "children": [
                     {
                       "type": "text",
-                      "id": "NlVY3",
+                      "id": "ofXcl",
                       "name": "Label",
                       "fill": "$text-secondary",
-                      "content": "추가지출",
+                      "content": "카드 대금",
                       "fontFamily": "$font",
-                      "fontSize": 13,
-                      "fontWeight": "500"
-                    }
-                  ]
-                },
-                {
-                  "type": "frame",
-                  "id": "GUHs2",
-                  "name": "Seg 카드대금",
-                  "width": "fill_container",
-                  "height": 38,
-                  "cornerRadius": 10,
-                  "justifyContent": "center",
-                  "alignItems": "center",
-                  "children": [
-                    {
-                      "type": "text",
-                      "id": "kjTUv",
-                      "name": "Label",
-                      "fill": "$text-secondary",
-                      "content": "카드대금",
-                      "fontFamily": "$font",
-                      "fontSize": 13,
+                      "fontSize": 14,
                       "fontWeight": "500"
                     }
                   ]
@@ -2667,6 +2616,61 @@
                       "id": "nge9N",
                       "name": "Count",
                       "fill": "$text-secondary",
+                      "content": "12건",
+                      "fontFamily": "$font",
+                      "fontSize": 14,
+                      "fontWeight": "600"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "lMKq9",
+                  "name": "Total",
+                  "fill": "$text-primary",
+                  "content": "2,657,000원",
+                  "fontFamily": "$font",
+                  "fontSize": 18,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "EKBH2",
+              "name": "Section 고정 지출",
+              "width": "fill_container",
+              "padding": [
+                12,
+                4,
+                0,
+                4
+              ],
+              "justifyContent": "space_between",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "cBWjq",
+                  "name": "Left",
+                  "gap": 8,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "A80p7",
+                      "name": "Section Title",
+                      "fill": "$text-primary",
+                      "content": "고정 지출",
+                      "fontFamily": "$font",
+                      "fontSize": 17,
+                      "fontWeight": "700"
+                    },
+                    {
+                      "type": "text",
+                      "id": "HNkz5",
+                      "name": "Section Count",
+                      "fill": "$text-secondary",
                       "content": "8건",
                       "fontFamily": "$font",
                       "fontSize": 14,
@@ -2699,12 +2703,12 @@
                 },
                 {
                   "type": "text",
-                  "id": "lMKq9",
-                  "name": "Total",
+                  "id": "kuvk6",
+                  "name": "Section Total",
                   "fill": "$text-primary",
                   "content": "2,299,000원",
                   "fontFamily": "$font",
-                  "fontSize": 18,
+                  "fontSize": 15,
                   "fontWeight": "700"
                 }
               ]
@@ -3240,6 +3244,185 @@
                   }
                 }
               ]
+            },
+            {
+              "type": "frame",
+              "id": "FvgTg",
+              "name": "Section 추가 지출",
+              "width": "fill_container",
+              "padding": [
+                12,
+                4,
+                0,
+                4
+              ],
+              "justifyContent": "space_between",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "te9O3",
+                  "name": "Left",
+                  "gap": 8,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "z3JWc1",
+                      "name": "Section Title",
+                      "fill": "$text-primary",
+                      "content": "추가 지출",
+                      "fontFamily": "$font",
+                      "fontSize": 17,
+                      "fontWeight": "700"
+                    },
+                    {
+                      "type": "text",
+                      "id": "lWAJL",
+                      "name": "Section Count",
+                      "fill": "$text-secondary",
+                      "content": "4건",
+                      "fontFamily": "$font",
+                      "fontSize": 14,
+                      "fontWeight": "600"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "EIoka",
+                  "name": "Section Total",
+                  "fill": "$text-primary",
+                  "content": "358,000원",
+                  "fontFamily": "$font",
+                  "fontSize": 15,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "YEFmX",
+              "name": "Group 추가 지출",
+              "width": "fill_container",
+              "fill": "$card",
+              "cornerRadius": 20,
+              "layout": "vertical",
+              "padding": [
+                4,
+                16
+              ],
+              "children": [
+                {
+                  "id": "Crjlf",
+                  "type": "ref",
+                  "ref": "RjdRp",
+                  "name": "Entry 마트 장보기",
+                  "width": "fill_container",
+                  "descendants": {
+                    "jaQok": {
+                      "fill": "$avatar",
+                      "stroke": "$line",
+                      "strokeWidth": 0
+                    },
+                    "jWWtc": {
+                      "content": "바",
+                      "fill": "$text-secondary"
+                    },
+                    "uZRF0": {
+                      "content": "마트 장보기"
+                    },
+                    "wbd4n": {
+                      "content": "공용 카드 · 10/18"
+                    },
+                    "QuIii": {
+                      "content": "186,000원"
+                    }
+                  }
+                },
+                {
+                  "id": "h1bMeq",
+                  "type": "ref",
+                  "ref": "RjdRp",
+                  "name": "Entry 외식",
+                  "width": "fill_container",
+                  "descendants": {
+                    "jaQok": {
+                      "fill": "$avatar",
+                      "stroke": "$line",
+                      "strokeWidth": 0
+                    },
+                    "jWWtc": {
+                      "content": "하",
+                      "fill": "$text-secondary"
+                    },
+                    "uZRF0": {
+                      "content": "외식"
+                    },
+                    "wbd4n": {
+                      "content": "하늘 카드 · 10/12"
+                    },
+                    "QuIii": {
+                      "content": "64,000원"
+                    }
+                  }
+                },
+                {
+                  "id": "jG6XL",
+                  "type": "ref",
+                  "ref": "RjdRp",
+                  "name": "Entry 택시",
+                  "width": "fill_container",
+                  "descendants": {
+                    "jaQok": {
+                      "fill": "$avatar",
+                      "stroke": "$line",
+                      "strokeWidth": 0
+                    },
+                    "jWWtc": {
+                      "content": "바",
+                      "fill": "$text-secondary"
+                    },
+                    "uZRF0": {
+                      "content": "택시"
+                    },
+                    "wbd4n": {
+                      "content": "공동 통장 · 10/9"
+                    },
+                    "QuIii": {
+                      "content": "18,000원"
+                    }
+                  }
+                },
+                {
+                  "id": "i6Rmkb",
+                  "type": "ref",
+                  "ref": "RjdRp",
+                  "name": "Entry 선물",
+                  "width": "fill_container",
+                  "strokeWidth": 0,
+                  "descendants": {
+                    "jaQok": {
+                      "fill": "$avatar",
+                      "stroke": "$line",
+                      "strokeWidth": 0
+                    },
+                    "jWWtc": {
+                      "content": "하",
+                      "fill": "$text-secondary"
+                    },
+                    "uZRF0": {
+                      "content": "선물"
+                    },
+                    "wbd4n": {
+                      "content": "공용 카드 · 10/3"
+                    },
+                    "QuIii": {
+                      "content": "90,000원"
+                    }
+                  }
+                }
+              ]
             }
           ]
         },
@@ -3403,116 +3586,55 @@
               ]
             },
             {
-              "type": "frame",
-              "id": "LcZTZ",
-              "name": "Segmented",
+              "id": "I06utx",
+              "type": "ref",
+              "ref": "tw7vY",
+              "name": "Input 종류",
               "width": "fill_container",
-              "fill": "$track",
-              "cornerRadius": 14,
-              "gap": 4,
-              "padding": 4,
-              "alignItems": "center",
-              "children": [
-                {
-                  "type": "frame",
-                  "id": "jpD65",
-                  "name": "Seg 수입",
-                  "width": "fill_container",
-                  "height": 38,
-                  "cornerRadius": 10,
-                  "justifyContent": "center",
-                  "alignItems": "center",
-                  "children": [
-                    {
-                      "type": "text",
-                      "id": "b3hD9G",
-                      "name": "Label",
-                      "fill": "$text-secondary",
-                      "content": "수입",
-                      "fontFamily": "$font",
-                      "fontSize": 13,
-                      "fontWeight": "500"
-                    }
-                  ]
+              "descendants": {
+                "xpUjf": {
+                  "content": "종류"
                 },
-                {
+                "sfSTC": {
                   "type": "frame",
-                  "id": "JacBY",
-                  "name": "Seg 기본 지출",
+                  "id": "s5JyRV",
+                  "name": "Field",
                   "width": "fill_container",
-                  "height": 38,
-                  "cornerRadius": 10,
-                  "justifyContent": "center",
+                  "height": 52,
+                  "fill": "$card",
+                  "cornerRadius": 12,
+                  "stroke": "$line",
+                  "strokeWidth": 1,
+                  "padding": [
+                    0,
+                    16
+                  ],
+                  "justifyContent": "space_between",
                   "alignItems": "center",
                   "children": [
                     {
                       "type": "text",
-                      "id": "Gppei",
-                      "name": "Label",
-                      "fill": "$text-secondary",
-                      "content": "기본 지출",
-                      "fontFamily": "$font",
-                      "fontSize": 13,
-                      "fontWeight": "500"
-                    }
-                  ]
-                },
-                {
-                  "type": "frame",
-                  "id": "YtZrc",
-                  "name": "Seg 추가지출",
-                  "width": "fill_container",
-                  "height": 38,
-                  "fill": "$segment-on",
-                  "cornerRadius": 10,
-                  "effect": {
-                    "type": "shadow",
-                    "shadowType": "outer",
-                    "color": "#1F2A2414",
-                    "offset": {
-                      "x": 0,
-                      "y": 1
-                    },
-                    "blur": 4
-                  },
-                  "justifyContent": "center",
-                  "alignItems": "center",
-                  "children": [
-                    {
-                      "type": "text",
-                      "id": "v9w9o3",
-                      "name": "Label",
+                      "id": "a3ZVh",
+                      "name": "Value",
                       "fill": "$text-primary",
-                      "content": "추가지출",
+                      "content": "추가 지출",
                       "fontFamily": "$font",
-                      "fontSize": 13,
-                      "fontWeight": "700"
-                    }
-                  ]
-                },
-                {
-                  "type": "frame",
-                  "id": "opUcA",
-                  "name": "Seg 카드대금",
-                  "width": "fill_container",
-                  "height": 38,
-                  "cornerRadius": 10,
-                  "justifyContent": "center",
-                  "alignItems": "center",
-                  "children": [
+                      "fontSize": 16,
+                      "fontWeight": "600"
+                    },
                     {
-                      "type": "text",
-                      "id": "uVxpR",
-                      "name": "Label",
-                      "fill": "$text-secondary",
-                      "content": "카드대금",
-                      "fontFamily": "$font",
-                      "fontSize": 13,
-                      "fontWeight": "500"
+                      "type": "icon",
+                      "id": "LyKpD",
+                      "name": "Chevron",
+                      "width": 20,
+                      "height": 20,
+                      "icon": "chevron-down",
+                      "library": "lucide",
+                      "fill": "$text-muted"
                     }
                   ]
                 }
-              ]
+              }
             },
             {
               "type": "frame",
@@ -3847,7 +3969,7 @@
                       "fill": "$accent-text",
                       "textGrowth": "fixed-width",
                       "width": "fill_container",
-                      "content": "카드로 낸 돈은 다음 달 카드대금으로 빠져나가요.",
+                      "content": "카드로 낸 돈은 다음 달 카드 대금으로 빠져나가요.",
                       "fontFamily": "$font",
                       "fontSize": 12,
                       "fontWeight": "500"
@@ -3924,7 +4046,7 @@
       "id": "KXEOn",
       "x": 2350,
       "y": 200,
-      "name": "06 고정 지출",
+      "name": "06 가계부",
       "theme": {
         "mode": "light"
       },
@@ -3969,7 +4091,7 @@
                   "fill": "$text-primary",
                   "textGrowth": "fixed-width",
                   "width": "fill_container",
-                  "content": "고정 지출",
+                  "content": "가계부",
                   "fontFamily": "$font",
                   "fontSize": 24,
                   "fontWeight": "700"
@@ -3981,7 +4103,7 @@
                   "fill": "$text-secondary",
                   "textGrowth": "fixed-width",
                   "width": "fill_container",
-                  "content": "새 달을 처음 열면 이 목록으로 그달 기본 지출이 만들어져요.",
+                  "content": "추가한 달만 보여요. 달을 누르면 그달 요약으로 가요.",
                   "lineHeight": 1.5,
                   "fontFamily": "$font",
                   "fontSize": 14,
@@ -3991,51 +4113,8 @@
             },
             {
               "type": "frame",
-              "id": "e0ehmI",
-              "name": "Template Summary",
-              "width": "fill_container",
-              "fill": "$primary-soft",
-              "cornerRadius": 20,
-              "layout": "vertical",
-              "gap": 4,
-              "padding": 18,
-              "children": [
-                {
-                  "type": "text",
-                  "id": "rUkso",
-                  "name": "Label",
-                  "fill": "$accent-text",
-                  "content": "매달 나가는 돈",
-                  "fontFamily": "$font",
-                  "fontSize": 13,
-                  "fontWeight": "600"
-                },
-                {
-                  "type": "text",
-                  "id": "oryFr",
-                  "name": "Total",
-                  "fill": "$text-primary",
-                  "content": "2,299,000원",
-                  "fontFamily": "$font",
-                  "fontSize": 24,
-                  "fontWeight": "700"
-                },
-                {
-                  "type": "text",
-                  "id": "VtpMf",
-                  "name": "Count",
-                  "fill": "$text-secondary",
-                  "content": "8개 · 금액 미정 1개",
-                  "fontFamily": "$font",
-                  "fontSize": 13,
-                  "fontWeight": "normal"
-                }
-              ]
-            },
-            {
-              "type": "frame",
-              "id": "qE5KD",
-              "name": "Group 대출원금",
+              "id": "iYy7s",
+              "name": "Year 2026",
               "width": "fill_container",
               "fill": "$card",
               "cornerRadius": 20,
@@ -4049,48 +4128,216 @@
               "children": [
                 {
                   "type": "text",
-                  "id": "hMC0E",
-                  "name": "Group Title",
+                  "id": "OMX25",
+                  "name": "Year Title",
                   "fill": "$text-secondary",
-                  "content": "대출원금",
+                  "content": "2026년",
                   "fontFamily": "$font",
                   "fontSize": 14,
                   "fontWeight": "700"
                 },
                 {
-                  "id": "e9c2C",
-                  "type": "ref",
-                  "ref": "RjdRp",
-                  "name": "Entry 주택담보대출 원금",
+                  "type": "frame",
+                  "id": "PYWXM",
+                  "name": "Month 11",
                   "width": "fill_container",
-                  "strokeWidth": 0,
-                  "descendants": {
-                    "jaQok": {
-                      "fill": "$primary-soft",
-                      "cornerRadius": 10
+                  "height": 56,
+                  "stroke": "$line-soft",
+                  "strokeWidth": {
+                    "bottom": 1
+                  },
+                  "justifyContent": "space_between",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "CBfvU",
+                      "name": "Left",
+                      "gap": 8,
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "A3JG7",
+                          "name": "Month Label",
+                          "fill": "$text-primary",
+                          "content": "11월",
+                          "fontFamily": "$font",
+                          "fontSize": 17,
+                          "fontWeight": "600"
+                        }
+                      ]
                     },
-                    "jWWtc": {
-                      "content": "25일",
-                      "fill": "$accent-text",
-                      "fontSize": 11
-                    },
-                    "uZRF0": {
-                      "content": "주택담보대출 원금"
-                    },
-                    "wbd4n": {
-                      "content": "자동이체 · 하늘"
-                    },
-                    "QuIii": {
-                      "content": "800,000원"
+                    {
+                      "type": "icon",
+                      "id": "Ftvco",
+                      "name": "Chevron",
+                      "width": 20,
+                      "height": 20,
+                      "icon": "chevron-right",
+                      "library": "lucide",
+                      "fill": "$text-muted"
                     }
-                  }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "VofoR",
+                  "name": "Month 10",
+                  "width": "fill_container",
+                  "height": 56,
+                  "stroke": "$line-soft",
+                  "strokeWidth": {
+                    "bottom": 1
+                  },
+                  "justifyContent": "space_between",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "kYAUQ",
+                      "name": "Left",
+                      "gap": 8,
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "jKiPE",
+                          "name": "Month Label",
+                          "fill": "$accent-text",
+                          "content": "10월",
+                          "fontFamily": "$font",
+                          "fontSize": 17,
+                          "fontWeight": "700"
+                        },
+                        {
+                          "type": "frame",
+                          "id": "O4Kxj",
+                          "name": "Pill 이번 달",
+                          "fill": "$primary-soft",
+                          "cornerRadius": 6,
+                          "padding": [
+                            2,
+                            8
+                          ],
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "U15Tn",
+                              "name": "Pill Label",
+                              "fill": "$accent-text",
+                              "content": "이번 달",
+                              "fontFamily": "$font",
+                              "fontSize": 11,
+                              "fontWeight": "700"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "icon",
+                      "id": "LL5Pc",
+                      "name": "Viewing",
+                      "width": 20,
+                      "height": 20,
+                      "icon": "check",
+                      "library": "lucide",
+                      "fill": "$accent-text"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "wNBsu",
+                  "name": "Month 9",
+                  "width": "fill_container",
+                  "height": 56,
+                  "stroke": "$line-soft",
+                  "strokeWidth": {
+                    "bottom": 1
+                  },
+                  "justifyContent": "space_between",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "YfcBP",
+                      "name": "Left",
+                      "gap": 8,
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "e3P70",
+                          "name": "Month Label",
+                          "fill": "$text-primary",
+                          "content": "9월",
+                          "fontFamily": "$font",
+                          "fontSize": 17,
+                          "fontWeight": "600"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "icon",
+                      "id": "PHm3e",
+                      "name": "Chevron",
+                      "width": 20,
+                      "height": 20,
+                      "icon": "chevron-right",
+                      "library": "lucide",
+                      "fill": "$text-muted"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "e9gSS",
+                  "name": "Month 8",
+                  "width": "fill_container",
+                  "height": 56,
+                  "stroke": "$line-soft",
+                  "justifyContent": "space_between",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "W9kyG",
+                      "name": "Left",
+                      "gap": 8,
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "Or9MM",
+                          "name": "Month Label",
+                          "fill": "$text-primary",
+                          "content": "8월",
+                          "fontFamily": "$font",
+                          "fontSize": 17,
+                          "fontWeight": "600"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "icon",
+                      "id": "vFmIy",
+                      "name": "Chevron",
+                      "width": 20,
+                      "height": 20,
+                      "icon": "chevron-right",
+                      "library": "lucide",
+                      "fill": "$text-muted"
+                    }
+                  ]
                 }
               ]
             },
             {
               "type": "frame",
-              "id": "nat0i",
-              "name": "Group 대출이자",
+              "id": "u6byE",
+              "name": "Year 2025",
               "width": "fill_container",
               "fill": "$card",
               "cornerRadius": 20,
@@ -4104,261 +4351,54 @@
               "children": [
                 {
                   "type": "text",
-                  "id": "v5fhX",
-                  "name": "Group Title",
+                  "id": "d7iw5",
+                  "name": "Year Title",
                   "fill": "$text-secondary",
-                  "content": "대출이자",
+                  "content": "2025년",
                   "fontFamily": "$font",
                   "fontSize": 14,
                   "fontWeight": "700"
                 },
                 {
-                  "id": "s11mR",
-                  "type": "ref",
-                  "ref": "RjdRp",
-                  "name": "Entry 주택담보대출 이자",
+                  "type": "frame",
+                  "id": "a4xc6j",
+                  "name": "Month 12",
                   "width": "fill_container",
-                  "strokeWidth": 0,
-                  "descendants": {
-                    "jaQok": {
-                      "fill": "$primary-soft",
-                      "cornerRadius": 10
+                  "height": 56,
+                  "stroke": "$line-soft",
+                  "justifyContent": "space_between",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "x2emO7",
+                      "name": "Left",
+                      "gap": 8,
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "SI4gH",
+                          "name": "Month Label",
+                          "fill": "$text-primary",
+                          "content": "12월",
+                          "fontFamily": "$font",
+                          "fontSize": 17,
+                          "fontWeight": "600"
+                        }
+                      ]
                     },
-                    "jWWtc": {
-                      "content": "25일",
-                      "fill": "$accent-text",
-                      "fontSize": 11
-                    },
-                    "uZRF0": {
-                      "content": "주택담보대출 이자"
-                    },
-                    "wbd4n": {
-                      "content": "자동이체 · 하늘"
-                    },
-                    "QuIii": {
-                      "content": "420,000원"
+                    {
+                      "type": "icon",
+                      "id": "WIkME",
+                      "name": "Chevron",
+                      "width": 20,
+                      "height": 20,
+                      "icon": "chevron-right",
+                      "library": "lucide",
+                      "fill": "$text-muted"
                     }
-                  }
-                }
-              ]
-            },
-            {
-              "type": "frame",
-              "id": "LefhB",
-              "name": "Group 저축/투자",
-              "width": "fill_container",
-              "fill": "$card",
-              "cornerRadius": 20,
-              "layout": "vertical",
-              "padding": [
-                14,
-                16,
-                4,
-                16
-              ],
-              "children": [
-                {
-                  "type": "text",
-                  "id": "Gindt",
-                  "name": "Group Title",
-                  "fill": "$text-secondary",
-                  "content": "저축/투자",
-                  "fontFamily": "$font",
-                  "fontSize": 14,
-                  "fontWeight": "700"
-                },
-                {
-                  "id": "kpMJt",
-                  "type": "ref",
-                  "ref": "RjdRp",
-                  "name": "Entry 적금",
-                  "width": "fill_container",
-                  "descendants": {
-                    "jaQok": {
-                      "fill": "$primary-soft",
-                      "cornerRadius": 10
-                    },
-                    "jWWtc": {
-                      "content": "10일",
-                      "fill": "$accent-text",
-                      "fontSize": 11
-                    },
-                    "uZRF0": {
-                      "content": "적금"
-                    },
-                    "wbd4n": {
-                      "content": "자동이체 · 바다"
-                    },
-                    "QuIii": {
-                      "content": "500,000원"
-                    }
-                  }
-                },
-                {
-                  "id": "Kir4T",
-                  "type": "ref",
-                  "ref": "RjdRp",
-                  "name": "Entry ISA",
-                  "width": "fill_container",
-                  "strokeWidth": 0,
-                  "descendants": {
-                    "jaQok": {
-                      "fill": "$primary-soft",
-                      "cornerRadius": 10
-                    },
-                    "jWWtc": {
-                      "content": "말일",
-                      "fill": "$accent-text",
-                      "fontSize": 11
-                    },
-                    "uZRF0": {
-                      "content": "ISA"
-                    },
-                    "wbd4n": {
-                      "content": "공동 통장 · 하늘"
-                    },
-                    "QuIii": {
-                      "content": "300,000원"
-                    }
-                  }
-                }
-              ]
-            },
-            {
-              "type": "frame",
-              "id": "jjO2B",
-              "name": "Group 소비",
-              "width": "fill_container",
-              "fill": "$card",
-              "cornerRadius": 20,
-              "layout": "vertical",
-              "padding": [
-                14,
-                16,
-                4,
-                16
-              ],
-              "children": [
-                {
-                  "type": "text",
-                  "id": "nJhy8",
-                  "name": "Group Title",
-                  "fill": "$text-secondary",
-                  "content": "소비",
-                  "fontFamily": "$font",
-                  "fontSize": 14,
-                  "fontWeight": "700"
-                },
-                {
-                  "id": "f4Lwg",
-                  "type": "ref",
-                  "ref": "RjdRp",
-                  "name": "Entry 관리비",
-                  "width": "fill_container",
-                  "descendants": {
-                    "jaQok": {
-                      "fill": "$primary-soft",
-                      "cornerRadius": 10
-                    },
-                    "jWWtc": {
-                      "content": "말일",
-                      "fill": "$accent-text",
-                      "fontSize": 11
-                    },
-                    "uZRF0": {
-                      "content": "관리비"
-                    },
-                    "wbd4n": {
-                      "content": "공동 통장 · 바다"
-                    },
-                    "QuIii": {
-                      "content": "금액 미정",
-                      "fill": "$text-muted",
-                      "fontWeight": "500"
-                    }
-                  }
-                },
-                {
-                  "id": "M8P57",
-                  "type": "ref",
-                  "ref": "RjdRp",
-                  "name": "Entry 통신비",
-                  "width": "fill_container",
-                  "descendants": {
-                    "jaQok": {
-                      "fill": "$primary-soft",
-                      "cornerRadius": 10
-                    },
-                    "jWWtc": {
-                      "content": "21일",
-                      "fill": "$accent-text",
-                      "fontSize": 11
-                    },
-                    "uZRF0": {
-                      "content": "통신비"
-                    },
-                    "wbd4n": {
-                      "content": "공용 카드 · 바다"
-                    },
-                    "QuIii": {
-                      "content": "98,000원"
-                    }
-                  }
-                },
-                {
-                  "id": "rbaPj",
-                  "type": "ref",
-                  "ref": "RjdRp",
-                  "name": "Entry 보험",
-                  "width": "fill_container",
-                  "descendants": {
-                    "jaQok": {
-                      "fill": "$primary-soft",
-                      "cornerRadius": 10
-                    },
-                    "jWWtc": {
-                      "content": "15일",
-                      "fill": "$accent-text",
-                      "fontSize": 11
-                    },
-                    "uZRF0": {
-                      "content": "보험"
-                    },
-                    "wbd4n": {
-                      "content": "자동이체 · 하늘"
-                    },
-                    "QuIii": {
-                      "content": "154,000원"
-                    }
-                  }
-                },
-                {
-                  "id": "gIoAE",
-                  "type": "ref",
-                  "ref": "RjdRp",
-                  "name": "Entry 구독 서비스",
-                  "width": "fill_container",
-                  "strokeWidth": 0,
-                  "descendants": {
-                    "jaQok": {
-                      "fill": "$primary-soft",
-                      "cornerRadius": 10
-                    },
-                    "jWWtc": {
-                      "content": "5일",
-                      "fill": "$accent-text",
-                      "fontSize": 11
-                    },
-                    "uZRF0": {
-                      "content": "구독 서비스"
-                    },
-                    "wbd4n": {
-                      "content": "하늘 카드 · 하늘"
-                    },
-                    "QuIii": {
-                      "content": "27,000원"
-                    }
-                  }
+                  ]
                 }
               ]
             },
@@ -4366,12 +4406,12 @@
               "id": "jRJuK",
               "type": "ref",
               "ref": "ggnyx",
-              "name": "Button 고정 지출 추가",
+              "name": "Button 가계부 추가",
               "width": "fill_container",
               "fill": "$primary-soft",
               "descendants": {
                 "E1BvU3": {
-                  "content": "고정 지출 추가",
+                  "content": "가계부 추가",
                   "fill": "$accent-text"
                 }
               }
@@ -7260,7 +7300,7 @@
                       "content": "마트 장보기"
                     },
                     "wbd4n": {
-                      "content": "추가지출 · 공용 카드"
+                      "content": "추가 지출 · 공용 카드"
                     },
                     "QuIii": {
                       "content": "186,000원"
@@ -7288,7 +7328,7 @@
                       "content": "외식"
                     },
                     "wbd4n": {
-                      "content": "추가지출 · 하늘 카드"
+                      "content": "추가 지출 · 하늘 카드"
                     },
                     "QuIii": {
                       "content": "72,000원"
@@ -9218,7 +9258,7 @@
                       "content": "주택담보대출 원금"
                     },
                     "wbd4n": {
-                      "content": "기본 지출 · 자동이체"
+                      "content": "고정 지출 · 자동이체"
                     },
                     "QuIii": {
                       "content": "800,000원"
@@ -9252,7 +9292,7 @@
                       "content": "주택담보대출 이자"
                     },
                     "wbd4n": {
-                      "content": "기본 지출 · 자동이체"
+                      "content": "고정 지출 · 자동이체"
                     },
                     "QuIii": {
                       "content": "420,000원"
@@ -13435,6 +13475,2091 @@
                           "fontFamily": "$font",
                           "fontSize": 17,
                           "fontWeight": "700"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "OqGb8",
+      "x": 1880,
+      "y": 1225,
+      "name": "05b 고정 지출 고치기",
+      "theme": {
+        "mode": "light"
+      },
+      "clip": true,
+      "width": 390,
+      "fill": "$card",
+      "layout": "vertical",
+      "children": [
+        {
+          "id": "B1iaHy",
+          "type": "ref",
+          "ref": "vwZ9U",
+          "name": "Status Bar",
+          "width": "fill_container"
+        },
+        {
+          "type": "frame",
+          "id": "CyWE3",
+          "name": "Content",
+          "width": "fill_container",
+          "layout": "vertical",
+          "gap": 22,
+          "padding": [
+            0,
+            20,
+            28,
+            20
+          ],
+          "children": [
+            {
+              "type": "frame",
+              "id": "kytCs",
+              "name": "Nav Bar",
+              "width": "fill_container",
+              "gap": 8,
+              "padding": [
+                4,
+                0
+              ],
+              "justifyContent": "space_between",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "k5qOxU",
+                  "name": "Back Button",
+                  "width": 40,
+                  "height": 40,
+                  "fill": "$bg-app",
+                  "cornerRadius": 20,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "CkJOz",
+                      "name": "Back",
+                      "width": 20,
+                      "height": 20,
+                      "icon": "arrow-left",
+                      "library": "lucide",
+                      "fill": "$text-primary"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "a4bsA",
+                  "name": "Title",
+                  "fill": "$text-primary",
+                  "content": "고정 지출 고치기",
+                  "fontFamily": "$font",
+                  "fontSize": 17,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "frame",
+                  "id": "U32xjG",
+                  "name": "Nav Spacer",
+                  "width": 40,
+                  "height": 40
+                }
+              ]
+            },
+            {
+              "id": "j5rgQ",
+              "type": "ref",
+              "ref": "tw7vY",
+              "name": "Input 종류",
+              "width": "fill_container",
+              "descendants": {
+                "xpUjf": {
+                  "content": "종류"
+                },
+                "sfSTC": {
+                  "type": "frame",
+                  "id": "E0zTj",
+                  "name": "Field",
+                  "width": "fill_container",
+                  "height": 52,
+                  "fill": "$track",
+                  "cornerRadius": 12,
+                  "padding": [
+                    0,
+                    16
+                  ],
+                  "justifyContent": "space_between",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "VsJvw",
+                      "name": "Value",
+                      "fill": "$text-secondary",
+                      "content": "고정 지출",
+                      "fontFamily": "$font",
+                      "fontSize": 16,
+                      "fontWeight": "500"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "type": "frame",
+              "id": "N0B10",
+              "name": "Amount",
+              "width": "fill_container",
+              "stroke": "$accent",
+              "strokeWidth": {
+                "bottom": 2
+              },
+              "layout": "vertical",
+              "gap": 8,
+              "padding": [
+                2,
+                0,
+                12,
+                0
+              ],
+              "children": [
+                {
+                  "type": "text",
+                  "id": "e68mZ",
+                  "name": "Field Label",
+                  "fill": "$text-secondary",
+                  "content": "금액",
+                  "fontFamily": "$font",
+                  "fontSize": 13,
+                  "fontWeight": "600"
+                },
+                {
+                  "type": "frame",
+                  "id": "HixdG",
+                  "name": "Amount Value",
+                  "gap": 4,
+                  "alignItems": "end",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "S01Et",
+                      "name": "Number",
+                      "fill": "$text-primary",
+                      "content": "212,000",
+                      "fontFamily": "$font",
+                      "fontSize": 36,
+                      "fontWeight": "700"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "LbVsY",
+                      "name": "Unit Wrap",
+                      "padding": [
+                        0,
+                        0,
+                        6,
+                        0
+                      ],
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "N5T2ry",
+                          "name": "Unit",
+                          "fill": "$text-secondary",
+                          "content": "원",
+                          "fontFamily": "$font",
+                          "fontSize": 20,
+                          "fontWeight": "600"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "b8QTWD",
+              "name": "Amount Scope",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 2,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "D1ZKa2",
+                  "name": "Checkbox Row",
+                  "width": "fill_container",
+                  "height": 44,
+                  "gap": 10,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "W7rK4",
+                      "name": "Checkbox",
+                      "width": 22,
+                      "height": 22,
+                      "icon": "square",
+                      "library": "lucide",
+                      "fill": "$text-secondary"
+                    },
+                    {
+                      "type": "text",
+                      "id": "Oy3l8",
+                      "name": "Checkbox Label",
+                      "fill": "$text-primary",
+                      "content": "다음 달부터도 이 금액으로",
+                      "fontFamily": "$font",
+                      "fontSize": 15,
+                      "fontWeight": "500"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "Q9wA5B",
+                  "name": "Helper Wrap",
+                  "padding": [
+                    0,
+                    0,
+                    0,
+                    32
+                  ],
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "wib9Y",
+                      "name": "Scope Helper",
+                      "fill": "$text-muted",
+                      "content": "체크하지 않으면 10월에만 바뀌어요.",
+                      "fontFamily": "$font",
+                      "fontSize": 12,
+                      "fontWeight": "500"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "SKqto",
+              "type": "ref",
+              "ref": "tw7vY",
+              "name": "Input 내용",
+              "width": "fill_container",
+              "descendants": {
+                "xpUjf": {
+                  "content": "내용"
+                },
+                "d45SLs": {
+                  "content": "관리비",
+                  "fill": "$text-primary"
+                }
+              }
+            },
+            {
+              "type": "frame",
+              "id": "D2n1v",
+              "name": "Who",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 10,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "m6OtOZ",
+                  "name": "Field Label",
+                  "fill": "$text-secondary",
+                  "content": "누가",
+                  "fontFamily": "$font",
+                  "fontSize": 13,
+                  "fontWeight": "600"
+                },
+                {
+                  "type": "frame",
+                  "id": "A01bL",
+                  "name": "Member Chips",
+                  "gap": 8,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "V1xUx",
+                      "name": "Chip 하늘",
+                      "height": 40,
+                      "fill": "$card",
+                      "cornerRadius": 20,
+                      "stroke": "$line",
+                      "strokeWidth": 1,
+                      "gap": 6,
+                      "padding": [
+                        0,
+                        16
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "bt8LX",
+                          "name": "Label",
+                          "fill": "$text-primary",
+                          "content": "하늘",
+                          "fontFamily": "$font",
+                          "fontSize": 14,
+                          "fontWeight": "500"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "uc0Wr",
+                      "name": "Chip 바다",
+                      "height": 40,
+                      "fill": "$primary",
+                      "cornerRadius": 20,
+                      "stroke": "$primary",
+                      "strokeWidth": 1,
+                      "gap": 6,
+                      "padding": [
+                        0,
+                        16
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "eXQDw",
+                          "name": "Check",
+                          "width": 16,
+                          "height": 16,
+                          "icon": "check",
+                          "library": "lucide",
+                          "fill": "$on-primary"
+                        },
+                        {
+                          "type": "text",
+                          "id": "vraQp",
+                          "name": "Label",
+                          "fill": "$on-primary",
+                          "content": "바다",
+                          "fontFamily": "$font",
+                          "fontSize": 14,
+                          "fontWeight": "700"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "kZFjo",
+              "name": "Category",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 10,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "DHxAI",
+                  "name": "Field Label",
+                  "fill": "$text-secondary",
+                  "content": "분류",
+                  "fontFamily": "$font",
+                  "fontSize": 13,
+                  "fontWeight": "600"
+                },
+                {
+                  "type": "frame",
+                  "id": "SFJzi",
+                  "name": "Category Chips 1",
+                  "gap": 8,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "XDjZh",
+                      "name": "Chip 대출원금",
+                      "height": 40,
+                      "fill": "$card",
+                      "cornerRadius": 20,
+                      "stroke": "$line",
+                      "strokeWidth": 1,
+                      "gap": 6,
+                      "padding": [
+                        0,
+                        16
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "JqboZ",
+                          "name": "Label",
+                          "fill": "$text-primary",
+                          "content": "대출원금",
+                          "fontFamily": "$font",
+                          "fontSize": 14,
+                          "fontWeight": "500"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "zmnsC",
+                      "name": "Chip 대출이자",
+                      "height": 40,
+                      "fill": "$card",
+                      "cornerRadius": 20,
+                      "stroke": "$line",
+                      "strokeWidth": 1,
+                      "gap": 6,
+                      "padding": [
+                        0,
+                        16
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "wbivh",
+                          "name": "Label",
+                          "fill": "$text-primary",
+                          "content": "대출이자",
+                          "fontFamily": "$font",
+                          "fontSize": 14,
+                          "fontWeight": "500"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "fozIL",
+                      "name": "Chip 저축/투자",
+                      "height": 40,
+                      "fill": "$card",
+                      "cornerRadius": 20,
+                      "stroke": "$line",
+                      "strokeWidth": 1,
+                      "gap": 6,
+                      "padding": [
+                        0,
+                        16
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "P8EEr8",
+                          "name": "Label",
+                          "fill": "$text-primary",
+                          "content": "저축/투자",
+                          "fontFamily": "$font",
+                          "fontSize": 14,
+                          "fontWeight": "500"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "kTl93",
+                  "name": "Category Chips 2",
+                  "gap": 8,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "skALQ",
+                      "name": "Chip 소비",
+                      "height": 40,
+                      "fill": "$primary",
+                      "cornerRadius": 20,
+                      "stroke": "$primary",
+                      "strokeWidth": 1,
+                      "gap": 6,
+                      "padding": [
+                        0,
+                        16
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "I8TxQQ",
+                          "name": "Check",
+                          "width": 16,
+                          "height": 16,
+                          "icon": "check",
+                          "library": "lucide",
+                          "fill": "$on-primary"
+                        },
+                        {
+                          "type": "text",
+                          "id": "Tu5HV",
+                          "name": "Label",
+                          "fill": "$on-primary",
+                          "content": "소비",
+                          "fontFamily": "$font",
+                          "fontSize": 14,
+                          "fontWeight": "700"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "x3oy7",
+              "name": "Payment",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 10,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "u6UJng",
+                  "name": "Field Label",
+                  "fill": "$text-secondary",
+                  "content": "결제수단",
+                  "fontFamily": "$font",
+                  "fontSize": 13,
+                  "fontWeight": "600"
+                },
+                {
+                  "type": "frame",
+                  "id": "mRBI7",
+                  "name": "Payment Chips",
+                  "gap": 8,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "C2kyHh",
+                      "name": "Chip 공동 통장",
+                      "height": 40,
+                      "fill": "$primary",
+                      "cornerRadius": 20,
+                      "stroke": "$primary",
+                      "strokeWidth": 1,
+                      "gap": 6,
+                      "padding": [
+                        0,
+                        16
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "MhfyI",
+                          "name": "Check",
+                          "width": 16,
+                          "height": 16,
+                          "icon": "check",
+                          "library": "lucide",
+                          "fill": "$on-primary"
+                        },
+                        {
+                          "type": "text",
+                          "id": "DRfXX",
+                          "name": "Label",
+                          "fill": "$on-primary",
+                          "content": "공동 통장",
+                          "fontFamily": "$font",
+                          "fontSize": 14,
+                          "fontWeight": "700"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "hO4d1",
+                      "name": "Chip 공용 카드",
+                      "height": 40,
+                      "fill": "$card",
+                      "cornerRadius": 20,
+                      "stroke": "$line",
+                      "strokeWidth": 1,
+                      "gap": 6,
+                      "padding": [
+                        0,
+                        16
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "zVbEL",
+                          "name": "Label",
+                          "fill": "$text-primary",
+                          "content": "공용 카드",
+                          "fontFamily": "$font",
+                          "fontSize": 14,
+                          "fontWeight": "500"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "OcvCU",
+                      "name": "Chip 하늘 카드",
+                      "height": 40,
+                      "fill": "$card",
+                      "cornerRadius": 20,
+                      "stroke": "$line",
+                      "strokeWidth": 1,
+                      "gap": 6,
+                      "padding": [
+                        0,
+                        16
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "gIoQu",
+                          "name": "Label",
+                          "fill": "$text-primary",
+                          "content": "하늘 카드",
+                          "fontFamily": "$font",
+                          "fontSize": 14,
+                          "fontWeight": "500"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "ybJiN",
+              "type": "ref",
+              "ref": "tw7vY",
+              "name": "Input 매달 예정일",
+              "width": "fill_container",
+              "descendants": {
+                "xpUjf": {
+                  "content": "매달 예정일"
+                },
+                "sfSTC": {
+                  "type": "frame",
+                  "id": "fPTTl",
+                  "name": "Field",
+                  "width": "fill_container",
+                  "height": 52,
+                  "fill": "$card",
+                  "cornerRadius": 12,
+                  "stroke": "$line",
+                  "strokeWidth": 1,
+                  "padding": [
+                    0,
+                    16
+                  ],
+                  "justifyContent": "space_between",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "twi4M",
+                      "name": "Value",
+                      "fill": "$text-primary",
+                      "content": "매월 말일",
+                      "fontFamily": "$font",
+                      "fontSize": 16,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "icon",
+                      "id": "iWDlB",
+                      "name": "Chevron",
+                      "width": 20,
+                      "height": 20,
+                      "icon": "chevron-down",
+                      "library": "lucide",
+                      "fill": "$text-muted"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "type": "frame",
+              "id": "L8PTR",
+              "name": "Paid",
+              "width": "fill_container",
+              "height": 48,
+              "justifyContent": "space_between",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "ycCNy",
+                  "name": "Paid Label",
+                  "fill": "$text-primary",
+                  "content": "지급 완료",
+                  "fontFamily": "$font",
+                  "fontSize": 16,
+                  "fontWeight": "500"
+                },
+                {
+                  "type": "frame",
+                  "id": "R5mgKC",
+                  "name": "Switch Off",
+                  "width": 52,
+                  "height": 32,
+                  "fill": "$track",
+                  "cornerRadius": 16,
+                  "stroke": "$text-muted",
+                  "strokeWidth": 2,
+                  "padding": [
+                    0,
+                    6
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "ellipse",
+                      "id": "g0FYOp",
+                      "name": "Knob",
+                      "fill": "$text-muted",
+                      "width": 16,
+                      "height": 16
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "rrlFf",
+              "type": "ref",
+              "ref": "tw7vY",
+              "name": "Input 메모",
+              "width": "fill_container",
+              "descendants": {
+                "xpUjf": {
+                  "content": "메모"
+                },
+                "d45SLs": {
+                  "content": "메모를 남길 수 있어요 (선택)",
+                  "fill": "$text-muted"
+                }
+              }
+            },
+            {
+              "type": "frame",
+              "id": "HoxBE",
+              "name": "Actions",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 4,
+              "padding": [
+                6,
+                0,
+                0,
+                0
+              ],
+              "children": [
+                {
+                  "id": "p5fyp5",
+                  "type": "ref",
+                  "ref": "ggnyx",
+                  "name": "Button 저장",
+                  "width": "fill_container",
+                  "descendants": {
+                    "E1BvU3": {
+                      "content": "저장"
+                    }
+                  }
+                },
+                {
+                  "type": "frame",
+                  "id": "MDGcb",
+                  "name": "Stop Button",
+                  "width": "fill_container",
+                  "height": 48,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "j83Qv",
+                      "name": "Stop Label",
+                      "fill": "$danger",
+                      "content": "고정 지출 그만하기",
+                      "fontFamily": "$font",
+                      "fontSize": 15,
+                      "fontWeight": "600"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "oH8Di",
+      "x": 470,
+      "y": 1200,
+      "name": "02a 가계부 만들기",
+      "theme": {
+        "mode": "light"
+      },
+      "clip": true,
+      "width": 390,
+      "height": 844,
+      "fill": "$card",
+      "layout": "vertical",
+      "children": [
+        {
+          "id": "jxQPk",
+          "type": "ref",
+          "ref": "vwZ9U",
+          "name": "Status Bar",
+          "width": "fill_container"
+        },
+        {
+          "type": "frame",
+          "id": "s78TEG",
+          "name": "Content",
+          "width": "fill_container",
+          "layout": "vertical",
+          "gap": 22,
+          "padding": [
+            0,
+            20,
+            28,
+            20
+          ],
+          "children": [
+            {
+              "type": "frame",
+              "id": "or0kS",
+              "name": "Nav Bar",
+              "width": "fill_container",
+              "gap": 8,
+              "padding": [
+                4,
+                0
+              ],
+              "justifyContent": "space_between",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "s2dsMp",
+                  "name": "Back Button",
+                  "width": 40,
+                  "height": 40,
+                  "fill": "$bg-app",
+                  "cornerRadius": 20,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "g7UvG",
+                      "name": "Back",
+                      "width": 20,
+                      "height": 20,
+                      "icon": "arrow-left",
+                      "library": "lucide",
+                      "fill": "$text-primary"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "aIF9A",
+                  "name": "Title",
+                  "fill": "$text-primary",
+                  "content": "가계부 만들기",
+                  "fontFamily": "$font",
+                  "fontSize": 17,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "frame",
+                  "id": "u19nBg",
+                  "name": "Nav Spacer",
+                  "width": 40,
+                  "height": 40
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "b8rdE",
+              "name": "Description",
+              "fill": "$text-secondary",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "두 사람이 함께 쓸 가계부를 만들어요.\n만든 사람이 관리자가 돼요.",
+              "lineHeight": 1.5,
+              "fontFamily": "$font",
+              "fontSize": 15,
+              "fontWeight": "normal"
+            },
+            {
+              "id": "p1TnT6",
+              "type": "ref",
+              "ref": "tw7vY",
+              "name": "Input 가계부 이름",
+              "width": "fill_container",
+              "descendants": {
+                "xpUjf": {
+                  "content": "가계부 이름"
+                },
+                "d45SLs": {
+                  "content": "우리 가계부",
+                  "fill": "$text-primary"
+                }
+              }
+            },
+            {
+              "type": "frame",
+              "id": "hW07V",
+              "name": "Field Group",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 8,
+              "children": [
+                {
+                  "id": "Lxii7",
+                  "type": "ref",
+                  "ref": "tw7vY",
+                  "name": "Input 첫 달",
+                  "width": "fill_container",
+                  "descendants": {
+                    "xpUjf": {
+                      "content": "첫 달"
+                    },
+                    "sfSTC": {
+                      "type": "frame",
+                      "id": "cuX2W",
+                      "name": "Field",
+                      "width": "fill_container",
+                      "height": 52,
+                      "fill": "$card",
+                      "cornerRadius": 12,
+                      "stroke": "$line",
+                      "strokeWidth": 1,
+                      "padding": [
+                        0,
+                        16
+                      ],
+                      "justifyContent": "space_between",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "jEGb5",
+                          "name": "Value",
+                          "fill": "$text-primary",
+                          "content": "2026년 10월",
+                          "fontFamily": "$font",
+                          "fontSize": 16,
+                          "fontWeight": "normal"
+                        },
+                        {
+                          "type": "icon",
+                          "id": "t8w8QZ",
+                          "name": "Chevron",
+                          "width": 20,
+                          "height": 20,
+                          "icon": "chevron-down",
+                          "library": "lucide",
+                          "fill": "$text-muted"
+                        }
+                      ]
+                    }
+                  }
+                },
+                {
+                  "type": "text",
+                  "id": "TT9b3",
+                  "name": "First Month Helper",
+                  "fill": "$text-muted",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "다른 달은 나중에 가계부 탭에서 더할 수 있어요.",
+                  "fontFamily": "$font",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "id": "rR3aA",
+              "type": "ref",
+              "ref": "ggnyx",
+              "name": "Button 만들기",
+              "width": "fill_container",
+              "descendants": {
+                "E1BvU3": {
+                  "content": "만들기"
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "y1fpDc",
+      "x": 470,
+      "y": 2150,
+      "name": "02b 초대 코드로 입장",
+      "theme": {
+        "mode": "light"
+      },
+      "clip": true,
+      "width": 390,
+      "height": 844,
+      "fill": "$card",
+      "layout": "vertical",
+      "children": [
+        {
+          "id": "UcsbP",
+          "type": "ref",
+          "ref": "vwZ9U",
+          "name": "Status Bar",
+          "width": "fill_container"
+        },
+        {
+          "type": "frame",
+          "id": "bf3Ry",
+          "name": "Content",
+          "width": "fill_container",
+          "layout": "vertical",
+          "gap": 22,
+          "padding": [
+            0,
+            20,
+            28,
+            20
+          ],
+          "children": [
+            {
+              "type": "frame",
+              "id": "Uwufi",
+              "name": "Nav Bar",
+              "width": "fill_container",
+              "gap": 8,
+              "padding": [
+                4,
+                0
+              ],
+              "justifyContent": "space_between",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "oz7EW",
+                  "name": "Back Button",
+                  "width": 40,
+                  "height": 40,
+                  "fill": "$bg-app",
+                  "cornerRadius": 20,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "T3eUd",
+                      "name": "Back",
+                      "width": 20,
+                      "height": 20,
+                      "icon": "arrow-left",
+                      "library": "lucide",
+                      "fill": "$text-primary"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "q52I2R",
+                  "name": "Title",
+                  "fill": "$text-primary",
+                  "content": "초대 코드로 입장",
+                  "fontFamily": "$font",
+                  "fontSize": 17,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "frame",
+                  "id": "zJIUO",
+                  "name": "Nav Spacer",
+                  "width": 40,
+                  "height": 40
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "ktS5H",
+              "name": "Description",
+              "fill": "$text-secondary",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "상대에게 받은 초대 코드를 넣어 주세요.",
+              "lineHeight": 1.5,
+              "fontFamily": "$font",
+              "fontSize": 15,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "frame",
+              "id": "zhF08",
+              "name": "Field Group",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 8,
+              "children": [
+                {
+                  "id": "ZIL25",
+                  "type": "ref",
+                  "ref": "tw7vY",
+                  "name": "Input 초대 코드",
+                  "width": "fill_container",
+                  "descendants": {
+                    "xpUjf": {
+                      "content": "초대 코드"
+                    },
+                    "d45SLs": {
+                      "content": "받은 코드를 붙여 넣어 주세요",
+                      "fill": "$text-muted"
+                    }
+                  }
+                },
+                {
+                  "type": "text",
+                  "id": "vXlJw",
+                  "name": "Helper",
+                  "fill": "$text-muted",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "초대 코드는 만든 날부터 7일 동안 쓸 수 있어요.",
+                  "fontFamily": "$font",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "id": "zSSbl",
+              "type": "ref",
+              "ref": "ggnyx",
+              "name": "Button 입장하기",
+              "width": "fill_container",
+              "descendants": {
+                "E1BvU3": {
+                  "content": "입장하기"
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "afvgm",
+      "x": 1880,
+      "y": 2542,
+      "name": "05c 종류 고르기",
+      "theme": {
+        "mode": "light"
+      },
+      "clip": true,
+      "width": 390,
+      "height": 844,
+      "fill": "$card",
+      "layout": "vertical",
+      "children": [
+        {
+          "id": "VEHkQ",
+          "type": "ref",
+          "ref": "vwZ9U",
+          "name": "Status Bar",
+          "width": "fill_container"
+        },
+        {
+          "type": "frame",
+          "id": "H0Oyy",
+          "name": "Content",
+          "width": "fill_container",
+          "layout": "vertical",
+          "gap": 22,
+          "padding": [
+            0,
+            20,
+            28,
+            20
+          ],
+          "children": [
+            {
+              "type": "frame",
+              "id": "C6E7i5",
+              "name": "Nav Bar",
+              "width": "fill_container",
+              "gap": 8,
+              "padding": [
+                4,
+                0
+              ],
+              "justifyContent": "space_between",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "OZ4hE",
+                  "name": "Back Button",
+                  "width": 40,
+                  "height": 40,
+                  "fill": "$bg-app",
+                  "cornerRadius": 20,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "gUjJL",
+                      "name": "Back",
+                      "width": 20,
+                      "height": 20,
+                      "icon": "arrow-left",
+                      "library": "lucide",
+                      "fill": "$text-primary"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "HtsyK",
+                  "name": "Title",
+                  "fill": "$text-primary",
+                  "content": "항목 추가",
+                  "fontFamily": "$font",
+                  "fontSize": 17,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "frame",
+                  "id": "zLSWD",
+                  "name": "Nav Spacer",
+                  "width": 40,
+                  "height": 40
+                }
+              ]
+            },
+            {
+              "id": "bxArS",
+              "type": "ref",
+              "ref": "tw7vY",
+              "name": "Input 종류",
+              "width": "fill_container",
+              "descendants": {
+                "xpUjf": {
+                  "content": "종류"
+                },
+                "sfSTC": {
+                  "type": "frame",
+                  "id": "sWnGn",
+                  "name": "Field",
+                  "width": "fill_container",
+                  "height": 52,
+                  "fill": "$card",
+                  "cornerRadius": 12,
+                  "stroke": "$line",
+                  "strokeWidth": 1,
+                  "padding": [
+                    0,
+                    16
+                  ],
+                  "justifyContent": "space_between",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "HSlfF",
+                      "name": "Value",
+                      "fill": "$text-primary",
+                      "content": "추가 지출",
+                      "fontFamily": "$font",
+                      "fontSize": 16,
+                      "fontWeight": "600"
+                    },
+                    {
+                      "type": "icon",
+                      "id": "fmCo2",
+                      "name": "Chevron",
+                      "width": 20,
+                      "height": 20,
+                      "icon": "chevron-down",
+                      "library": "lucide",
+                      "fill": "$text-muted"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "type": "frame",
+              "id": "EZMr7",
+              "name": "Amount",
+              "width": "fill_container",
+              "stroke": "$accent",
+              "strokeWidth": {
+                "bottom": 2
+              },
+              "layout": "vertical",
+              "gap": 8,
+              "padding": [
+                2,
+                0,
+                12,
+                0
+              ],
+              "children": [
+                {
+                  "type": "text",
+                  "id": "nGb0c",
+                  "name": "Field Label",
+                  "fill": "$text-secondary",
+                  "content": "금액",
+                  "fontFamily": "$font",
+                  "fontSize": 13,
+                  "fontWeight": "600"
+                },
+                {
+                  "type": "frame",
+                  "id": "uJDEB",
+                  "name": "Amount Value",
+                  "gap": 4,
+                  "alignItems": "end",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "hnNOd",
+                      "name": "Number",
+                      "fill": "$text-primary",
+                      "content": "186,000",
+                      "fontFamily": "$font",
+                      "fontSize": 36,
+                      "fontWeight": "700"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "FP7aQ",
+                      "name": "Unit Wrap",
+                      "padding": [
+                        0,
+                        0,
+                        6,
+                        0
+                      ],
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "NEQy1",
+                          "name": "Unit",
+                          "fill": "$text-secondary",
+                          "content": "원",
+                          "fontFamily": "$font",
+                          "fontSize": 20,
+                          "fontWeight": "600"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "tZpGj",
+              "type": "ref",
+              "ref": "tw7vY",
+              "name": "Input 내용",
+              "width": "fill_container",
+              "descendants": {
+                "xpUjf": {
+                  "content": "내용"
+                },
+                "d45SLs": {
+                  "content": "마트 장보기",
+                  "fill": "$text-primary"
+                }
+              }
+            },
+            {
+              "type": "frame",
+              "id": "Qj0Rm",
+              "name": "Who",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 10,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "cHUJA",
+                  "name": "Field Label",
+                  "fill": "$text-secondary",
+                  "content": "누가",
+                  "fontFamily": "$font",
+                  "fontSize": 13,
+                  "fontWeight": "600"
+                },
+                {
+                  "type": "frame",
+                  "id": "p9UL0T",
+                  "name": "Member Chips",
+                  "gap": 8,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "Zuh7p",
+                      "name": "Chip 하늘",
+                      "height": 40,
+                      "fill": "$card",
+                      "cornerRadius": 20,
+                      "stroke": "$line",
+                      "strokeWidth": 1,
+                      "gap": 6,
+                      "padding": [
+                        0,
+                        16
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "LWTAH",
+                          "name": "Label",
+                          "fill": "$text-primary",
+                          "content": "하늘",
+                          "fontFamily": "$font",
+                          "fontSize": 14,
+                          "fontWeight": "500"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "wVesP",
+                      "name": "Chip 바다",
+                      "height": 40,
+                      "fill": "$primary",
+                      "cornerRadius": 20,
+                      "stroke": "$primary",
+                      "strokeWidth": 1,
+                      "gap": 6,
+                      "padding": [
+                        0,
+                        16
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "S2PMME",
+                          "name": "Check",
+                          "width": 16,
+                          "height": 16,
+                          "icon": "check",
+                          "library": "lucide",
+                          "fill": "$on-primary"
+                        },
+                        {
+                          "type": "text",
+                          "id": "wRSoP",
+                          "name": "Label",
+                          "fill": "$on-primary",
+                          "content": "바다",
+                          "fontFamily": "$font",
+                          "fontSize": 14,
+                          "fontWeight": "700"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "rmBur",
+              "name": "Payment",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 10,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "wMwPj",
+                  "name": "Field Label",
+                  "fill": "$text-secondary",
+                  "content": "결제수단",
+                  "fontFamily": "$font",
+                  "fontSize": 13,
+                  "fontWeight": "600"
+                },
+                {
+                  "type": "frame",
+                  "id": "mKdGI",
+                  "name": "Payment Chips",
+                  "gap": 8,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "lXfwZ",
+                      "name": "Chip 공동 통장",
+                      "height": 40,
+                      "fill": "$card",
+                      "cornerRadius": 20,
+                      "stroke": "$line",
+                      "strokeWidth": 1,
+                      "gap": 6,
+                      "padding": [
+                        0,
+                        16
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "FHY69",
+                          "name": "Label",
+                          "fill": "$text-primary",
+                          "content": "공동 통장",
+                          "fontFamily": "$font",
+                          "fontSize": 14,
+                          "fontWeight": "500"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "VpgZB",
+                      "name": "Chip 공용 카드",
+                      "height": 40,
+                      "fill": "$primary",
+                      "cornerRadius": 20,
+                      "stroke": "$primary",
+                      "strokeWidth": 1,
+                      "gap": 6,
+                      "padding": [
+                        0,
+                        16
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "J2TMq",
+                          "name": "Check",
+                          "width": 16,
+                          "height": 16,
+                          "icon": "check",
+                          "library": "lucide",
+                          "fill": "$on-primary"
+                        },
+                        {
+                          "type": "text",
+                          "id": "dOJzh",
+                          "name": "Label",
+                          "fill": "$on-primary",
+                          "content": "공용 카드",
+                          "fontFamily": "$font",
+                          "fontSize": 14,
+                          "fontWeight": "700"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "FG2xv",
+                      "name": "Chip 하늘 카드",
+                      "height": 40,
+                      "fill": "$card",
+                      "cornerRadius": 20,
+                      "stroke": "$line",
+                      "strokeWidth": 1,
+                      "gap": 6,
+                      "padding": [
+                        0,
+                        16
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "ExRI2",
+                          "name": "Label",
+                          "fill": "$text-primary",
+                          "content": "하늘 카드",
+                          "fontFamily": "$font",
+                          "fontSize": 14,
+                          "fontWeight": "500"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "J8VcwH",
+                  "name": "Hint",
+                  "width": "fill_container",
+                  "fill": "$primary-soft",
+                  "cornerRadius": 10,
+                  "gap": 6,
+                  "padding": [
+                    10,
+                    12
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "bwcMQ",
+                      "name": "Info",
+                      "width": 16,
+                      "height": 16,
+                      "icon": "info",
+                      "library": "lucide",
+                      "fill": "$accent-text"
+                    },
+                    {
+                      "type": "text",
+                      "id": "aTR3Z",
+                      "name": "Text",
+                      "fill": "$accent-text",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "카드로 낸 돈은 다음 달 카드 대금으로 빠져나가요.",
+                      "fontFamily": "$font",
+                      "fontSize": 12,
+                      "fontWeight": "500"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "qsCdl",
+              "type": "ref",
+              "ref": "tw7vY",
+              "name": "Input 쓴 날",
+              "width": "fill_container",
+              "descendants": {
+                "xpUjf": {
+                  "content": "쓴 날"
+                },
+                "d45SLs": {
+                  "content": "2026년 10월 18일",
+                  "fill": "$text-primary"
+                }
+              }
+            },
+            {
+              "id": "A90pU",
+              "type": "ref",
+              "ref": "tw7vY",
+              "name": "Input 메모",
+              "width": "fill_container",
+              "descendants": {
+                "xpUjf": {
+                  "content": "메모"
+                },
+                "d45SLs": {
+                  "content": "메모를 남길 수 있어요 (선택)",
+                  "fill": "$text-muted"
+                }
+              }
+            },
+            {
+              "type": "frame",
+              "id": "XOugQ",
+              "name": "Actions",
+              "width": "fill_container",
+              "layout": "vertical",
+              "padding": [
+                6,
+                0,
+                0,
+                0
+              ],
+              "children": [
+                {
+                  "id": "SN7Gf",
+                  "type": "ref",
+                  "ref": "ggnyx",
+                  "name": "Button 저장",
+                  "width": "fill_container",
+                  "descendants": {
+                    "E1BvU3": {
+                      "content": "저장"
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "II4rW",
+          "layoutPosition": "absolute",
+          "x": 0,
+          "y": 0,
+          "name": "Scrim",
+          "width": 390,
+          "height": 844,
+          "fill": "#0000008A",
+          "layout": "vertical",
+          "justifyContent": "end",
+          "children": [
+            {
+              "type": "frame",
+              "id": "lNoVv",
+              "name": "Kind Sheet",
+              "width": "fill_container",
+              "fill": "$card",
+              "cornerRadius": [
+                24,
+                24,
+                0,
+                0
+              ],
+              "layout": "vertical",
+              "gap": 6,
+              "padding": [
+                24,
+                20,
+                34,
+                20
+              ],
+              "children": [
+                {
+                  "type": "text",
+                  "id": "A1RR5N",
+                  "name": "Sheet Title",
+                  "fill": "$text-primary",
+                  "content": "무엇을 적을까요?",
+                  "fontFamily": "$font",
+                  "fontSize": 19,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "frame",
+                  "id": "InIan",
+                  "name": "Group 수입",
+                  "width": "fill_container",
+                  "layout": "vertical",
+                  "padding": [
+                    10,
+                    0,
+                    0,
+                    0
+                  ],
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "ZJaee",
+                      "name": "Group Label",
+                      "fill": "$text-muted",
+                      "content": "수입",
+                      "fontFamily": "$font",
+                      "fontSize": 13,
+                      "fontWeight": "600"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "P5bXz",
+                      "name": "Kind 고정 수입",
+                      "width": "fill_container",
+                      "height": 60,
+                      "stroke": "$line-soft",
+                      "strokeWidth": {
+                        "bottom": 1
+                      },
+                      "gap": 12,
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "YVMyy",
+                          "name": "Text",
+                          "width": "fill_container",
+                          "layout": "vertical",
+                          "gap": 2,
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "alX4M",
+                              "name": "Kind Title",
+                              "fill": "$text-primary",
+                              "content": "고정 수입",
+                              "fontFamily": "$font",
+                              "fontSize": 16,
+                              "fontWeight": "600"
+                            },
+                            {
+                              "type": "text",
+                              "id": "lkbHM",
+                              "name": "Kind Desc",
+                              "fill": "$text-muted",
+                              "content": "월급처럼 매달 들어오는 돈",
+                              "fontFamily": "$font",
+                              "fontSize": 13,
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "qvbY5",
+                      "name": "Kind 추가 수입",
+                      "width": "fill_container",
+                      "height": 60,
+                      "stroke": "$line-soft",
+                      "gap": 12,
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "ZeN1D",
+                          "name": "Text",
+                          "width": "fill_container",
+                          "layout": "vertical",
+                          "gap": 2,
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "d5lw7u",
+                              "name": "Kind Title",
+                              "fill": "$text-primary",
+                              "content": "추가 수입",
+                              "fontFamily": "$font",
+                              "fontSize": 16,
+                              "fontWeight": "600"
+                            },
+                            {
+                              "type": "text",
+                              "id": "ncwuc",
+                              "name": "Kind Desc",
+                              "fill": "$text-muted",
+                              "content": "그때그때 들어온 돈",
+                              "fontFamily": "$font",
+                              "fontSize": 13,
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "E4TFor",
+                  "name": "Group 지출",
+                  "width": "fill_container",
+                  "layout": "vertical",
+                  "padding": [
+                    10,
+                    0,
+                    0,
+                    0
+                  ],
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "qUDUY",
+                      "name": "Group Label",
+                      "fill": "$text-muted",
+                      "content": "지출",
+                      "fontFamily": "$font",
+                      "fontSize": 13,
+                      "fontWeight": "600"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "ERtQy",
+                      "name": "Kind 고정 지출",
+                      "width": "fill_container",
+                      "height": 60,
+                      "stroke": "$line-soft",
+                      "strokeWidth": {
+                        "bottom": 1
+                      },
+                      "gap": 12,
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "z5WSHe",
+                          "name": "Text",
+                          "width": "fill_container",
+                          "layout": "vertical",
+                          "gap": 2,
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "X9Ky9Q",
+                              "name": "Kind Title",
+                              "fill": "$text-primary",
+                              "content": "고정 지출",
+                              "fontFamily": "$font",
+                              "fontSize": 16,
+                              "fontWeight": "600"
+                            },
+                            {
+                              "type": "text",
+                              "id": "k76iL",
+                              "name": "Kind Desc",
+                              "fill": "$text-muted",
+                              "content": "관리비·보험처럼 매달 나가는 돈",
+                              "fontFamily": "$font",
+                              "fontSize": 13,
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "ETeAy",
+                      "name": "Kind 추가 지출",
+                      "width": "fill_container",
+                      "height": 60,
+                      "stroke": "$line-soft",
+                      "gap": 12,
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "E2fJx",
+                          "name": "Text",
+                          "width": "fill_container",
+                          "layout": "vertical",
+                          "gap": 2,
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "R1axNK",
+                              "name": "Kind Title",
+                              "fill": "$accent-text",
+                              "content": "추가 지출",
+                              "fontFamily": "$font",
+                              "fontSize": 16,
+                              "fontWeight": "700"
+                            },
+                            {
+                              "type": "text",
+                              "id": "rtGKa",
+                              "name": "Kind Desc",
+                              "fill": "$text-muted",
+                              "content": "그때그때 쓴 돈",
+                              "fontFamily": "$font",
+                              "fontSize": 13,
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "icon",
+                          "id": "pPZzi",
+                          "name": "Selected",
+                          "width": 22,
+                          "height": 22,
+                          "icon": "check",
+                          "library": "lucide",
+                          "fill": "$accent-text"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "y6pvML",
+                  "name": "Group 카드",
+                  "width": "fill_container",
+                  "layout": "vertical",
+                  "padding": [
+                    10,
+                    0,
+                    0,
+                    0
+                  ],
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "wS26R",
+                      "name": "Group Label",
+                      "fill": "$text-muted",
+                      "content": "카드",
+                      "fontFamily": "$font",
+                      "fontSize": 13,
+                      "fontWeight": "600"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "n2XP8R",
+                      "name": "Kind 카드 대금",
+                      "width": "fill_container",
+                      "height": 60,
+                      "stroke": "$line-soft",
+                      "gap": 12,
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "G7F3pj",
+                          "name": "Text",
+                          "width": "fill_container",
+                          "layout": "vertical",
+                          "gap": 2,
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "q7jGJ6",
+                              "name": "Kind Title",
+                              "fill": "$text-primary",
+                              "content": "카드 대금",
+                              "fontFamily": "$font",
+                              "fontSize": 16,
+                              "fontWeight": "600"
+                            },
+                            {
+                              "type": "text",
+                              "id": "T7elxx",
+                              "name": "Kind Desc",
+                              "fill": "$text-muted",
+                              "content": "지난달 카드값이 빠져나간 돈",
+                              "fontFamily": "$font",
+                              "fontSize": 13,
+                              "fontWeight": "normal"
+                            }
+                          ]
                         }
                       ]
                     }

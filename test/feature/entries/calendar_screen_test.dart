@@ -133,7 +133,20 @@ String? calendarTitle(WidgetTester tester) =>
 String? dayTitle(WidgetTester tester) =>
     textOf(tester, const Key('calendar-day-title'));
 
+// 입력 화면 아래쪽처럼 아직 만들어지지 않은 것은 나올 때까지 끌어 내린 뒤 다 보이게 옮겨 누른다.
 Future<void> tapShown(WidgetTester tester, Finder finder) async {
+  if (finder.evaluate().isEmpty) {
+    await tester.scrollUntilVisible(
+      finder,
+      200,
+      scrollable: find
+          .descendant(
+            of: find.byType(EntryFormScreen),
+            matching: find.byType(Scrollable),
+          )
+          .first,
+    );
+  }
   await tester.ensureVisible(finder);
   await tester.pump();
   await tester.tap(finder);
@@ -312,7 +325,7 @@ void main() {
       expect(dayTitle(tester), '10월 18일 일요일');
       expect(textOf(tester, const Key('calendar-day-total')), '-258,000원');
       expect(find.text('항목 2건'), findsOneWidget);
-      expect(find.text('추가지출 · 공용 카드 · 10/18'), findsNWidgets(2));
+      expect(find.text('추가 지출 · 공용 카드 · 10/18'), findsNWidgets(2));
       expect(find.byKey(const ValueKey('calendar-entry-mart')), findsOneWidget);
       expect(
         find.byKey(const ValueKey('calendar-entry-dinner')),
@@ -350,7 +363,7 @@ void main() {
       expect(find.text('2026년 10월 18일'), findsOneWidget);
     });
 
-    testWidgets('항목이 없는 날은 안내를 누르면 그 날짜로 추가지출을 열고, 저장하면 그날에 보인다', (
+    testWidgets('항목이 없는 날은 안내를 누르면 그 날짜로 추가 지출을 열고, 저장하면 그날에 보인다', (
       tester,
     ) async {
       final entries = await openCalendar(tester);
@@ -452,12 +465,12 @@ void main() {
 
         await tapShown(tester, find.byKey(const Key('calendar-day-empty')));
         expect(
-          findSentence('추가하면 이 달 가계부가 생기고, 고정 지출 1개를 이 달 기본 월 지출로 채워요. 추가할까요?'),
+          findSentence('추가하면 이 달 가계부가 생기고, 고정 지출 1개도 함께 들어가요. 추가할까요?'),
           findsOneWidget,
         );
         await tester.tap(find.byKey(const Key('add-month-confirm')));
         await settleRoute(tester);
-        // 그달 가계부를 만들며 고정 지출(관리비)을 지급 전 기본 월 지출로 채우고 달 목록에 더했다.
+        // 그달 가계부를 만들며 반복 설정(관리비)으로 지급 전 고정 지출을 채우고 달 목록에 더했다.
         expect(entries.monthOf(december).plannedExpenses.single.id, 'rent');
         expect(entries.recordedMonths, [december]);
         expect(find.text('2026년 12월 1일'), findsOneWidget);

@@ -181,6 +181,7 @@ void main() {
         ledgerId: 'l1',
         month: october,
         entry: lunch,
+        templateIds: const {},
         uid: 'me',
       );
       expect(entries.monthOf(october).extraExpenses, isEmpty);
@@ -203,9 +204,13 @@ void main() {
         october: const MonthLedger(trashed: [TrashedEntry(entry: lunch)]),
       });
 
-      final purged = await useCasesOf(
-        entries,
-      ).purgeEntry(ledgerId: 'l1', month: october, entry: lunch, uid: 'me');
+      final purged = await useCasesOf(entries).purgeEntry(
+        ledgerId: 'l1',
+        month: october,
+        entry: lunch,
+        templateIds: const {},
+        uid: 'me',
+      );
 
       expect(purged, isTrue);
       expect(entries.purged, [
@@ -213,18 +218,56 @@ void main() {
       ]);
     });
 
-    test('고정 지출에서 만든 이번 달 기본 월 지출은 지우지 않고 false다', () async {
+    test('반복 설정이 남아 있는 이번 달 고정 지출은 지우지 않고 false다', () async {
       final rent = rentIn(october);
       final entries = FakeEntriesRepository({
         october: MonthLedger(trashed: [TrashedEntry(entry: rent)]),
       });
 
-      final purged = await useCasesOf(
-        entries,
-      ).purgeEntry(ledgerId: 'l1', month: october, entry: rent, uid: 'me');
+      final purged = await useCasesOf(entries).purgeEntry(
+        ledgerId: 'l1',
+        month: october,
+        entry: rent,
+        templateIds: {rent.id},
+        uid: 'me',
+      );
 
       expect(purged, isFalse);
       expect(entries.purged, isEmpty);
+    });
+
+    test('그만한 고정 지출(반복 설정이 없음)은 이번 달이어도 지운다', () async {
+      final rent = rentIn(october);
+      final entries = FakeEntriesRepository({
+        october: MonthLedger(trashed: [TrashedEntry(entry: rent)]),
+      });
+
+      final purged = await useCasesOf(entries).purgeEntry(
+        ledgerId: 'l1',
+        month: october,
+        entry: rent,
+        templateIds: const {},
+        uid: 'me',
+      );
+
+      expect(purged, isTrue);
+    });
+
+    test('반복 설정이 남아 있는 이번 달 고정 지출은 휴지통에 넣어도 자동으로 지우지 않는다', () async {
+      final rent = rentIn(october);
+      final entries = FakeEntriesRepository({
+        october: MonthLedger(plannedExpenses: [rent]),
+      });
+
+      await useCasesOf(entries).trashEntry(
+        ledgerId: 'l1',
+        month: october,
+        entry: rent,
+        templateIds: {rent.id},
+        uid: 'me',
+      );
+
+      expect(entries.monthOf(october).trashed.single.purgeAt, isNull);
     });
 
     test('지난 달의 고정 지출 항목은 다시 만들지 않아서 지운다', () async {
@@ -233,9 +276,13 @@ void main() {
         september: MonthLedger(trashed: [TrashedEntry(entry: rent)]),
       });
 
-      final purged = await useCasesOf(
-        entries,
-      ).purgeEntry(ledgerId: 'l1', month: september, entry: rent, uid: 'me');
+      final purged = await useCasesOf(entries).purgeEntry(
+        ledgerId: 'l1',
+        month: september,
+        entry: rent,
+        templateIds: {rent.id},
+        uid: 'me',
+      );
 
       expect(purged, isTrue);
       expect(entries.purged.single.id, 'template-rent');

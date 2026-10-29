@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_ledger/domain/model/expense_template.dart';
 import 'package:shared_ledger/domain/model/auth_user.dart';
 import 'package:shared_ledger/domain/model/category.dart';
 import 'package:shared_ledger/domain/model/ledger.dart';
@@ -30,7 +31,7 @@ final settings = FakeSettingsRepository(
   ],
 );
 
-// 디자인(design/app/04)의 일부와 같은 가상의 10월 기본 월 지출.
+// 디자인(design/app/04)의 일부와 같은 가상의 10월 고정 지출.
 final plannedMonth = MonthLedger(
   plannedExpenses: [
     PlannedExpense(
@@ -64,6 +65,7 @@ final plannedMonth = MonthLedger(
 Future<void> pumpEntries(
   WidgetTester tester, {
   FakeEntriesRepository? entries,
+  FakeTemplatesRepository? templates,
   Ledger ledger = mine,
   Size size = phoneSize,
 }) async {
@@ -73,12 +75,13 @@ Future<void> pumpEntries(
     ledgers: FakeLedgerRepository([ledger]),
     settings: settings,
     entries: entries ?? FakeEntriesRepository(),
+    templates: templates,
     size: size,
   );
   await openTab(tester, HomeTab.entries);
 }
 
-// 항목 탭 아래에 입력 화면이 겹쳐 있을 때 입력 화면 안의 것만 찾는다(종류 세그먼트는 둘 다에 있다).
+// 항목 탭 아래에 입력 화면이 겹쳐 있을 때 입력 화면 안의 것만 찾는다.
 Finder inForm(Finder finder) =>
     find.descendant(of: find.byType(EntryFormScreen), matching: finder);
 
@@ -121,7 +124,7 @@ String? textIn(WidgetTester tester, Key key) =>
 
 void main() {
   group('항목 목록', () {
-    testWidgets('기본 지출은 분류마다 묶고 건수·지급 전 건수·합계와 금액 미정을 보여준다', (tester) async {
+    testWidgets('고정 지출은 분류마다 묶고 건수·지급 전 건수·합계와 금액 미정을 보여준다', (tester) async {
       await pumpEntries(
         tester,
         entries: FakeEntriesRepository({october: plannedMonth}),
@@ -130,11 +133,17 @@ void main() {
       expect(textIn(tester, const Key('entries-count')), '3건');
       expect(textIn(tester, const Key('entries-total')), '898,000원');
       expect(find.text('지급 전 1건'), findsOneWidget);
-      expect(find.byKey(const ValueKey('group-c-principal')), findsOneWidget);
-      expect(find.byKey(const ValueKey('group-c-living')), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('group-planned-c-principal')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey('group-planned-c-living')),
+        findsOneWidget,
+      );
       expect(find.text('금액 미정'), findsOneWidget);
       expect(find.text('자동이체 · 10/25 지급'), findsOneWidget);
-      // 카드로 낸 기본 지출은 '결제'라고 적는다.
+      // 카드로 낸 고정 지출은 '결제'라고 적는다.
       expect(find.text('공용 카드 · 10/21 결제'), findsOneWidget);
     });
 
@@ -144,7 +153,7 @@ void main() {
         entries: FakeEntriesRepository({october: plannedMonth}),
       );
 
-      await tester.tap(inList(find.byKey(const Key('entry-kind-income'))));
+      await tester.tap(inList(find.byKey(const Key('entry-tab-income'))));
       await settle(tester);
 
       expect(find.byKey(const Key('entries-empty')), findsOneWidget);
@@ -185,7 +194,7 @@ void main() {
       expect(find.byKey(const Key('add-entry')), findsOneWidget);
       await openTab(tester, HomeTab.summary);
       expect(find.byKey(const Key('add-entry')), findsOneWidget);
-      for (final tab in [HomeTab.templates, HomeTab.settings]) {
+      for (final tab in [HomeTab.settings]) {
         await openTab(tester, tab);
         expect(find.byKey(const Key('add-entry')), findsNothing);
       }
@@ -193,10 +202,10 @@ void main() {
   });
 
   group('항목 입력', () {
-    testWidgets('+ 버튼으로 추가지출을 적으면 항목 탭과 요약 탭에 보인다', (tester) async {
+    testWidgets('+ 버튼으로 추가 지출을 적으면 항목 탭과 요약 탭에 보인다', (tester) async {
       final entries = FakeEntriesRepository();
       await pumpEntries(tester, entries: entries);
-      await tester.tap(inList(find.byKey(const Key('entry-kind-extra'))));
+      await tester.tap(inList(find.byKey(const Key('entry-tab-expense'))));
       await settle(tester);
 
       await openAddForm(tester);
@@ -224,7 +233,7 @@ void main() {
     testWidgets('서버가 새 항목을 받지 않으면 목록에서 빠지고 알린다', (tester) async {
       final entries = FakeEntriesRepository()..rejectNextAdd = true;
       await pumpEntries(tester, entries: entries);
-      await tester.tap(inList(find.byKey(const Key('entry-kind-income'))));
+      await tester.tap(inList(find.byKey(const Key('entry-tab-income'))));
       await settle(tester);
 
       await openAddForm(tester);
@@ -242,7 +251,7 @@ void main() {
       );
     });
 
-    testWidgets('요약 탭의 + 버튼은 추가지출로 열고 보고 있는 달에 넣는다', (tester) async {
+    testWidgets('요약 탭의 + 버튼은 추가 지출로 열고 보고 있는 달에 넣는다', (tester) async {
       final entries = FakeEntriesRepository();
       // 11월은 항목이 있는 달이라 머리말로 갈 수 있다.
       await pumpEntries(
@@ -265,7 +274,7 @@ void main() {
       await enterInForm(tester, const Key('entry-amount'), '5000');
       await enterInForm(tester, const Key('entry-title'), '간식');
       await tapInForm(tester, const Key('entry-method-p-shared'));
-      expect(findSentence('카드로 낸 돈은 다음 달 카드대금으로 빠져나가요.'), findsOneWidget);
+      expect(findSentence('카드로 낸 돈은 다음 달 카드 대금으로 빠져나가요.'), findsOneWidget);
       await tapInForm(tester, const Key('entry-save'));
       await settleRoute(tester);
 
@@ -279,6 +288,7 @@ void main() {
       await pumpEntries(tester, entries: entries);
 
       await openAddForm(tester);
+      await chooseEntryKind(tester, EntryKind.planned);
       await tapInForm(tester, const Key('entry-save'));
 
       expect(entries.added, isEmpty);
@@ -286,7 +296,8 @@ void main() {
       expect(findSentence('내용을 입력해 주세요.'), findsOneWidget);
       expect(findSentence('분류를 골라 주세요.'), findsOneWidget);
       expect(findSentence('결제수단을 골라 주세요.'), findsOneWidget);
-      // 기본 지출은 금액을 비워 두면 금액 미정이다.
+      expect(findSentence('매달 예정일을 골라 주세요.'), findsOneWidget);
+      // 고정 지출은 금액을 비워 두면 금액 미정이다.
       expect(findSentence('금액을 입력해 주세요.'), findsNothing);
 
       await enterInForm(tester, const Key('entry-title'), '관리비');
@@ -294,29 +305,40 @@ void main() {
       expect(findSentence('내용을 입력해 주세요.'), findsNothing);
     });
 
-    testWidgets('기본 지출은 지급 완료를 켜면 지급한 날을 오늘로 채운다', (tester) async {
-      final entries = FakeEntriesRepository();
-      await pumpEntries(tester, entries: entries);
+    testWidgets('종류를 고정 지출로 바꿔 매달 예정일과 함께 더하면 반복 설정과 그달 항목이 생긴다', (
+      tester,
+    ) async {
+      final templates = FakeTemplatesRepository();
+      await pumpEntries(tester, templates: templates);
 
       await openAddForm(tester);
+      // + 버튼은 지출 칸에서 추가 지출로 연다.
+      expect(inForm(find.text('추가 지출')), findsOneWidget);
+      await chooseEntryKind(tester, EntryKind.planned);
       expect(find.text('지급한 날'), findsNothing);
       await enterInForm(tester, const Key('entry-title'), '관리비');
       await tapInForm(tester, const Key('entry-category-c-living'));
       await tapInForm(tester, const Key('entry-method-p-account'));
+      await tapInForm(tester, const Key('entry-due-day'));
+      await tester.tap(find.byKey(const Key('due-day-31')));
+      await settle(tester);
+      expect(inForm(find.text('매월 말일')), findsOneWidget);
       await tapInForm(tester, const Key('entry-paid'));
       expect(find.text('2026년 10월 15일'), findsOneWidget);
       await tapInForm(tester, const Key('entry-save'));
       await settleRoute(tester);
 
-      final draft = entries.added.single.draft;
-      expect(draft.amount, isNull);
-      expect(draft.date, DateTime(2026, 10, 15));
+      final added = templates.added.single;
+      expect(added.draft.dueDay, lastDueDay);
+      expect(added.entry.amount, isNull);
+      expect(added.entry.date, DateTime(2026, 10, 15));
+      expect(added.entry.dueOn, DateTime(2026, 10, 31));
       expect(find.text('공동 통장 · 10/15 지급'), findsOneWidget);
     });
 
     testWidgets('날짜는 한국어 달력에서 그달 안의 날로 고른다', (tester) async {
       await pumpEntries(tester);
-      await tester.tap(inList(find.byKey(const Key('entry-kind-income'))));
+      await tester.tap(inList(find.byKey(const Key('entry-tab-income'))));
       await settle(tester);
       await openAddForm(tester);
 
@@ -349,7 +371,7 @@ void main() {
           ),
         }),
       );
-      await tester.tap(inList(find.byKey(const Key('entry-kind-extra'))));
+      await tester.tap(inList(find.byKey(const Key('entry-tab-expense'))));
       await settle(tester);
       await tester.tap(find.text('간식'));
       await settleRoute(tester);
@@ -428,7 +450,7 @@ void main() {
       await tapInForm(tester, const Key('entry-save'));
 
       expect(
-        findSentence('인터넷에 연결된 뒤에 다시 시도해 주세요. 고치기와 휴지통은 연결돼 있을 때만 돼요.'),
+        findSentence('인터넷에 연결된 뒤에 다시 시도해 주세요. 고정 지출과 고치기·휴지통은 연결돼 있을 때만 돼요.'),
         findsOneWidget,
       );
       expect(find.byType(EntryFormScreen), findsOneWidget);
@@ -478,6 +500,87 @@ void main() {
 
       expect(find.byKey(const Key('add-entry')), findsNothing);
       expect(tester.getRect(find.byKey(HomeTab.settings.key)), before);
+    });
+  });
+
+  group('반복 설정이 있는 고정 지출', () {
+    const october = YearMonth(2026, 10);
+    const rentTemplate = ExpenseTemplate(
+      id: 'rent',
+      title: '관리비',
+      amount: 200000,
+      categoryId: 'c-living',
+      paymentMethodId: 'p-account',
+      memberId: 'partner',
+      dueDay: 25,
+    );
+    MonthLedger rentMonth() => MonthLedger(
+      plannedExpenses: [rentTemplate.draftFor(october)]
+          .map(
+            (draft) => PlannedExpense(
+              id: rentTemplate.id,
+              categoryId: rentTemplate.categoryId,
+              memberId: rentTemplate.memberId,
+              title: rentTemplate.title,
+              paymentMethodId: rentTemplate.paymentMethodId,
+              amount: rentTemplate.amount,
+              dueOn: draft.dueOn,
+            ),
+          )
+          .toList(),
+    );
+
+    testWidgets('고치면 금액은 그달만 바뀌고, 체크하면 다음 달부터도 그 금액이다', (tester) async {
+      final templates = FakeTemplatesRepository(const [rentTemplate]);
+      await pumpEntries(
+        tester,
+        entries: FakeEntriesRepository({october: rentMonth()}),
+        templates: templates,
+      );
+
+      await tester.tap(find.text('관리비'));
+      await settleRoute(tester);
+      expect(find.text('고정 지출 고치기'), findsOneWidget);
+      expect(inForm(find.text('매월 25일')), findsOneWidget);
+      expect(findSentence('체크하지 않으면 10월에만 바뀌어요.'), findsOneWidget);
+      await enterInForm(tester, const Key('entry-amount'), '230000');
+      await tapInForm(tester, const Key('entry-save'));
+      await settleRoute(tester);
+
+      expect(templates.updated.single.draft.amount, 200000);
+      expect(templates.updated.single.entry.amount, 230000);
+      expect(textIn(tester, const Key('entries-total')), '230,000원');
+
+      await tester.tap(find.text('관리비'));
+      await settleRoute(tester);
+      await tapInForm(tester, const Key('entry-amount-for-later'));
+      await tapInForm(tester, const Key('entry-save'));
+      await settleRoute(tester);
+
+      expect(templates.updated.last.draft.amount, 230000);
+    });
+
+    testWidgets('그만하면 목록에서 빠지고, 되돌리기로 반복 설정과 항목이 돌아온다', (tester) async {
+      final templates = FakeTemplatesRepository(const [rentTemplate]);
+      final entries = FakeEntriesRepository({october: rentMonth()});
+      await pumpEntries(tester, entries: entries, templates: templates);
+
+      await tester.tap(find.text('관리비'));
+      await settleRoute(tester);
+      expect(inForm(find.byKey(const Key('entry-trash'))), findsNothing);
+      await tapInForm(tester, const Key('entry-stop'));
+      await settleRoute(tester);
+
+      expect(templates.templates, isEmpty);
+      expect(find.text('관리비'), findsNothing);
+      expect(findSentence('고정 지출을 그만했어요. 다음 달부터 만들지 않아요.'), findsOneWidget);
+
+      await tester.tap(find.byKey(const Key('restore-entry')));
+      await settle(tester);
+
+      expect(templates.templates, [rentTemplate]);
+      expect(templates.resumed.single.months, [october]);
+      expect(find.text('관리비'), findsOneWidget);
     });
   });
 }

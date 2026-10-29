@@ -142,6 +142,7 @@ class FirestoreEntriesRepository implements EntriesRepository {
     required EntryKind kind,
     required String id,
     required String uid,
+    bool keep = false,
   }) => _writeOnline(
     ledgerId,
     month,
@@ -150,15 +151,11 @@ class FirestoreEntriesRepository implements EntriesRepository {
     uid: uid,
     trashed: false,
     write: (transaction, doc, entry) {
-      final now = _now();
-      final stays =
-          entry != null &&
-          staysInTrash(entry, month: month, thisMonth: YearMonth.of(now));
       transaction.update(
         doc,
         trashEntryUpdate(
           uid: uid,
-          purgeAt: stays ? null : now.add(trashRetention),
+          purgeAt: keep ? null : _now().add(trashRetention),
         ),
       );
       return _entryActivity(ActivityAction.entryTrash, month, kind, entry);
@@ -429,7 +426,7 @@ typedef EntryDoc = ({
 /// 그달 네 컬렉션의 문서로 [MonthLedger]를 만든다. 휴지통 항목은 [MonthLedger.trashed]에 따로 모으고,
 /// 읽을 수 없는 문서는 뺀다.
 ///
-/// 기본 월 지출 문서 id는 휴지통 항목과 읽을 수 없는 문서까지 [MonthLedger.plannedIds]에 모은다.
+/// 고정 지출 문서 id는 휴지통 항목과 읽을 수 없는 문서까지 [MonthLedger.plannedIds]에 모은다.
 /// 고정 지출로 채울 때 그 id의 문서를 다시 만들지 않게 한다.
 MonthLedger monthLedgerFromFirestore({
   required List<EntryDoc> incomes,
@@ -512,7 +509,7 @@ Income? incomeFromFirestore(String id, Map<String, dynamic> data) {
   );
 }
 
-/// Firestore 기본 월 지출 문서를 [PlannedExpense]로 바꾼다.
+/// Firestore 고정 지출 문서를 [PlannedExpense]로 바꾼다.
 /// 금액은 비어 있으면 미정(null)이고, 누가·분류·결제수단이 없거나 금액이 잘못됐으면 null.
 PlannedExpense? plannedExpenseFromFirestore(
   String id,
@@ -542,7 +539,7 @@ PlannedExpense? plannedExpenseFromFirestore(
   );
 }
 
-/// Firestore 추가지출 문서를 [ExtraExpense]로 바꾼다. 누가·결제수단·금액이 없거나 잘못됐으면 null.
+/// Firestore 추가 지출 문서를 [ExtraExpense]로 바꾼다. 누가·결제수단·금액이 없거나 잘못됐으면 null.
 ExtraExpense? extraExpenseFromFirestore(String id, Map<String, dynamic> data) {
   final memberId = data['memberId'];
   final paymentMethodId = data['paymentMethodId'];
@@ -561,7 +558,7 @@ ExtraExpense? extraExpenseFromFirestore(String id, Map<String, dynamic> data) {
   );
 }
 
-/// Firestore 카드대금 문서를 [CardBill]로 바꾼다. 누가·카드·금액이 없거나 잘못됐으면 null.
+/// Firestore 카드 대금 문서를 [CardBill]로 바꾼다. 누가·카드·금액이 없거나 잘못됐으면 null.
 CardBill? cardBillFromFirestore(String id, Map<String, dynamic> data) {
   final memberId = data['memberId'];
   final cardId = data['cardId'];

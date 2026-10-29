@@ -16,11 +16,10 @@ import 'months_backfill_notifier.dart';
 /// 이 폭부터 아래 탭 막대 대신 옆 탭 막대를 쓴다. 아이패드·Mac, 가로로 눕힌 휴대폰이 해당한다.
 const wideLayoutMinWidth = 600.0;
 
-/// 홈의 네 탭. 순서가 router.dart의 탭 경로(branch) 순서다.
+/// 홈의 탭. 순서가 router.dart의 탭 경로(branch) 순서다.
 enum HomeTab {
   summary('요약', Icons.pie_chart_outline),
   entries('항목', Icons.format_list_bulleted),
-  templates('고정 지출', Icons.repeat),
   settings('설정', Icons.settings_outlined);
 
   const HomeTab(this.label, this.icon);
@@ -40,7 +39,7 @@ typedef AddEntry =
 ///
 /// 달을 보는 탭(요약·항목)에서는 + 버튼을 둔다. 좁은 화면은 탭 막대 오른쪽, 넓은 화면은 옆 탭 막대 맨 위다.
 /// 탭마다 화면 상태(스크롤 위치 등)를 [StatefulNavigationShell]이 따로 지킨다.
-/// 보고 있는 달(이번 달·다음 달)에 빠진 기본 월 지출은 어느 탭에 있든 고정 지출로 채운다.
+/// 보고 있는 달(이번 달·다음 달)에 빠진 고정 지출은 어느 탭에 있든 반복 설정으로 채운다.
 class HomeShell extends ConsumerWidget {
   const HomeShell({
     required this.navigationShell,
@@ -59,7 +58,8 @@ class HomeShell extends ConsumerWidget {
     initialLocation: tab.index == navigationShell.currentIndex,
   );
 
-  // + 버튼은 쓸 수 있는 사람에게 요약·항목 탭에서만 보인다. 항목 탭에서는 보던 종류, 요약 탭에서는 추가지출로 연다.
+  // + 버튼은 쓸 수 있는 사람에게 요약·항목 탭에서만 보인다. 항목 탭에서는 보던 칸의 종류(지출 칸은 추가 지출),
+  // 요약 탭에서는 추가 지출로 연다. 고정 지출은 입력 화면의 종류 칸에서 고른다.
   VoidCallback? _addEntry(BuildContext context, WidgetRef ref) {
     final canWrite = ref.watch(myRoleProvider)?.canWrite ?? false;
     final tab = _current;
@@ -68,17 +68,17 @@ class HomeShell extends ConsumerWidget {
       HomeTab.summary || HomeTab.entries => () => onAddEntry(
         context,
         tab == HomeTab.entries
-            ? ref.read(selectedEntryKindProvider)
+            ? ref.read(selectedEntryTabProvider).addKind
             : EntryKind.extra,
         ref.read(selectedMonthProvider),
       ),
-      HomeTab.templates || HomeTab.settings => null,
+      HomeTab.settings => null,
     };
   }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // 그달을 처음 열거나 고정 지출이 늘면 빠진 기본 월 지출을 만든다. 탭 화면보다 먼저 듣기 시작해서
+    // 그달을 처음 열거나 반복 설정이 늘면 빠진 고정 지출을 만든다. 탭 화면보다 먼저 듣기 시작해서
     // 처음 값은 늘 불러오는 중(null)이고, 그달 항목과 고정 지출을 받은 뒤 바뀐 값으로 불린다.
     ref.listen(plannedFillProvider, (_, fill) {
       if (fill == null) return;

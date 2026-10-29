@@ -34,7 +34,7 @@ void main() {
       final data = newActivityData(
         const ActivityDraft(
           ActivityAction.entryCreate,
-          "10월 추가지출 '점심' 12,000원",
+          "10월 추가 지출 '점심' 12,000원",
         ),
         uid: 'me',
         now: now,
@@ -50,7 +50,7 @@ void main() {
       expect(data['actorUid'], 'me');
       expect(data['at'], FieldValue.serverTimestamp());
       expect(data['action'], 'entry.create');
-      expect(data['summary'], "10월 추가지출 '점심' 12,000원");
+      expect(data['summary'], "10월 추가 지출 '점심' 12,000원");
       expect(
         data['expireAt'],
         Timestamp.fromDate(DateTime.utc(2027, 10, 15, 9)),
@@ -85,7 +85,7 @@ void main() {
         'actorUid': 'partner-uid',
         'at': Timestamp.fromDate(at),
         'action': 'entry.trash',
-        'summary': "10월 추가지출 '점심' 12,000원",
+        'summary': "10월 추가 지출 '점심' 12,000원",
         'expireAt': Timestamp.fromDate(DateTime(2027, 10, 15)),
       });
 
@@ -95,7 +95,7 @@ void main() {
           id: 'a1',
           actorUid: 'partner-uid',
           action: ActivityAction.entryTrash,
-          summary: "10월 추가지출 '점심' 12,000원",
+          summary: "10월 추가 지출 '점심' 12,000원",
           at: at,
         ),
       );
@@ -135,12 +135,12 @@ void main() {
         ),
         const ActivityDraft(
           ActivityAction.entryCreate,
-          "10월 추가지출 '점심' 12,000원",
+          "10월 추가 지출 '점심' 12,000원",
         ),
       );
     });
 
-    test('카드대금은 제목 없이, 금액 미정 기본 월 지출은 금액 미정으로 적는다', () {
+    test('카드 대금은 제목 없이, 금액 미정 고정 지출은 금액 미정으로 적는다', () {
       String summary(EntryDraft entry) => entryActivity(
         ActivityAction.entryTrash,
         month: october,
@@ -157,7 +157,7 @@ void main() {
             cardId: 'p-card',
           ),
         ),
-        '10월 카드대금 500,000원',
+        '10월 카드 대금 500,000원',
       );
       expect(
         summary(
@@ -169,7 +169,7 @@ void main() {
             paymentMethodId: 'p1',
           ),
         ),
-        "10월 기본 월 지출 '관리비' 금액 미정",
+        "10월 고정 지출 '관리비' 금액 미정",
       );
     });
 
@@ -192,7 +192,7 @@ void main() {
           entry: changed,
           before: lunch,
         ).summary,
-        "10월 추가지출 · 제목 '점심' → '저녁', 금액 12,000원 → 15,000원, 누가, 쓴 날, 메모",
+        "10월 추가 지출 · 제목 '점심' → '저녁', 금액 12,000원 → 15,000원, 누가, 쓴 날, 메모",
       );
     });
 
@@ -221,7 +221,7 @@ void main() {
           entry: after,
           before: before,
         ).summary,
-        "10월 기본 월 지출 '관리비' · 금액 미정 → 210,000원",
+        "10월 고정 지출 '관리비' · 금액 미정 → 210,000원",
       );
     });
 
@@ -234,7 +234,7 @@ void main() {
           entry: lunch,
           before: lunch,
         ).summary,
-        "10월 추가지출 '점심' 12,000원",
+        "10월 추가 지출 '점심' 12,000원",
       );
     });
 

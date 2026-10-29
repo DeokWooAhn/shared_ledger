@@ -14,16 +14,16 @@ class CalendarDay {
 
   final DateTime date;
 
-  /// 그날 받은·지급한·쓴·출금한 항목. 수입, 기본 월 지출, 추가지출, 카드대금 순이고 같은 종류는 제목 순이다.
+  /// 그날 받은·지급한·쓴·출금한 항목. 수입, 고정 지출, 추가 지출, 카드 대금 순이고 같은 종류는 제목 순이다.
   final List<LedgerEntry> entries;
 
-  /// 그날이 예정일인 지급 전 기본 월 지출. 제목 순이다.
+  /// 그날이 예정일인 지급 전 고정 지출. 제목 순이다.
   final List<PlannedExpense> scheduled;
 
   /// 들어온 돈(수입) 합계.
   int get income => _sum(entries.whereType<Income>());
 
-  /// 나간 돈(기본 월 지출·추가지출·카드대금) 합계. 금액 미정은 0원으로 친다.
+  /// 나간 돈(고정 지출·추가 지출·카드 대금) 합계. 금액 미정은 0원으로 친다.
   int get spending => _sum(entries.where((e) => e is! Income));
 
   /// 그날 합계. 들어온 돈에서 나간 돈을 뺀다.
@@ -35,9 +35,9 @@ class CalendarDay {
   bool get isEmpty => entries.isEmpty && scheduled.isEmpty;
 }
 
-/// 한 달 달력. 날짜가 있는 항목은 그 날짜에, 지급 전 기본 월 지출은 예정일에 놓는다.
+/// 한 달 달력. 날짜가 있는 항목은 그 날짜에, 지급 전 고정 지출은 예정일에 놓는다.
 ///
-/// 날짜가 없는 항목(받은 날 없는 수입, 쓴 날 없는 추가지출, 출금일 없는 카드대금, 예정일도 없는 기본 월 지출)과
+/// 날짜가 없는 항목(받은 날 없는 수입, 쓴 날 없는 추가 지출, 출금일 없는 카드 대금, 예정일도 없는 고정 지출)과
 /// 그달 밖의 날짜로 잘못 저장된 항목은 달력에 놓지 않고 [undatedCount]로만 센다.
 class CalendarMonth {
   CalendarMonth._(this.month, this._days, this.undatedCount);
@@ -118,7 +118,7 @@ int _byKindThenTitle(LedgerEntry a, LedgerEntry b) {
   return byKind != 0 ? byKind : _titleOf(a).compareTo(_titleOf(b));
 }
 
-// 카드대금은 제목이 없어 카드 id로 줄 세운다(화면에는 카드 이름이 보인다).
+// 카드 대금은 제목이 없어 카드 id로 줄 세운다(화면에는 카드 이름이 보인다).
 String _titleOf(LedgerEntry entry) => switch (entry) {
   Income(:final title) ||
   PlannedExpense(:final title) ||

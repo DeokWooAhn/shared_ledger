@@ -173,14 +173,22 @@ void main() {
       expect(signedOut.read(myRoleProvider), isNull);
     });
 
-    test('항목 탭은 기본 월 지출에서 시작하고 고른 종류를 기억한다', () {
+    test('항목 탭은 지출 칸에서 시작하고 고른 칸을 기억한다', () {
       final container = createContainer();
 
-      expect(container.read(selectedEntryKindProvider), EntryKind.planned);
-      container
-          .read(selectedEntryKindProvider.notifier)
-          .select(EntryKind.extra);
-      expect(container.read(selectedEntryKindProvider), EntryKind.extra);
+      expect(container.read(selectedEntryTabProvider), EntryTab.expense);
+      container.read(selectedEntryTabProvider.notifier).select(EntryTab.income);
+      expect(container.read(selectedEntryTabProvider), EntryTab.income);
+    });
+
+    test('지출 칸은 고정 지출과 추가 지출을 보이고, + 버튼은 추가 지출로 연다', () {
+      expect(EntryTab.expense.kinds, [EntryKind.planned, EntryKind.extra]);
+      expect(EntryTab.expense.addKind, EntryKind.extra);
+      expect(EntryTab.income.addKind, EntryKind.income);
+      expect(EntryTab.cardBill.addKind, EntryKind.cardBill);
+      expect([
+        for (final tab in EntryTab.values) ...tab.kinds,
+      ], unorderedEquals(EntryKind.values));
     });
   });
 

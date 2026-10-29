@@ -71,7 +71,7 @@ void main() {
       expect(calendar.undatedCount, 0);
     });
 
-    test('한 날의 항목은 수입·기본 지출·추가지출·카드대금 순, 같은 종류는 제목 순이다', () {
+    test('한 날의 항목은 수입·고정 지출·추가 지출·카드 대금 순, 같은 종류는 제목 순이다', () {
       final day = DateTime(2026, 10, 18);
       final calendar = CalendarMonth.of(
         MonthLedger(
@@ -87,7 +87,7 @@ void main() {
       expect(calendar.dayOf(18).entries.map((e) => e.id), ['용돈', '마트', '외식']);
     });
 
-    test('지급 전 기본 월 지출은 예정일에, 지급한 것은 지급한 날에 놓는다', () {
+    test('지급 전 고정 지출은 예정일에, 지급한 것은 지급한 날에 놓는다', () {
       final calendar = CalendarMonth.of(
         MonthLedger(
           plannedExpenses: [

@@ -5,13 +5,13 @@ enum EntryKind {
   /// 수입
   income,
 
-  /// 기본 월 지출
+  /// 고정 지출
   planned,
 
-  /// 추가지출
+  /// 추가 지출
   extra,
 
-  /// 카드대금
+  /// 카드 대금
   cardBill,
 }
 
@@ -32,7 +32,7 @@ sealed class LedgerEntry {
   /// 누구 몫인지. 이름표 자리 이름(`owner`·`partner`)이다.
   String get memberId;
 
-  /// 금액(원). 금액 미정인 기본 월 지출만 null이다.
+  /// 금액(원). 금액 미정인 고정 지출만 null이다.
   int? get amount;
 
   /// 받은 날·지급한 날·쓴 날·출금일.
@@ -70,7 +70,7 @@ class Income extends LedgerEntry {
   DateTime? get date => receivedOn;
 }
 
-/// 기본 월 지출. 고정 지출 템플릿에서 매달 만들어진다.
+/// 고정 지출. 반복 설정(템플릿)에서 매달 만들어진다.
 class PlannedExpense extends LedgerEntry {
   const PlannedExpense({
     required this.id,
@@ -99,7 +99,7 @@ class PlannedExpense extends LedgerEntry {
   /// 실제로 빠져나간 날. 카드가 아닌 지출은 이 값이 있어야 현금 유출에 들어간다.
   final DateTime? paidOn;
 
-  /// 고정 지출에서 옮긴 그달 예정일. 직접 더한 기본 월 지출은 null이다. 계산에는 쓰지 않는다.
+  /// 반복 설정에서 옮긴 그달 예정일. 반복 설정 없이 직접 더한 옛 고정 지출은 null이다. 계산에는 쓰지 않는다.
   final DateTime? dueOn;
   @override
   final String? memo;
@@ -113,7 +113,7 @@ class PlannedExpense extends LedgerEntry {
   DateTime? get date => paidOn;
 }
 
-/// 추가지출 (예산 밖 지출). 이미 쓴 돈이라 지급 여부를 따로 따지지 않는다.
+/// 추가 지출 (예산 밖 지출). 이미 쓴 돈이라 지급 여부를 따로 따지지 않는다.
 class ExtraExpense extends LedgerEntry {
   const ExtraExpense({
     required this.id,
@@ -144,7 +144,7 @@ class ExtraExpense extends LedgerEntry {
   DateTime? get date => spentOn;
 }
 
-/// 카드대금 (이번 달 실제로 출금된 카드값 = 저번 달 카드 사용분).
+/// 카드 대금 (이번 달 실제로 출금된 카드값 = 저번 달 카드 사용분).
 class CardBill extends LedgerEntry {
   const CardBill({
     required this.id,
@@ -238,25 +238,25 @@ class EntryDraft {
   /// 누구 몫인지. 이름표 자리 이름(`owner`·`partner`).
   final String memberId;
 
-  /// 금액(원). 기본 월 지출만 비워 둘 수 있다(금액 미정).
+  /// 금액(원). 고정 지출만 비워 둘 수 있다(금액 미정).
   final int? amount;
 
-  /// 카드대금은 쓰지 않는다.
+  /// 카드 대금은 쓰지 않는다.
   final String title;
 
-  /// 기본 월 지출만 쓴다.
+  /// 고정 지출만 쓴다.
   final String? categoryId;
 
-  /// 기본 월 지출과 추가지출만 쓴다.
+  /// 고정 지출과 추가 지출만 쓴다.
   final String? paymentMethodId;
 
-  /// 카드대금만 쓴다.
+  /// 카드 대금만 쓴다.
   final String? cardId;
 
-  /// 받은 날·지급한 날·쓴 날·출금일. 기본 월 지출은 이 값이 있어야 지급 완료다.
+  /// 받은 날·지급한 날·쓴 날·출금일. 고정 지출은 이 값이 있어야 지급 완료다.
   final DateTime? date;
 
-  /// 기본 월 지출만 쓴다. 고정 지출에서 옮긴 그달 예정일이고, 입력 화면에서는 고치지 않고 그대로 둔다.
+  /// 고정 지출만 쓴다. 반복 설정에서 옮긴 그달 예정일이고, 입력 화면에서는 고치지 않고 그대로 둔다.
   final DateTime? dueOn;
 
   /// 비었으면 null.
@@ -303,11 +303,14 @@ enum EntryProblem {
   paymentMethodMissing,
   cardMissing,
   memoTooLong,
+
+  /// 고정 지출의 매달 예정일을 고르지 않았다([fixedExpenseProblemsOf]).
+  dueDayMissing,
 }
 
 /// 저장할 값을 검사한다. 문제가 없으면 빈 집합.
 ///
-/// 금액은 기본 월 지출만 비울 수 있고(금액 미정), 적으면 0원부터다. 제목은 카드대금 말고 꼭 적는다.
+/// 금액은 고정 지출만 비울 수 있고(금액 미정), 적으면 0원부터다. 제목은 카드 대금 말고 꼭 적는다.
 /// 길이는 보안 규칙처럼 UTF-16 단위로 센다(`entryTitleMaxLength`).
 Set<EntryProblem> entryProblemsOf(EntryDraft draft) {
   final kind = draft.kind;

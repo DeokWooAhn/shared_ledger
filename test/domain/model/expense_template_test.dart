@@ -50,7 +50,7 @@ void main() {
     });
   });
 
-  test('그달에 만들 기본 월 지출은 고정 지출 값에 예정일을 붙이고 지급 전이다', () {
+  test('그달에 만들 고정 지출은 반복 설정 값에 예정일을 붙이고 지급 전이다', () {
     final draft = template(amount: 200000).draftFor(const YearMonth(2026, 11));
 
     expect(
@@ -122,43 +122,87 @@ void main() {
     );
   });
 
-  group('입력 검사', () {
-    test('내용은 40자까지 받는다', () {
-      TemplateDraft draft(String title) => TemplateDraft(
-        memberId: 'owner',
-        title: title,
-        categoryId: 'c',
-        paymentMethodId: 'p',
-        dueDay: 1,
-      );
+  group('고정 지출 입력 검사', () {
+    EntryDraft draft({String title = '관리비', int? amount}) => EntryDraft(
+      kind: EntryKind.planned,
+      memberId: 'owner',
+      title: title,
+      amount: amount,
+      categoryId: 'c',
+      paymentMethodId: 'p',
+    );
 
-      expect(templateProblemsOf(draft('가' * 40)), isEmpty);
-      expect(templateProblemsOf(draft('가' * 41)), {
-        TemplateProblem.titleTooLong,
+    test('항목 검사에 매달 예정일을 더한다. 금액은 비울 수 있다', () {
+      expect(fixedExpenseProblemsOf(draft(), dueDay: 1), isEmpty);
+      expect(
+        fixedExpenseProblemsOf(draft(amount: 0), dueDay: lastDueDay),
+        isEmpty,
+      );
+      expect(fixedExpenseProblemsOf(draft(title: '가' * 41), dueDay: 1), {
+        EntryProblem.titleTooLong,
+      });
+      expect(fixedExpenseProblemsOf(draft(amount: -1), dueDay: 1), {
+        EntryProblem.amountNegative,
       });
     });
 
-    test('금액은 비우거나 0원부터 받고, 예정일은 1일부터 말일까지만 받는다', () {
-      TemplateDraft draft({int? amount, int dueDay = 1}) => TemplateDraft(
-        memberId: 'owner',
-        title: '관리비',
-        amount: amount,
-        categoryId: 'c',
-        paymentMethodId: 'p',
-        dueDay: dueDay,
-      );
+    test('예정일은 1일부터 말일까지만 받는다', () {
+      for (final dueDay in [null, 0, lastDueDay + 1]) {
+        expect(fixedExpenseProblemsOf(draft(), dueDay: dueDay), {
+          EntryProblem.dueDayMissing,
+        }, reason: '$dueDay');
+      }
+    });
+  });
 
-      expect(templateProblemsOf(draft()), isEmpty);
-      expect(templateProblemsOf(draft(amount: 0, dueDay: lastDueDay)), isEmpty);
-      expect(templateProblemsOf(draft(amount: -1)), {
-        TemplateProblem.amountNegative,
-      });
-      expect(templateProblemsOf(draft(dueDay: 0)), {
-        TemplateProblem.dueDayOutOfRange,
-      });
-      expect(templateProblemsOf(draft(dueDay: lastDueDay + 1)), {
-        TemplateProblem.dueDayOutOfRange,
-      });
+  group('고정 지출 항목과 반복 설정', () {
+    const entry = EntryDraft(
+      kind: EntryKind.planned,
+      memberId: 'partner',
+      title: ' 관리비 ',
+      amount: 212000,
+      categoryId: 'c-living',
+      paymentMethodId: 'p-account',
+      memo: '10월 난방',
+    );
+
+    test('반복 설정 값은 항목의 칸을 옮기고 금액은 따로 받는다', () {
+      expect(
+        templateDraftOf(entry, dueDay: lastDueDay, amount: null),
+        const TemplateDraft(
+          memberId: 'partner',
+          title: '관리비',
+          categoryId: 'c-living',
+          paymentMethodId: 'p-account',
+          dueDay: lastDueDay,
+        ),
+      );
+    });
+
+    test('그달 항목에는 매달 예정일의 그달 날짜를 붙이고, 없는 날은 그달 말일로 맞춘다', () {
+      expect(
+        fixedEntryIn(entry, const YearMonth(2026, 10), 25).dueOn,
+        DateTime(2026, 10, 25),
+      );
+      expect(
+        fixedEntryIn(entry, const YearMonth(2027, 2), 30).dueOn,
+        DateTime(2027, 2, 28),
+      );
+      expect(fixedEntryIn(entry, const YearMonth(2026, 10), 25).memo, '10월 난방');
+    });
+
+    test('뒤 달은 고른 달보다 뒤의 달만 오래된 것부터 고른다', () {
+      const october = YearMonth(2026, 10);
+      expect(
+        monthsAfter({
+          october.next.next,
+          october.previous,
+          october,
+          october.next,
+        }, october),
+        [october.next, october.next.next],
+      );
+      expect(monthsAfter(null, october), isEmpty);
     });
   });
 }

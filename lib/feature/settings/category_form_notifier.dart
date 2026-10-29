@@ -40,7 +40,7 @@ class CategoryFormState {
     this.outcome,
   });
 
-  /// 이 분류의 기본 지출을 월 요약의 저축에 넣을지.
+  /// 이 분류의 고정 지출을 월 요약의 저축에 넣을지.
   final bool countsAsSaving;
 
   /// 이름 칸 아래에 보여 줄 문제.

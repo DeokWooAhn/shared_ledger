@@ -63,7 +63,7 @@ class _PaymentMethodSheetState extends ConsumerState<PaymentMethodSheet> {
     final problem = state.problem;
     final failure = state.failure;
     final enabled = !state.busy;
-    // 숨겨도 고정 지출은 이 결제수단으로 계속 기본 지출을 만든다. 쓰는 고정 지출이 있으면 미리 알린다.
+    // 숨겨도 반복 설정은 이 결제수단으로 계속 고정 지출을 만든다. 이 결제수단을 쓰는 반복 설정이 있으면 미리 알린다.
     final usedByTemplates = method == null
         ? 0
         : (ref.watch(templatesProvider).value ?? const [])
@@ -102,7 +102,7 @@ class _PaymentMethodSheetState extends ConsumerState<PaymentMethodSheet> {
             label: '종류',
             errorText: state.kindMissing ? keepAll('종류를 골라 주세요.') : null,
             note: state.kind == PaymentKind.card
-                ? '카드로 낸 돈은 다음 달 카드대금으로 빠져나가요. 카드대금은 항목 탭에서 이 카드로 적어요.'
+                ? '카드로 낸 돈은 다음 달 카드 대금으로 빠져나가요. 카드 대금은 항목 탭에서 이 카드로 적어요.'
                 : null,
             noteKey: const Key('method-card-note'),
             children: [

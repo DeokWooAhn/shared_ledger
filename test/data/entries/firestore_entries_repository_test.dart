@@ -32,7 +32,7 @@ void main() {
       expect(income?.memo, '세후');
     });
 
-    test('기본 월 지출은 금액이 비어 있으면 금액 미정으로 읽는다', () {
+    test('고정 지출은 금액이 비어 있으면 금액 미정으로 읽는다', () {
       for (final data in [
         {'amount': null},
         <String, dynamic>{},
@@ -49,7 +49,7 @@ void main() {
       }
     });
 
-    test('기본 월 지출은 지급한 날이 있으면 지급 완료다', () {
+    test('고정 지출은 지급한 날이 있으면 지급 완료다', () {
       final expense = plannedExpenseFromFirestore('template-1', {
         'memberId': 'owner',
         'categoryId': 'c1',
@@ -64,7 +64,7 @@ void main() {
       expect(expense?.isPaid, isTrue);
     });
 
-    test('기본 월 지출은 고정 지출에서 옮긴 예정일을 읽고, 잘못된 예정일은 비운다', () {
+    test('고정 지출은 반복 설정에서 옮긴 예정일을 읽고, 잘못된 예정일은 비운다', () {
       const data = {
         'memberId': 'owner',
         'categoryId': 'c1',
@@ -84,7 +84,7 @@ void main() {
       expect(broken?.dueOn, isNull);
     });
 
-    test('추가지출과 카드대금을 읽는다', () {
+    test('추가 지출과 카드 대금을 읽는다', () {
       final extra = extraExpenseFromFirestore('e1', {
         'memberId': 'owner',
         'paymentMethodId': 'card-1',
@@ -246,7 +246,7 @@ void main() {
       }
     });
 
-    test('새 기본 월 지출 문서에 값을 그대로 담고, 날짜는 yyyy-MM-dd로 적는다', () {
+    test('새 고정 지출 문서에 값을 그대로 담고, 날짜는 yyyy-MM-dd로 적는다', () {
       final data = newEntryData(drafts[EntryKind.planned]!, uid: 'me');
 
       expect(data['memberId'], 'partner');
@@ -275,7 +275,7 @@ void main() {
       expect(data.keys, isNot(contains('memo')));
     });
 
-    test('고정 지출로 만든 기본 월 지출은 그달 예정일을 담고 지급 전·메모 없이 만든다', () {
+    test('반복 설정으로 만든 고정 지출은 그달 예정일을 담고 지급 전·메모 없이 만든다', () {
       const template = ExpenseTemplate(
         id: 't-rent',
         title: '관리비',
@@ -324,7 +324,7 @@ void main() {
       expect(data['paidOn'], '2026-10-30');
     });
 
-    test('예정일은 기본 월 지출에만 쓴다', () {
+    test('예정일은 고정 지출에만 쓴다', () {
       final data = newEntryData(
         EntryDraft(
           kind: EntryKind.extra,
@@ -388,7 +388,7 @@ void main() {
       expect(data['updatedAt'], serverTime);
     });
 
-    test('카드대금을 고칠 때는 제목·결제수단 칸을 쓰지 않는다', () {
+    test('카드 대금을 고칠 때는 제목·결제수단 칸을 쓰지 않는다', () {
       final data = entryUpdateData(drafts[EntryKind.cardBill]!, uid: 'me');
 
       expect(data.keys, containsAll(['cardId', 'paidOn']));
@@ -535,7 +535,7 @@ void main() {
       expect(ledger.cardBills.map((e) => e.id), ['b1']);
     });
 
-    test('기본 월 지출 문서 id는 휴지통 항목과 읽을 수 없는 문서까지 모은다', () {
+    test('고정 지출 문서 id는 휴지통 항목과 읽을 수 없는 문서까지 모은다', () {
       // 고정 지출로 채울 때 이 id의 문서를 다시 만들지 않는다.
       const planned = {
         'memberId': 'owner',
@@ -628,7 +628,7 @@ void main() {
         entryFromFirestore(EntryKind.cardBill, 'b1', data),
         isA<CardBill>(),
       );
-      // 추가지출은 결제수단이 있어야 해서 카드대금 문서로는 읽지 못한다.
+      // 추가 지출은 결제수단이 있어야 해서 카드 대금 문서로는 읽지 못한다.
       expect(entryFromFirestore(EntryKind.extra, 'b1', data), isNull);
     });
   });

@@ -10,7 +10,7 @@ const activitySummaryMaxLength = 200;
 
 /// 변경 기록에 남기는 동작. [code]가 Firestore `action` 값이다(`entry.create` 형식, 규칙이 형식을 확인한다).
 ///
-/// 항목·고정 지출·설정을 바꿀 때 남긴다. 고정 지출로 그달 기본 월 지출을 자동으로 만드는 것은 남기지 않는다.
+/// 항목·고정 지출·설정을 바꿀 때 남긴다. 반복 설정으로 그달 고정 지출을 자동으로 만드는 것은 남기지 않는다.
 enum ActivityAction {
   entryCreate('entry.create'),
   entryUpdate('entry.update'),
@@ -47,7 +47,7 @@ class ActivityDraft {
 
   final ActivityAction action;
 
-  /// 무엇을 바꿨는지 한 줄. 예: `10월 추가지출 '점심' 12,000원`
+  /// 무엇을 바꿨는지 한 줄. 예: `10월 추가 지출 '점심' 12,000원`
   final String summary;
 
   @override

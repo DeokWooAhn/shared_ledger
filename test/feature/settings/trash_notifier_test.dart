@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_ledger/core/providers/providers.dart';
 import 'package:shared_ledger/domain/model/activity.dart';
 import 'package:shared_ledger/domain/model/auth_user.dart';
+import 'package:shared_ledger/domain/model/expense_template.dart';
 import 'package:shared_ledger/domain/model/ledger.dart';
 import 'package:shared_ledger/domain/model/ledger_entries.dart';
 import 'package:shared_ledger/domain/model/month_ledger.dart';
@@ -22,7 +23,7 @@ const snack = ExtraExpense(
   amount: 5000,
 );
 
-// 고정 지출에서 만든 이번 달 기본 월 지출. 지우면 다시 만들어져서 휴지통에 남긴다.
+// 반복 설정이 남아 있는 이번 달 고정 지출. 지우면 다시 만들어져서 휴지통에 남긴다.
 final rent = PlannedExpense(
   id: 'tpl-rent',
   categoryId: 'c1',
@@ -33,10 +34,21 @@ final rent = PlannedExpense(
   dueOn: DateTime(2026, 10, 25),
 );
 
+// [rent]를 만든 반복 설정.
+const rentTemplate = ExpenseTemplate(
+  id: 'tpl-rent',
+  title: '월세',
+  amount: 500000,
+  categoryId: 'c1',
+  paymentMethodId: 'p1',
+  memberId: 'owner',
+  dueDay: 25,
+);
+
 void main() {
   /// [entries]를 휴지통에 넣어 둔 가짜 저장소와 컨테이너.
   Future<(ProviderContainer, FakeEntriesRepository, FakeActivityRepository)>
-  trashed(List<LedgerEntry> entries) async {
+  trashed(List<LedgerEntry> entries, {bool loadTemplates = true}) async {
     final repository = FakeEntriesRepository({
       october: MonthLedger(
         trashed: [
@@ -52,11 +64,17 @@ void main() {
         const Ledger(id: 'l1', name: '우리 가계부', ownerUid: 'me'),
       ]),
       entries: repository,
+      templates: FakeTemplatesRepository([rentTemplate]),
       activity: activity,
     );
     await loadSignedInUser(container);
     container.listen(myLedgersProvider, (_, _) {});
     await container.read(myLedgersProvider.future);
+    // 휴지통 화면처럼 반복 설정 목록을 구독해 둔다.
+    if (loadTemplates) {
+      container.listen(templatesProvider, (_, _) {});
+      await container.read(templatesProvider.future);
+    }
     return (container, repository, activity);
   }
 
@@ -74,7 +92,7 @@ void main() {
     expect(entries.monthOf(october).extraExpenses, [snack]);
     expect(entries.monthOf(october).trashed, isEmpty);
     expect(activity.logged, [
-      const ActivityDraft(ActivityAction.entryRestore, "10월 추가지출 '간식' 5,000원"),
+      const ActivityDraft(ActivityAction.entryRestore, "10월 추가 지출 '간식' 5,000원"),
     ]);
     expect(states, [
       const TrashState(pending: (action: TrashAction.restore, id: 'x1')),
@@ -99,7 +117,7 @@ void main() {
     expect(container.read(trashNotifierProvider), const TrashState());
   });
 
-  test('고정 지출에서 만든 이번 달 기본 월 지출은 완전히 지우지 않는다', () async {
+  test('반복 설정이 남아 있는 이번 달 고정 지출은 완전히 지우지 않는다', () async {
     final (container, entries, activity) = await trashed([rent]);
     final states = recordStates(container, trashNotifierProvider);
 
@@ -109,6 +127,16 @@ void main() {
     expect(entries.monthOf(october).trashed.single.entry, rent);
     expect(activity.logged, isEmpty);
     expect(states, isEmpty);
+  });
+
+  test('반복 설정 목록을 받기 전에는 남아 있는지 몰라서 고정 지출을 완전히 지우지 않는다', () async {
+    final (container, entries, _) = await trashed([], loadTemplates: false);
+    final september = october.previous;
+    entries.put(september, MonthLedger(trashed: [TrashedEntry(entry: rent)]));
+
+    await container.read(trashNotifierProvider.notifier).purge(rent, september);
+
+    expect(entries.purged, isEmpty);
   });
 
   test('지난 달의 고정 지출 항목은 다시 만들지 않아서 완전히 지운다', () async {

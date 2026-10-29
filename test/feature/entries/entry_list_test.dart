@@ -35,7 +35,7 @@ void main() {
     Category(id: 'c-living', name: '소비'),
   ];
 
-  group('기본 월 지출 목록', () {
+  group('고정 지출 목록', () {
     final ledger = MonthLedger(
       plannedExpenses: [
         planned('통신비', 'c-living', 98000, paid: true),

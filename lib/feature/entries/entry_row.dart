@@ -27,7 +27,7 @@ typedef OpenEntryForm =
 /// 목록에 보이는 짧은 날짜. 예: '10/25'
 String entryShortDate(DateTime date) => '${date.month}/${date.day}';
 
-/// 지급 전 기본 월 지출의 예정일. 그달 마지막 날이면 '말일', 아니면 짧은 날짜다. 예: '말일', '10/25'
+/// 지급 전 고정 지출의 예정일. 그달 마지막 날이면 '말일', 아니면 짧은 날짜다. 예: '말일', '10/25'
 String entryDueDate(DateTime dueOn) =>
     DateTime(dueOn.year, dueOn.month, dueOn.day + 1).month != dueOn.month
     ? '말일'
@@ -46,11 +46,11 @@ String entriesFailureMessage(EntriesFailure failure) => switch (failure) {
 MemberSlot entryMemberSlot(String memberId) =>
     MemberSlot.values.asNameMap()[memberId] ?? MemberSlot.owner;
 
-/// 고치기 화면을 열고, 휴지통에 넣고 돌아오면 '되돌리기'를 띄운다.
+/// 고치기 화면을 열고, 휴지통에 넣거나 고정 지출을 그만하고 돌아오면 '되돌리기'를 띄운다.
 ///
 /// 되돌리기 실패는 [entriesNotifierProvider]의 실패로 오니, 부르는 화면이 그 실패를 듣고 알린다.
 /// 되돌리기는 부른 화면이 닫힌 뒤에도(요약 탭에서 연 달력을 닫음) 누를 수 있어서, 스낵바가 떠 있는 동안
-/// autoDispose Notifier를 살려 두고 누를 때 꺼낸다.
+/// autoDispose Notifier를 살려 두고 누를 때 되살린다.
 Future<void> editEntryWithUndo(
   BuildContext context,
   OpenEntryForm openForm,
@@ -64,21 +64,34 @@ Future<void> editEntryWithUndo(
     context,
     EntryFormArgs.edit(entry: entry, month: month),
   );
-  if (outcome != EntryFormOutcome.trashed) return;
+  final (message, undo) = switch (outcome) {
+    EntryTrashed() => (
+      '휴지통에 넣었어요.',
+      () => container
+          .read(entriesNotifierProvider.notifier)
+          .restore(entry, month),
+    ),
+    FixedExpenseStopped(:final template, :final months) => (
+      '고정 지출을 그만했어요. 다음 달부터 만들지 않아요.',
+      () => container
+          .read(entriesNotifierProvider.notifier)
+          .resumeFixed(template, months),
+    ),
+    EntrySaved() || null => (null, null),
+  };
+  if (message == null || undo == null) return;
   final keepController = container.listen(entriesNotifierProvider, (_, _) {});
   final snackBar = messenger.showSnackBar(
     SnackBar(
       key: const Key('trashed-snack-bar'),
-      content: Text(keepAll('휴지통에 넣었어요.')),
+      content: Text(keepAll(message)),
       // 동작이 있는 스낵바는 기본으로 계속 떠 있다. 되돌리기는 잠깐만 보여준다.
       persist: false,
       duration: const Duration(seconds: 5),
       action: SnackBarAction(
         key: const Key('restore-entry'),
         label: '되돌리기',
-        onPressed: () => container
-            .read(entriesNotifierProvider.notifier)
-            .restore(entry, month),
+        onPressed: () => unawaited(undo()),
       ),
     ),
   );

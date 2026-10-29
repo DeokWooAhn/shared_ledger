@@ -12,7 +12,7 @@ class EntryUseCases {
     : watchMonth = WatchMonthUseCase(entries),
       watchRejectedEntries = WatchRejectedEntriesUseCase(entries),
       saveEntry = SaveEntryUseCase(entries),
-      trashEntry = TrashEntryUseCase(entries),
+      trashEntry = TrashEntryUseCase(entries, now),
       restoreEntry = RestoreEntryUseCase(entries),
       purgeEntry = PurgeEntryUseCase(entries, now);
 

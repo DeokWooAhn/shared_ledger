@@ -40,6 +40,8 @@ linkActivity({
   }
   // 항목을 더하면 가계부의 항목 있는 달 목록도 같이 바뀐다(실제는 같은 일괄 쓰기).
   linked.entries.ledgers ??= ledgers;
+  // 고정 지출을 더하거나 그만하면 그달 항목도 같이 바뀐다(실제는 같은 트랜잭션).
+  linked.templates.entries ??= linked.entries;
   return linked;
 }
 

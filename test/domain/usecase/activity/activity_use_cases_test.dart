@@ -8,7 +8,7 @@ void main() {
   test('최근 변경 기록을 그 가계부 것으로 정한 개수만 지켜본다', () async {
     final activity = FakeActivityRepository();
     activity.log(
-      const ActivityDraft(ActivityAction.entryCreate, '추가지출 · 점심 · 9,000원'),
+      const ActivityDraft(ActivityAction.entryCreate, '추가 지출 · 점심 · 9,000원'),
       uid: 'me',
     );
 
@@ -16,7 +16,7 @@ void main() {
       activity,
     ).watchRecentActivity('l1').first;
 
-    expect(items.single.summary, '추가지출 · 점심 · 9,000원');
+    expect(items.single.summary, '추가 지출 · 점심 · 9,000원');
     expect(activity.watched, ['l1']);
   });
 

@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_ledger/core/providers/providers.dart';
 import 'package:shared_ledger/domain/model/auth_user.dart';
+import 'package:shared_ledger/domain/model/expense_template.dart';
 import 'package:shared_ledger/domain/model/ledger.dart';
 import 'package:shared_ledger/domain/model/ledger_entries.dart';
 import 'package:shared_ledger/domain/model/member.dart';
@@ -19,12 +20,14 @@ const october = YearMonth(2026, 10);
 /// 로그인하고 가계부 목록까지 받은 컨테이너. Notifier가 내 uid와 지금 가계부를 바로 읽을 수 있다.
 Future<ProviderContainer> ready({
   FakeEntriesRepository? entries,
+  FakeTemplatesRepository? templates,
   Ledger ledger = mine,
 }) async {
   final container = createContainer(
     auth: FakeAuthRepository(signedIn: me),
     ledgers: FakeLedgerRepository([ledger]),
     entries: entries,
+    templates: templates,
   );
   await loadSignedInUser(container);
   container.listen(myLedgersProvider, (_, _) {});
@@ -45,7 +48,7 @@ const rent = PlannedExpense(
 
 void main() {
   group('새 항목', () {
-    test('누가는 나, 날짜는 보는 달이 이번 달이면 오늘로 시작하고 기본 월 지출은 지급 전이다', () async {
+    test('누가는 나, 날짜는 보는 달이 이번 달이면 오늘로 시작하고 고정 지출은 지급 전이다', () async {
       final container = await ready();
 
       final extra = container.read(
@@ -67,7 +70,7 @@ void main() {
       expect(nextMonth.date, isNull);
     });
 
-    test('달력에서 고른 날로 열면 그 날짜로 시작하고, 종류를 바꿔도 유지한다(기본 월 지출은 지급 전)', () async {
+    test('달력에서 고른 날로 열면 그 날짜로 시작하고, 종류를 바꿔도 유지한다(고정 지출은 지급 전)', () async {
       final container = await ready();
       final provider = entryFormNotifierProvider(
         EntryFormArgs.add(
@@ -101,7 +104,7 @@ void main() {
       );
     });
 
-    test('추가지출을 저장하면 보고 있는 달에 더하고 저장 결과로 닫힌다', () async {
+    test('추가 지출을 저장하면 보고 있는 달에 더하고 저장 결과로 닫힌다', () async {
       final entries = FakeEntriesRepository();
       final container = await ready(entries: entries);
       final provider = entryFormNotifierProvider(add(EntryKind.extra));
@@ -211,18 +214,19 @@ void main() {
             .save(amount: '', title: '  ', memo: '');
       }
 
-      // 기본 월 지출은 금액을 비워 둘 수 있다(금액 미정).
+      // 고정 지출은 금액을 비워 둘 수 있다(금액 미정).
       expect(container.read(planned).problems, {
         EntryProblem.titleMissing,
         EntryProblem.categoryMissing,
         EntryProblem.paymentMethodMissing,
+        EntryProblem.dueDayMissing,
       });
       expect(container.read(extra).problems, {
         EntryProblem.amountMissing,
         EntryProblem.titleMissing,
         EntryProblem.paymentMethodMissing,
       });
-      // 카드대금은 제목이 없다.
+      // 카드 대금은 제목이 없다.
       expect(container.read(bill).problems, {
         EntryProblem.amountMissing,
         EntryProblem.cardMissing,
@@ -239,11 +243,13 @@ void main() {
 
       notifier
         ..textEdited(EntryTextField.title)
-        ..selectCategory('c-living');
+        ..selectCategory('c-living')
+        ..selectDueDay(25);
 
       expect(container.read(provider).problems, {
         EntryProblem.paymentMethodMissing,
       });
+      expect(container.read(provider).dueDay, 25);
     });
 
     test('종류를 바꾸면 누가·결제수단은 남기고 분류·날짜는 그 종류의 처음 값으로 돌린다', () async {
@@ -479,6 +485,91 @@ void main() {
 
       expect(entries.trashed, isEmpty);
       expect(container.read(provider).pending, isNull);
+    });
+  });
+
+  group('반복 설정이 있는 고정 지출', () {
+    const rentTemplate = ExpenseTemplate(
+      id: 'template-rent',
+      title: '관리비',
+      categoryId: 'c-living',
+      paymentMethodId: 'p-account',
+      memberId: 'partner',
+      dueDay: 25,
+    );
+
+    EntryFormArgs edit() => EntryFormArgs.edit(entry: rent, month: october);
+
+    Future<(ProviderContainer, FakeEntriesRepository, FakeTemplatesRepository)>
+    withTemplate({
+      List<ExpenseTemplate> templates = const [rentTemplate],
+    }) async {
+      final entries = FakeEntriesRepository({
+        october: const MonthLedger(plannedExpenses: [rent]),
+      });
+      final fake = FakeTemplatesRepository(templates);
+      final container = await ready(entries: entries, templates: fake);
+      return (container, entries, fake);
+    }
+
+    test('목록을 받기 전에 휴지통을 눌렀어도 반복 설정이 있으면 휴지통에 넣지 않는다', () async {
+      final (container, entries, _) = await withTemplate();
+      final provider = entryFormNotifierProvider(edit());
+      recordStates(container, provider);
+
+      await container.read(provider.notifier).trash();
+
+      expect(entries.trashed, isEmpty);
+      expect(container.read(provider).failure, EntryFormFailure.trash);
+      expect(container.read(provider).pending, isNull);
+    });
+
+    test('그만하면 휴지통에 넣은 달과 그만하기 전 반복 설정을 결과로 남긴다', () async {
+      final (container, _, templates) = await withTemplate();
+      final provider = entryFormNotifierProvider(edit());
+      recordStates(container, provider);
+
+      await container.read(provider.notifier).stop();
+
+      expect(templates.templates, isEmpty);
+      final outcome = container.read(provider).outcome;
+      expect(
+        outcome,
+        isA<FixedExpenseStopped>()
+            .having((o) => o.template, 'template', rentTemplate)
+            .having((o) => o.months, 'months', [october]),
+      );
+    });
+
+    test('그사이 상대가 그만했으면 gone을 알리고, 알린 뒤 끈다', () async {
+      final (container, _, _) = await withTemplate(templates: const []);
+      final provider = entryFormNotifierProvider(edit());
+      final states = recordStates(container, provider);
+      final notifier = container.read(provider.notifier);
+
+      await notifier.stop();
+
+      expect(states.first.pending, EntryFormAction.stop);
+      expect(container.read(provider).failure, EntryFormFailure.gone);
+      expect(container.read(provider).pending, isNull);
+      notifier.failureShown();
+      expect(container.read(provider).failure, isNull);
+    });
+
+    test('연결이 없으면 offline을 알리고 반복 설정은 그대로다', () async {
+      final (container, _, templates) = await withTemplate();
+      templates.offline = true;
+      final provider = entryFormNotifierProvider(edit());
+      recordStates(container, provider);
+      final notifier = container.read(provider.notifier);
+
+      await notifier.stop();
+
+      expect(container.read(provider).failure, EntryFormFailure.offline);
+      expect(container.read(provider).pending, isNull);
+      expect(templates.templates, [rentTemplate]);
+      notifier.failureShown();
+      expect(container.read(provider).failure, isNull);
     });
   });
 }

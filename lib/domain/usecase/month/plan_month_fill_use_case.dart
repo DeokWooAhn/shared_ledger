@@ -3,7 +3,7 @@ import '../../model/ledger.dart';
 import '../../model/month_ledger.dart';
 import '../../model/year_month.dart';
 
-/// 보고 있는 달에 고정 지출로 채울 것.
+/// 보고 있는 달에 반복 설정으로 채울 것.
 class PlannedFill {
   const PlannedFill({
     required this.ledgerId,
@@ -15,7 +15,7 @@ class PlannedFill {
   final String ledgerId;
   final YearMonth month;
 
-  /// 그달에 아직 기본 월 지출이 없는 고정 지출.
+  /// 그달에 아직 고정 지출 항목이 없는 반복 설정.
   final List<ExpenseTemplate> templates;
 
   /// 채우면서 가계부의 항목 있는 달 목록에 그달을 더할지([Ledger.needsToRecord]).
@@ -42,13 +42,13 @@ class PlannedFill {
   }
 }
 
-/// 보고 있는 [month]에 고정 지출로 채울 것을 정한다. 채울 것이 없거나 채울 수 없으면 null.
+/// 보고 있는 [month]에 반복 설정으로 채울 것을 정한다. 채울 것이 없거나 채울 수 없으면 null.
 ///
 /// 보기 전용이면(규칙이 막는다), 자동으로 채우지 않는 달이면(지난 달·다음 달보다 먼 달, [fillsFromTemplates]),
 /// 요약·항목 탭이 오가지 않는 달이면([ledgerMonths]에 없는 달. 달력으로 지나가는 다음 달 등은 달력에서 가계부를 만들 때 채운다),
 /// 그달 항목이나 고정 지출을 아직 받지 못했으면 null이다.
 ///
-/// 그달 항목([entries])과 고정 지출([templates])은 앞의 조건을 지난 뒤에만 꺼낸다. 공급자가 그때만 구독하게 하려는 것이다.
+/// 그달 항목([entries])과 반복 설정([templates])은 앞의 조건을 지난 뒤에만 꺼낸다. 공급자가 그때만 구독하게 하려는 것이다.
 class PlanMonthFillUseCase {
   const PlanMonthFillUseCase(this._now);
 

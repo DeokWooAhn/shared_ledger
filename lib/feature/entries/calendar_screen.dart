@@ -46,7 +46,7 @@ String calendarDayTitle(DateTime date) =>
 /// 달력 화면(design/app/08). 보고 있는 달의 항목을 날짜별로 보여주고, 고른 날의 항목을 아래(넓으면 옆)에 둔다.
 ///
 /// 날짜 판은 손가락을 따라 밀리고 옆 달이 붙어 들어온다. 반 넘게 밀거나 빠르게 튕기면 그 달에 멈추고, 멈춘 달을 본다.
-/// 항목을 누르면 고치는 화면, 항목이 없는 날은 빈 칸 안내를 누르면 그날로 새 항목(추가지출)을 연다.
+/// 항목을 누르면 고치는 화면, 항목이 없는 날은 빈 칸 안내를 누르면 그날로 새 항목(추가 지출)을 연다.
 /// 요약·항목 탭이 오가지 않는 달(항목이 없는 달)이면 그달 가계부를 새로 만들지 먼저 묻는다. 만들면 고정 지출이 그달에 채워진다
 /// (지난 달은 채우지 않는다).
 /// 그런 달을 보다가 닫으면 두 탭은 달력을 열었던 달로 돌아간다.
@@ -635,7 +635,7 @@ class _DayCell extends StatelessWidget {
   }
 }
 
-/// 지급 전 기본 월 지출의 예정일 표시. 테두리만 있는 작은 '예정'.
+/// 지급 전 고정 지출의 예정일 표시. 테두리만 있는 작은 '예정'.
 class _PlanTag extends StatelessWidget {
   const _PlanTag();
 
@@ -871,7 +871,7 @@ class _DayPanel extends ConsumerWidget {
   }
 }
 
-// 그날로 추가지출을 연다. [addMonth]가 있으면(그달 가계부가 없음) 새로 만들지 먼저 묻고, 만든다고 하면 그달 가계부를
+// 그날로 추가 지출을 연다. [addMonth]가 있으면(그달 가계부가 없음) 새로 만들지 먼저 묻고, 만든다고 하면 그달 가계부를
 // 만든 뒤(고정 지출이 채워진다) 연다. 취소하거나 만들지 못하면(실패는 Notifier가 알린다) 열지 않는다.
 Future<void> _addOn(
   BuildContext context,
@@ -910,7 +910,7 @@ class _AddMonthDialog extends StatelessWidget {
       content: Text(
         keepAll(
           templateCount > 0
-              ? '추가하면 이 달 가계부가 생기고, 고정 지출 $templateCount개를 이 달 기본 월 지출로 채워요. 추가할까요?'
+              ? '추가하면 이 달 가계부가 생기고, 고정 지출 $templateCount개도 함께 들어가요. 추가할까요?'
               : '추가하면 이 달 가계부가 생겨서 요약·항목 탭에서도 볼 수 있어요. 추가할까요?',
         ),
       ),
@@ -930,7 +930,7 @@ class _AddMonthDialog extends StatelessWidget {
   }
 }
 
-/// 항목이 없는 날의 안내. 적을 수 있으면 안내 전체가 그날로 새 항목(추가지출)을 여는 단추다.
+/// 항목이 없는 날의 안내. 적을 수 있으면 안내 전체가 그날로 새 항목(추가 지출)을 여는 단추다.
 class _EmptyDay extends StatelessWidget {
   const _EmptyDay({required this.onAdd});
 

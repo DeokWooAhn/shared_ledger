@@ -28,11 +28,11 @@ Notifier는 저장소 대신 domain의 UseCase를 영역별 홀더로 부른다(
 
 ## 탭 화면
 
-홈은 탭 4개다(`HomeTab`: 요약·항목·고정 지출·설정). 틀은 `lib/feature/home/home_shell.dart`, 경로는 `lib/router.dart`의 `StatefulShellRoute.indexedStack`.
+홈은 탭 3개다(`HomeTab`: 요약·항목·설정. 가계부 탭은 다음 작업). 틀은 `lib/feature/home/home_shell.dart`, 경로는 `lib/router.dart`의 `StatefulShellRoute.indexedStack`.
 
 - 탭 화면은 `TabPage`(`lib/core/widget/tab_page.dart`)로 감싼다. 넓은 화면에서 본문을 가운데 두고, 좁은 화면에서 떠 있는 탭 막대만큼 아래 여백을 둔다.
   두 칸으로 놓는 탭은 `LayoutBuilder`로 칸 수를 정하고 `TabPage(maxWidth:)`를 넓힌다(월 요약: 본문 폭 840 이상이면 두 칸).
-- 머리말은 달을 보는 탭이면 `MonthHeader`, 아니면 `TabTitle`이다. 예: `lib/feature/summary/summary_screen.dart`, `lib/feature/templates/templates_screen.dart`
+- 머리말은 달을 보는 탭이면 `MonthHeader`, 아니면 `TabTitle`이다. 예: `lib/feature/summary/summary_screen.dart`, `lib/feature/settings/settings_screen.dart`
 - 보고 있는 달은 `selectedMonthProvider`를 읽는다(탭을 옮겨도 같은 달). 오늘 날짜가 필요하면 `clockProvider`.
   머리말로 오가는 달은 `ledgerMonthsProvider`(항목 있는 달 + 이번 달, 목록을 아직 모으지 않았으면 null)이고, 달력은 모든 달을 보여준다.
   새 항목을 더하는 쓰기는 `Ledger.needsToRecord(month)`로 그달을 가계부의 달 목록에 같이 더한다(`SaveEntryUseCase`, `docs/firestore.md`의 `months`).
