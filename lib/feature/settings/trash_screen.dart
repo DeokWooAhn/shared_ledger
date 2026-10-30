@@ -172,7 +172,7 @@ class _TrashContent extends ConsumerWidget {
                   canWrite: canWrite,
                   busy:
                       state.busy ||
-                      (templateIds == null && item.entry is PlannedExpense),
+                      (templateIds == null && item.entry.kind.isFixed),
                   onRestore: () => notifier.restore(item.entry, month),
                   onPurge: () => _confirmPurge(
                     context,

@@ -70,7 +70,7 @@ class TrashNotifier extends Notifier<TrashState> {
   /// 반복 설정 목록을 아직 받지 못했거나 못 받았으면 남아 있는지 알 수 없어서 고정 지출·고정 수입은 지우지 않는다.
   Future<void> purge(LedgerEntry entry, YearMonth month) {
     final templateIds = _templateIds;
-    if (entry is PlannedExpense && templateIds == null) return Future.value();
+    if (entry.kind.isFixed && templateIds == null) return Future.value();
     final known = templateIds ?? const <String>{};
     final thisMonth = YearMonth.of(ref.read(clockProvider)());
     if (staysInTrash(

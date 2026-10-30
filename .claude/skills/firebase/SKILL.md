@@ -56,6 +56,7 @@ PR #21의 공휴일(`holidays`) 읽기 규칙을 배포했다. `createsMonths`�
 TTL 정책 5개(`firestore:indexes`)는 2026-10-23 PR #15 때 배포했다.
 
 고정 수입 규칙(`fixedIncomes` 컬렉션, 반복 설정의 `kind`·`keepsKind`, 2026-10-29)은 **새 앱을 운영 데이터로 돌리기 전에** 배포해야 한다.
+같은 때 `fixedIncomes`의 `purgeAt` TTL 정책(6번째)도 `firestore:indexes`로 배포한다. 빠지면 휴지통의 고정 수입이 30일 뒤에도 지워지지 않는다.
 배포 전에는 그달 `fixedIncomes`를 읽지 못해(permission-denied) 그달 구독 전체가 실패하고 요약·항목 탭이 항목을 불러오지 못한다.
 이 규칙은 옛 앱이 쓰는 문서를 막지 않아서 먼저 배포해도 옛 앱은 그대로 돈다.
 

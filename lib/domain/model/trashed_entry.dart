@@ -29,6 +29,6 @@ bool staysInTrash(
   required YearMonth thisMonth,
   required Set<String> templateIds,
 }) =>
-    (entry is PlannedExpense || entry is FixedIncome) &&
+    entry.kind.isFixed &&
     templateIds.contains(entry.id) &&
     month.compareTo(thisMonth) >= 0;
