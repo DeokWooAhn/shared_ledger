@@ -137,7 +137,8 @@ class _TrashContent extends ConsumerWidget {
         }
         return bAt.compareTo(aAt);
       });
-    // 반복 설정 목록을 받기 전(또는 오류)에는 고정 지출·고정 수입이 남아야 하는지 몰라서 그 줄의 단추를 막는다.
+    // 반복 설정 목록을 받기 전(또는 오류)에는 고정 지출·고정 수입이 남아야 하는지 몰라서 그 줄의 완전 삭제를 막는다.
+    // 되살리기는 반복 설정과 상관없어서 막지 않는다.
     final templateIds = switch (ref.watch(templatesProvider)) {
       AsyncData(:final value) => {for (final template in value) template.id},
       _ => null,
@@ -170,9 +171,8 @@ class _TrashContent extends ConsumerWidget {
                       ),
                   now: now,
                   canWrite: canWrite,
-                  busy:
-                      state.busy ||
-                      (templateIds == null && item.entry.kind.isFixed),
+                  busy: state.busy,
+                  purgeUnknown: templateIds == null && item.entry.kind.isFixed,
                   onRestore: () => notifier.restore(item.entry, month),
                   onPurge: () => _confirmPurge(
                     context,
@@ -210,6 +210,7 @@ class _TrashRow extends StatelessWidget {
     required this.now,
     required this.canWrite,
     required this.busy,
+    required this.purgeUnknown,
     required this.onRestore,
     required this.onPurge,
     super.key,
@@ -224,6 +225,9 @@ class _TrashRow extends StatelessWidget {
   final DateTime now;
   final bool canWrite;
   final bool busy;
+
+  /// 반복 설정 목록을 아직 몰라 완전 삭제를 막는지. 되살리기는 막지 않는다.
+  final bool purgeUnknown;
   final VoidCallback onRestore;
   final VoidCallback onPurge;
 
@@ -312,7 +316,7 @@ class _TrashRow extends StatelessWidget {
                       minimumSize: const Size(64, 48),
                       foregroundColor: theme.colorScheme.error,
                     ),
-                    onPressed: busy ? null : onPurge,
+                    onPressed: busy || purgeUnknown ? null : onPurge,
                     icon: const Icon(Icons.delete_forever_outlined, size: 20),
                     label: const Text('완전 삭제'),
                   ),
