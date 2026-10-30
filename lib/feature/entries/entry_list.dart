@@ -2,7 +2,7 @@ import '../../domain/model/category.dart';
 import '../../domain/model/ledger_entries.dart';
 import '../../domain/model/month_ledger.dart';
 
-/// 항목 탭 목록의 한 묶음. 고정 지출은 분류마다 묶고, 다른 종류는 제목 없는 한 묶음이다.
+/// 항목 탭 목록의 한 묶음. 고정 지출은 분류마다 묶고, 다른 종류(고정 수입 포함)는 제목 없는 한 묶음이다.
 class EntryGroup {
   const EntryGroup({
     required this.entries,
@@ -26,19 +26,20 @@ class EntryGroup {
   final String key;
 }
 
-/// 항목 탭에 그릴 한 종류의 목록. 건수와 합계, 고정 지출이면 지급 전 건수까지 담는다.
+/// 항목 탭에 그릴 한 종류의 목록. 건수와 합계, 고정 지출·고정 수입이면 지급 전·받기 전 건수까지 담는다.
 class EntryList {
   const EntryList({
     required this.groups,
     required this.count,
     required this.total,
-    this.unpaidCount = 0,
+    this.pendingCount = 0,
   });
 
   /// 한 달 항목에서 [kind] 종류의 목록을 만든다.
   ///
   /// 고정 지출은 설정의 분류 순서로 묶고, 설정에서 지워진 분류에 남은 항목은 맨 뒤 '분류 없음'에 모은다.
-  /// 묶음 안에서는 제목 순서다. 다른 종류는 날짜가 늦은 것부터, 날짜가 없으면 맨 뒤다.
+  /// 묶음 안에서는 제목 순서다. 고정 수입은 분류가 없어 한 묶음에 제목 순서다.
+  /// 다른 종류는 날짜가 늦은 것부터, 날짜가 없으면 맨 뒤다.
   factory EntryList.of(
     EntryKind kind,
     MonthLedger ledger, {
@@ -46,11 +47,24 @@ class EntryList {
   }) {
     final entries = switch (kind) {
       EntryKind.income => ledger.incomes,
+      EntryKind.fixedIncome => ledger.fixedIncomes,
       EntryKind.planned => ledger.plannedExpenses,
       EntryKind.extra => ledger.extraExpenses,
       EntryKind.cardBill => ledger.cardBills,
     };
     final total = _sum(entries);
+    if (kind == EntryKind.fixedIncome) {
+      final incomes = ledger.fixedIncomes;
+      return EntryList(
+        groups: [
+          if (incomes.isNotEmpty)
+            EntryGroup(entries: [...incomes]..sort(_byTitle), total: total),
+        ],
+        count: incomes.length,
+        total: total,
+        pendingCount: incomes.where((e) => !e.isReceived).length,
+      );
+    }
     if (kind != EntryKind.planned) {
       final sorted = [...entries]..sort(_byDateDesc);
       return EntryList(
@@ -86,7 +100,7 @@ class EntryList {
       ],
       count: planned.length,
       total: total,
-      unpaidCount: planned.where((e) => !e.isPaid).length,
+      pendingCount: planned.where((e) => !e.isPaid).length,
     );
   }
 
@@ -94,8 +108,8 @@ class EntryList {
   final int count;
   final int total;
 
-  /// 지급하지 않은 고정 지출 건수. 다른 종류는 0이다.
-  final int unpaidCount;
+  /// 지급하지 않은 고정 지출이나 받지 않은 고정 수입 건수. 다른 종류는 0이다.
+  final int pendingCount;
 
   bool get isEmpty => count == 0;
 }
@@ -105,6 +119,7 @@ int _sum(Iterable<LedgerEntry> entries) =>
 
 String _titleOf(LedgerEntry entry) => switch (entry) {
   Income(:final title) ||
+  FixedIncome(:final title) ||
   PlannedExpense(:final title) ||
   ExtraExpense(:final title) => title,
   CardBill() => '',

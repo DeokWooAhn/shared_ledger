@@ -18,7 +18,7 @@ enum EntriesFailure {
   restoreGone,
   restore,
 
-  /// 그달 가계부 만들기(고정 지출 채우기)는 온라인에서만 된다.
+  /// 그달 가계부 만들기(반복 설정으로 채우기)는 온라인에서만 된다.
   addMonthOffline,
   addMonth,
 }
@@ -59,7 +59,7 @@ final entriesNotifierProvider =
       EntriesNotifier.new,
     );
 
-/// 항목 탭과 달력의 Notifier. 입력 화면에서 휴지통에 넣은 항목이나 그만한 고정 지출을 '되돌리기'로 되살리고,
+/// 항목 탭과 달력의 Notifier. 입력 화면에서 휴지통에 넣은 항목이나 그만한 고정 지출·고정 수입을 '되돌리기'로 되살리고,
 /// 달력에서 가계부가 없는 달의 가계부를 만든다.
 class EntriesNotifier extends Notifier<EntriesState> {
   @override
@@ -97,7 +97,7 @@ class EntriesNotifier extends Notifier<EntriesState> {
     }
   }
 
-  /// 그만한 고정 지출을 되살린다. [template]은 그만하기 전의 반복 설정, [months]는 그때 휴지통에 넣은 달이다.
+  /// 그만한 고정 지출·고정 수입을 되살린다. [template]은 그만하기 전의 반복 설정, [months]는 그때 휴지통에 넣은 달이다.
   /// 온라인에서만 되고, 실패는 꺼내기 실패와 같이 알린다.
   Future<void> resumeFixed(
     ExpenseTemplate template,
@@ -110,7 +110,7 @@ class EntriesNotifier extends Notifier<EntriesState> {
     try {
       await ref
           .read(templateUseCasesProvider)
-          .resumeFixedExpense(
+          .resumeFixedEntry(
             ledgerId: ledgerId,
             template: template,
             months: months,
@@ -127,14 +127,14 @@ class EntriesNotifier extends Notifier<EntriesState> {
         },
       );
     } catch (e) {
-      debugPrint('고정 지출 되살리기 실패: $e');
+      debugPrint('반복 설정 되살리기 실패: $e');
       if (!ref.mounted) return;
       state = const EntriesState(failure: EntriesFailure.restore);
     }
   }
 
-  /// [month] 가계부를 새로 만든다. 그달을 항목 있는 달 목록에 더하고, 반복 설정이 있으면 그달 고정 지출(지급 전)로 채운다.
-  /// 지난 달은 고정 지출을 채우지 않고 달만 만든다(`AddMonthUseCase`).
+  /// [month] 가계부를 새로 만든다. 그달을 항목 있는 달 목록에 더하고, 반복 설정이 있으면 그달 고정 지출·고정 수입(지급 전·받기 전)로 채운다.
+  /// 지난 달은 반복 설정으로 채우지 않고 달만 만든다(`AddMonthUseCase`).
   ///
   /// 달력에서 가계부가 없는 달에 항목을 넣으려 할 때 부른다. 한 트랜잭션이라 온라인에서만 되고, 만들었으면 true다.
   /// 실패는 [EntriesState.failure]로 알린다.
@@ -146,7 +146,7 @@ class EntriesNotifier extends Notifier<EntriesState> {
     // 아무도 듣지 않는 공급자는 멈춰 있어 값을 기다리면 끝나지 않는다. 받는 동안 직접 듣는다.
     final templates = ref.listen(templatesProvider.future, (_, _) {});
     try {
-      // 고정 지출은 채우는 달일 때만 기다린다.
+      // 반복 설정은 채우는 달일 때만 기다린다.
       await ref
           .read(monthUseCasesProvider)
           .addMonth(

@@ -181,19 +181,25 @@ service cloud.firestore {
           return value is string && value.size() >= 1 && value.size() <= max;
         }
 
-        // 고정 지출: 앱의 newTemplateData(lib/core/data/templates_repository.dart)와 같은 필드만 받는다.
-        // 금액은 0 이상의 정수이거나 비어 있고(금액 미정), 예정일은 1~31일(31은 말일)이다.
+        // 반복 설정(템플릿): 앱의 newTemplateData(lib/data/templates/firestore_templates_repository.dart)와 같은 필드만 받는다.
+        // kind가 없으면 고정 지출, 'income'이면 고정 수입(2026-10-29)이다. 예정일은 1~31일(31은 말일)이다.
+        // 고정 지출의 금액은 0 이상의 정수이거나 비어 있다(금액 미정). 고정 수입은 분류·결제수단이 없고 금액을 꼭 적는다.
         function validTemplate() {
           let data = request.resource.data;
           let amount = data.get('amount', null);
           let dueDay = data.get('dueDay', null);
+          let income = data.get('kind', null) == 'income';
           return settings != 'templates'
-            || (data.keys().hasOnly(['title', 'amount', 'categoryId', 'paymentMethodId', 'memberId', 'dueDay',
-                  'createdBy', 'createdAt', 'updatedBy', 'updatedAt'])
+            || ((income
+                  ? data.keys().hasOnly(['kind', 'title', 'amount', 'memberId', 'dueDay',
+                      'createdBy', 'createdAt', 'updatedBy', 'updatedAt'])
+                    && amount is int && amount >= 0
+                  : data.keys().hasOnly(['title', 'amount', 'categoryId', 'paymentMethodId', 'memberId', 'dueDay',
+                      'createdBy', 'createdAt', 'updatedBy', 'updatedAt'])
+                    && (amount == null || (amount is int && amount >= 0))
+                    && settingText('categoryId', 100)
+                    && settingText('paymentMethodId', 100))
               && settingText('title', 40)
-              && (amount == null || (amount is int && amount >= 0))
-              && settingText('categoryId', 100)
-              && settingText('paymentMethodId', 100)
               && data.get('memberId', null) in ['owner', 'partner']
               && dueDay is int && dueDay >= 1 && dueDay <= 31);
         }
@@ -234,8 +240,11 @@ service cloud.firestore {
         }
 
         // 결제수단 종류는 바꿀 수 없다. 카드인지에 따라 지난 달 계산이 달라진다.
+        // 반복 설정의 종류(고정 지출·고정 수입)도 바꿀 수 없다. 그달 항목이 종류별 컬렉션에 있다.
         function keepsKind() {
-          return settings != 'paymentMethods' || request.resource.data.kind == resource.data.kind;
+          return (settings != 'paymentMethods' || request.resource.data.kind == resource.data.kind)
+            && (settings != 'templates'
+              || request.resource.data.get('kind', null) == resource.data.get('kind', null));
         }
 
         function validSetting() {
@@ -255,14 +264,14 @@ service cloud.firestore {
 
       match /months/{month}/{entryType}/{entryId} {
         function isEntryType() {
-          return entryType in ['incomes', 'planned', 'extras', 'cardBills'];
+          return entryType in ['incomes', 'fixedIncomes', 'planned', 'extras', 'cardBills'];
         }
 
         function validMonth() {
           return month.matches('^[0-9]{4}-(0[1-9]|1[0-2])$');
         }
 
-        // 금액은 0 이상의 정수(원). 기본 월 지출(planned)만 비워 둘 수 있다.
+        // 금액은 0 이상의 정수(원). 고정 지출(planned)만 비워 둘 수 있다.
         function validAmount() {
           let amount = request.resource.data.get('amount', null);
           return (entryType == 'planned' && amount == null)
@@ -279,10 +288,11 @@ service cloud.firestore {
         }
 
         // 종류마다 받는 필드. 앱의 newEntryData(lib/core/data/entries_repository.dart)와 같다.
-        // 기본 월 지출의 dueOn은 고정 지출에서 옮긴 그달 예정일이다.
+        // 고정 지출·고정 수입의 dueOn은 반복 설정에서 옮긴 그달 예정일이다. 고정 수입은 2026-10-29부터다.
         function entryFields() {
           let common = ['memberId', 'amount', 'memo', 'deletedAt', 'purgeAt', 'createdBy', 'createdAt', 'updatedBy', 'updatedAt'];
           return entryType == 'incomes' ? common.concat(['title', 'receivedOn'])
+            : entryType == 'fixedIncomes' ? common.concat(['title', 'receivedOn', 'dueOn'])
             : entryType == 'planned' ? common.concat(['title', 'categoryId', 'paymentMethodId', 'paidOn', 'dueOn'])
             : entryType == 'extras' ? common.concat(['title', 'paymentMethodId', 'spentOn'])
             : common.concat(['cardId', 'paidOn']);

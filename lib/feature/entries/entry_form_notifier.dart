@@ -81,9 +81,9 @@ final class EntryTrashed extends EntryFormOutcome {
   const EntryTrashed();
 }
 
-/// 고정 지출을 그만했다. 되돌리기에 쓸 그만하기 전의 반복 설정과 휴지통에 넣은 달을 담는다.
-final class FixedExpenseStopped extends EntryFormOutcome {
-  const FixedExpenseStopped({required this.template, required this.months});
+/// 고정 지출·고정 수입을 그만했다. 되돌리기에 쓸 그만하기 전의 반복 설정과 휴지통에 넣은 달을 담는다.
+final class FixedEntryStopped extends EntryFormOutcome {
+  const FixedEntryStopped({required this.template, required this.months});
 
   final ExpenseTemplate template;
   final List<YearMonth> months;
@@ -116,14 +116,14 @@ class EntryFormState {
   final String? paymentMethodId;
   final String? cardId;
 
-  /// 받은 날·지급한 날·쓴 날·출금일. 고정 지출은 이 값이 있으면 지급 완료다.
+  /// 받은 날·지급한 날·쓴 날·출금일. 고정 지출은 이 값이 있으면 지급 완료, 고정 수입은 받음 완료다.
   final DateTime? date;
 
-  /// 고정 지출의 매달 예정일(1~31, 31은 말일). 고치는 고정 지출에서 아직 고르지 않았으면 null이고,
+  /// 고정 지출·고정 수입의 매달 예정일(1~31, 31은 말일). 고치는 항목에서 아직 고르지 않았으면 null이고,
   /// 그때는 반복 설정의 예정일을 쓴다([EntryFormNotifier.templateOf]).
   final int? dueDay;
 
-  /// 고치는 고정 지출의 금액을 다음 달부터도 쓸지('다음 달부터도 이 금액으로'). 끄면 그달만 바뀐다.
+  /// 고치는 고정 지출·고정 수입의 금액을 다음 달부터도 쓸지('다음 달부터도 이 금액으로'). 끄면 그달만 바뀐다.
   final bool amountForLater;
 
   /// 입력란 아래에 보여 줄 문제.
@@ -141,7 +141,7 @@ class EntryFormState {
   /// 진행 중이거나 이미 끝나 닫히는 중이다. 버튼을 막는다.
   bool get busy => pending != null || outcome != null;
 
-  /// 고정 지출의 지급 완료 스위치.
+  /// 고정 지출의 지급 완료·고정 수입의 받음 완료 스위치.
   bool get paid => date != null;
 
   /// 고른 값과 문제를 바꾼다. 날짜와 진행 상태는 그대로 둔다.
@@ -244,8 +244,9 @@ final entryFormNotifierProvider = NotifierProvider.autoDispose
 
 /// 항목 입력·수정 화면의 Notifier. 새 항목을 더하거나, 있는 항목을 고치거나 휴지통에 넣는다.
 ///
-/// 고정 지출은 반복 설정과 함께 더하고 고치며, 지우는 대신 그만한다(`TemplateUseCases`). 반복 설정이 없는 옛 고정 지출은
-/// 다른 항목처럼 고치고 휴지통에 넣는다. 새 항목은 오프라인에서도 더할 수 있고, 고정 지출 쓰기와 고치기·휴지통은
+/// 고정 지출·고정 수입은 반복 설정과 함께 더하고 고치며, 지우는 대신 그만한다(`TemplateUseCases`). 반복 설정이 없는
+/// 옛 고정 지출과 그만한 뒤 남은 항목은 다른 항목처럼 고치고 휴지통에 넣는다. 새 항목은 오프라인에서도 더할 수 있고,
+/// 반복 설정 쓰기와 고치기·휴지통은
 /// 온라인에서만 된다(docs/plan.md). 끝나면 [EntryFormState.outcome]을 채우고, 화면이 그 값으로 닫힌다.
 class EntryFormNotifier extends Notifier<EntryFormState> {
   EntryFormNotifier(this.args);
@@ -283,9 +284,9 @@ class EntryFormNotifier extends Notifier<EntryFormState> {
   }
 
   // 새 항목의 날짜: 달력에서 고른 날이 있으면 그날, 없으면 보는 달이 이번 달일 때 오늘, 아니면 비운다.
-  // 고정 지출은 지급 전으로 시작한다.
+  // 고정 지출·고정 수입은 지급 전·받기 전으로 시작한다.
   DateTime? _defaultDate(EntryKind kind) {
-    if (kind == EntryKind.planned) return null;
+    if (kind.isFixed) return null;
     final picked = args.date;
     if (picked != null) return DateTime(picked.year, picked.month, picked.day);
     final today = _today;
@@ -304,16 +305,19 @@ class EntryFormNotifier extends Notifier<EntryFormState> {
     );
   }
 
-  /// 고치는 고정 지출의 반복 설정. 새 항목이거나, 고정 지출이 아니거나, 반복 설정이 없는(옛) 고정 지출이면 null이다.
+  /// 고치는 고정 지출·고정 수입의 반복 설정. 새 항목이거나, 고정 지출·고정 수입이 아니거나,
+  /// 반복 설정이 없으면(옛 고정 지출, 그만한 뒤 남은 항목) null이다.
   ///
   /// 반복 설정 목록을 아직 받지 못했으면 null이다. 화면은 같은 값을 공급자에서 직접 그린다.
   ExpenseTemplate? templateOf(List<ExpenseTemplate>? templates) {
     final entry = args.entry;
-    if (entry is! PlannedExpense) return null;
-    return templates?.where((t) => t.id == entry.id).firstOrNull;
+    if (entry == null || !entry.kind.isFixed) return null;
+    return templates
+        ?.where((t) => t.id == entry.id && t.kind == entry.kind)
+        .firstOrNull;
   }
 
-  /// 고정 지출의 매달 예정일을 고른다.
+  /// 고정 지출·고정 수입의 매달 예정일을 고른다.
   void selectDueDay(int day) {
     if (state.busy) return;
     state = state.copyWith(
@@ -322,7 +326,7 @@ class EntryFormNotifier extends Notifier<EntryFormState> {
     );
   }
 
-  /// 고치는 고정 지출의 금액을 다음 달부터도 쓸지 정한다.
+  /// 고치는 고정 지출·고정 수입의 금액을 다음 달부터도 쓸지 정한다.
   void setAmountForLater(bool value) {
     if (state.busy) return;
     state = state.copyWith(amountForLater: value);
@@ -367,13 +371,14 @@ class EntryFormNotifier extends Notifier<EntryFormState> {
     state = state.withDate(DateTime(date.year, date.month, date.day));
   }
 
-  /// 날짜를 비운다. 고정 지출이면 지급 전이 된다.
+  /// 날짜를 비운다. 고정 지출·고정 수입이면 지급 전·받기 전이 된다.
   void clearDate() {
     if (state.busy) return;
     state = state.withDate(null);
   }
 
-  /// 고정 지출의 지급 완료 스위치. 켜면 지급한 날을 오늘로 채우고(그달 밖이면 그달 첫날·말일), 끄면 비운다.
+  /// 고정 지출의 지급 완료·고정 수입의 받음 완료 스위치. 켜면 지급한 날·받은 날을 오늘로 채우고
+  /// (그달 밖이면 그달 첫날·말일), 끄면 비운다.
   void setPaid(bool paid) {
     if (state.busy) return;
     state = state.withDate(paid ? _clampToMonth(_today) : null);
@@ -407,8 +412,8 @@ class EntryFormNotifier extends Notifier<EntryFormState> {
 
   /// 입력란의 [amount]·[title]·[memo] 글자와 고른 값으로 저장한다.
   ///
-  /// 입력에 문제가 있으면 [EntryFormState.problems]로 알리고 저장하지 않는다([entryProblemsOf], 고정 지출은
-  /// [fixedExpenseProblemsOf]). 새 고정 지출은 반복 설정과 함께 더하고, 반복 설정이 있는 고정 지출은 반복 설정과 함께
+  /// 입력에 문제가 있으면 [EntryFormState.problems]로 알리고 저장하지 않는다([entryProblemsOf], 고정 지출·고정 수입은
+  /// [fixedEntryProblemsOf]). 새 고정 지출·고정 수입은 반복 설정과 함께 더하고, 반복 설정이 있는 것은 반복 설정과 함께
   /// 고친다. 둘 다 온라인에서만 된다. 다른 새 항목은 서버를 기다리지 않아 오프라인에서도 바로 끝나고,
   /// 고치기는 온라인에서만 된다(`SaveEntryUseCase`).
   Future<void> save({
@@ -420,14 +425,14 @@ class EntryFormNotifier extends Notifier<EntryFormState> {
     final ledger = ref.read(currentLedgerProvider);
     if (state.busy || uid == null || ledger == null) return;
     final entry = args.entry;
-    // 고치는 고정 지출은 반복 설정이 있는지 봐야 한다. 목록을 아직 받지 않았으면 받아 온다.
+    // 고치는 고정 지출·고정 수입은 반복 설정이 있는지 봐야 한다. 목록을 아직 받지 않았으면 받아 온다.
     var templates = ref.read(templatesProvider).value;
-    if (entry is PlannedExpense && templates == null) {
+    if (entry != null && entry.kind.isFixed && templates == null) {
       state = state.withStatus(pending: EntryFormAction.save);
       try {
         templates = await _templates();
       } catch (e) {
-        debugPrint('고정 지출 반복 설정 읽기 실패: $e');
+        debugPrint('반복 설정 읽기 실패: $e');
         if (ref.mounted) {
           state = state.withStatus(failure: EntryFormFailure.save);
         }
@@ -437,8 +442,7 @@ class EntryFormNotifier extends Notifier<EntryFormState> {
       state = state.withStatus();
     }
     final template = templateOf(templates);
-    final fixed =
-        state.kind == EntryKind.planned && (entry == null || template != null);
+    final fixed = state.kind.isFixed && (entry == null || template != null);
     final dueDay = state.dueDay ?? template?.dueDay;
     final trimmedMemo = memo.trim();
     final draft = EntryDraft(
@@ -450,15 +454,15 @@ class EntryFormNotifier extends Notifier<EntryFormState> {
       paymentMethodId: state.paymentMethodId,
       cardId: state.cardId,
       date: state.date,
-      // 반복 설정이 없는 옛 고정 지출의 예정일은 입력 화면에서 고치지 않고 그대로 둔다.
+      // 반복 설정이 없는 고정 지출·고정 수입의 예정일은 입력 화면에서 고치지 않고 그대로 둔다.
       dueOn: switch (entry) {
-        PlannedExpense(:final dueOn) => dueOn,
+        PlannedExpense(:final dueOn) || FixedIncome(:final dueOn) => dueOn,
         _ => null,
       },
       memo: trimmedMemo.isEmpty ? null : trimmedMemo,
     );
     final problems = fixed
-        ? fixedExpenseProblemsOf(draft, dueDay: dueDay)
+        ? fixedEntryProblemsOf(draft, dueDay: dueDay)
         : entryProblemsOf(draft);
     if (problems.isNotEmpty) {
       state = state.copyWith(problems: problems);
@@ -468,14 +472,14 @@ class EntryFormNotifier extends Notifier<EntryFormState> {
     final templateUseCases = ref.read(templateUseCasesProvider);
     try {
       final refused = switch ((fixed, template)) {
-        (true, null) => await templateUseCases.addFixedExpense(
+        (true, null) => await templateUseCases.addFixedEntry(
           ledger: ledger,
           month: args.month,
           entry: draft,
           dueDay: dueDay,
           uid: uid,
         ),
-        (true, final template?) => await templateUseCases.updateFixedExpense(
+        (true, final template?) => await templateUseCases.updateFixedEntry(
           ledger: ledger,
           month: args.month,
           template: template,
@@ -512,10 +516,10 @@ class EntryFormNotifier extends Notifier<EntryFormState> {
     }
   }
 
-  /// 고치는 항목을 휴지통에 넣는다. 온라인에서만 된다. 반복 설정이 있는 고정 지출은 [stop]으로 그만한다.
+  /// 고치는 항목을 휴지통에 넣는다. 온라인에서만 된다. 반복 설정이 있는 고정 지출·고정 수입은 [stop]으로 그만한다.
   ///
   /// 화면이 반복 설정 목록을 받기 전에 눌렸을 수 있어서, 목록을 다시 받아 반복 설정이 있으면 휴지통에 넣지 않는다
-  /// (그 고정 지출만 숨겨지고 반복 설정이 남지 않게). 화면은 목록을 받으면 '그만하기'로 바뀐다.
+  /// (그 항목만 숨겨지고 반복 설정이 남지 않게). 화면은 목록을 받으면 '그만하기'로 바뀐다.
   Future<void> trash() async {
     final entry = args.entry;
     final uid = ref.read(authUserProvider).value?.uid;
@@ -550,8 +554,9 @@ class EntryFormNotifier extends Notifier<EntryFormState> {
     }
   }
 
-  /// 고치는 고정 지출을 이 달부터 그만한다. 반복 설정을 지우고 이 달(지급 전이면)과 뒤 달의 지급 전 항목을 휴지통에 넣는다.
-  /// 온라인에서만 된다. 끝나면 되돌리기에 쓸 값을 [FixedExpenseStopped]로 남긴다.
+  /// 고치는 고정 지출·고정 수입을 이 달부터 그만한다. 반복 설정을 지우고 이 달과 뒤 달의 지급 전·받기 전 항목을
+  /// 휴지통에 넣는다.
+  /// 온라인에서만 된다. 끝나면 되돌리기에 쓸 값을 [FixedEntryStopped]로 남긴다.
   Future<void> stop() async {
     final uid = ref.read(authUserProvider).value?.uid;
     final ledger = ref.read(currentLedgerProvider);
@@ -565,7 +570,7 @@ class EntryFormNotifier extends Notifier<EntryFormState> {
       }
       final months = await ref
           .read(templateUseCasesProvider)
-          .stopFixedExpense(
+          .stopFixedEntry(
             ledger: ledger,
             month: args.month,
             id: template.id,
@@ -573,13 +578,13 @@ class EntryFormNotifier extends Notifier<EntryFormState> {
           );
       if (!ref.mounted) return;
       state = state.withStatus(
-        outcome: FixedExpenseStopped(template: template, months: months),
+        outcome: FixedEntryStopped(template: template, months: months),
       );
     } on TemplateWriteException catch (e) {
       if (!ref.mounted) return;
       state = state.withStatus(failure: _templateFailureOf(e.reason));
     } catch (e) {
-      debugPrint('고정 지출 그만하기 실패: $e');
+      debugPrint('반복 설정 그만하기 실패: $e');
       if (!ref.mounted) return;
       state = state.withStatus(failure: EntryFormFailure.stop);
     }

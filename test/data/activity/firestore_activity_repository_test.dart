@@ -245,7 +245,7 @@ void main() {
           month: october,
           kind: EntryKind.income,
         ).summary,
-        '10월 수입',
+        '10월 추가 수입',
       );
     });
   });
@@ -274,6 +274,30 @@ void main() {
       expect(
         templateActivity(ActivityAction.templateDelete, null).summary,
         '고정 지출',
+      );
+    });
+
+    test('고정 수입 반복 설정은 고정 수입으로 적는다', () {
+      const salary = TemplateDraft(
+        kind: EntryKind.fixedIncome,
+        memberId: 'owner',
+        title: '월급',
+        amount: 3000000,
+        dueDay: 25,
+      );
+
+      expect(
+        templateActivity(ActivityAction.templateCreate, salary).summary,
+        "고정 수입 '월급' 3,000,000원",
+      );
+      // 지울 문서를 읽지 못했으면 종류만 적는다.
+      expect(
+        templateActivity(
+          ActivityAction.templateDelete,
+          null,
+          kind: EntryKind.fixedIncome,
+        ).summary,
+        '고정 수입',
       );
     });
 

@@ -57,7 +57,7 @@ Flutter 공식 아키텍처 가이드(Compass 예제)처럼 패키지 하나 안
 ```
 lib/
   domain/               순수 Dart. Flutter·Firebase·Riverpod를 import하지 않는다
-    model/                모델(가계부, 항목, 고정 지출, 설정 등)
+    model/                모델(가계부, 항목, 반복 설정, 설정 등)
     budget/               계산 규칙(월 요약)
     repository/           저장소 인터페이스, 도메인 실패(JoinFailure 등), 쓰기 입력(Draft), 기본 분류·결제수단
     usecase/<영역>/        UseCase(call() 하나짜리 클래스)와 영역별 묶음(홀더, SettingsUseCases 등)
@@ -177,7 +177,7 @@ Flutter의 `TextEditingController`·`ScrollController`와 헷갈리지 않게 �
 - 긴 목록은 `ListView.builder`로 만들고, 항목에는 안정적인 id로 `ValueKey`를 준다. 인덱스를 키로 쓰지 않는다.
 - **탭:** 홈은 탭 4개(`HomeTab`: 요약·항목·가계부·설정)이고 `StatefulShellRoute`가 탭마다 화면 상태를 지킨다. 탭 화면은 `TabPage`로 감싸고,
   달을 보는 탭은 `MonthHeader`를 머리말로 쓴다. 보고 있는 달은 `selectedMonthProvider` 하나를 모든 탭이 같이 읽는다.
-  항목 탭은 세 칸(`EntryTab`: 수입·지출·카드 대금)이고, 고정 지출은 따로 된 화면 없이 지출 칸과 입력 화면에서 다룬다.
+  항목 탭은 세 칸(`EntryTab`: 수입·지출·카드 대금)이고, 고정 수입·고정 지출은 따로 된 화면 없이 수입·지출 칸과 입력 화면에서 다룬다.
 - **넓은 화면:** 아이패드와 Mac(아이패드 앱)에서도 쓴다. 폭 600 이상이면 탭 막대가 옆(NavigationRail)으로 간다. 본문은 `ConstrainedBox(maxWidth: …)`로 가운데 두고,
   두 칸 배치는 `LayoutBuilder`로 바꾼다(`docs/plan.md`의 '화면'). 플랫폼 분기는 `defaultTargetPlatform`.
 - **테마:** 색은 `Theme.of(context).colorScheme`과 `context.appColors`, 글자는 `textTheme`에서 꺼낸다(`lib/core/theme/app_theme.dart`, 원본은 `design/app.pen`). 화면 디자인은 `design/app/*.png`.
@@ -200,7 +200,7 @@ Flutter의 `TextEditingController`·`ScrollController`와 헷갈리지 않게 �
 - 시간 필드는 `FieldValue.serverTimestamp()`. 규칙이 `request.time`과 같은지 본다. 방금 쓴 문서는 서버 시간이 아직 null이다.
 - **실패:** 저장소는 처리할 `FirebaseException` 코드만 도메인 실패로 바꿔 던지고 나머지는 다시 던진다. `permission-denied`를 빈 결과로 숨기지 않는다.
 - 여러 문서를 함께 바꿔야 일관성이 맞으면 `WriteBatch`나 트랜잭션을 쓴다(가계부 + 기본 설정: `LedgerRepository.create`).
-- 항목·고정 지출·설정을 쓰는 저장소는 변경 기록(`activity`)을 같은 일괄 쓰기·트랜잭션으로 남긴다(`newActivityData`, 요약은 `activity_summary.dart`).
+- 항목·반복 설정·설정을 쓰는 저장소는 변경 기록(`activity`)을 같은 일괄 쓰기·트랜잭션으로 남긴다(`newActivityData`, 요약은 `activity_summary.dart`).
   새 쓰기를 만들면 기록도 같이 남긴다. 요약에는 금액·제목이 들어가므로 로그에 찍지 않는다.
 - **읽기는 곧 비용이다**(Firestore는 지출 한도 대상이 아님). 필요한 문서만 구독하고, 계속 늘어나는 목록(항목, 변경 기록)에는 `limit`이나 달 단위 범위를 두고,
   같은 쿼리는 공급자 하나를 여러 화면이 같이 읽는다.

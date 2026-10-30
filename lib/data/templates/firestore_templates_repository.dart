@@ -29,16 +29,18 @@ class FirestoreTemplatesRepository implements TemplatesRepository {
         ],
       );
 
-  DocumentReference<Map<String, dynamic>> _planned(
+  // 반복 설정 [id]로 만든 [month]의 [kind](고정 지출·고정 수입) 항목 문서. 문서 id가 반복 설정 id와 같다.
+  DocumentReference<Map<String, dynamic>> _entry(
     String ledgerId,
     YearMonth month,
+    EntryKind kind,
     String id,
   ) => _firestore
       .collection('ledgers')
       .doc(ledgerId)
       .collection('months')
       .doc(month.id)
-      .collection(entryCollection(EntryKind.planned))
+      .collection(entryCollection(kind))
       .doc(id);
 
   @override
@@ -56,12 +58,12 @@ class FirestoreTemplatesRepository implements TemplatesRepository {
     await _writeOnline(ledgerId, uid, (transaction) async {
       transaction.set(doc, newTemplateData(draft, uid: uid));
       transaction.set(
-        _planned(ledgerId, month, doc.id),
+        _entry(ledgerId, month, draft.kind, doc.id),
         newEntryData(entry, uid: uid),
       );
       for (final later in laterMonths) {
         transaction.set(
-          _planned(ledgerId, later, doc.id),
+          _entry(ledgerId, later, draft.kind, doc.id),
           newEntryData(laterEntryDraft(draft, later), uid: uid),
         );
       }
@@ -87,12 +89,20 @@ class FirestoreTemplatesRepository implements TemplatesRepository {
     required String uid,
   }) {
     final doc = _templates(ledgerId).doc(id);
-    final current = _planned(ledgerId, month, id);
+    // 반복 설정의 종류는 바꿀 수 없어서(규칙의 keepsKind) 고칠 값의 종류로 항목 문서를 찾는다.
+    final kind = draft.kind;
+    final current = _entry(ledgerId, month, kind, id);
     return _writeOnline(ledgerId, uid, (transaction) async {
       // 트랜잭션은 읽기를 모두 마친 뒤에 써야 한다.
-      final before = await _existing(transaction, doc);
-      final entryBefore = await _liveEntry(transaction, current);
-      final later = await _unpaidLater(transaction, ledgerId, id, laterMonths);
+      final (_, before) = await _existing(transaction, doc);
+      final entryBefore = await _liveEntry(transaction, current, kind);
+      final later = await _unsettledLater(
+        transaction,
+        ledgerId,
+        kind,
+        id,
+        laterMonths,
+      );
       final beforeDraft = before == null ? null : TemplateDraft.of(before);
       final amountChanged = beforeDraft?.amount != draft.amount;
       transaction.update(doc, templateUpdateData(draft, uid: uid));
@@ -117,7 +127,7 @@ class FirestoreTemplatesRepository implements TemplatesRepository {
           entryActivity(
             ActivityAction.entryUpdate,
             month: month,
-            kind: EntryKind.planned,
+            kind: kind,
             entry: entry,
             before: entryBeforeDraft,
           ),
@@ -134,15 +144,23 @@ class FirestoreTemplatesRepository implements TemplatesRepository {
     required String uid,
   }) async {
     final doc = _templates(ledgerId).doc(id);
-    final current = _planned(ledgerId, month, id);
     var trashed = <YearMonth>[];
     await _writeOnline(ledgerId, uid, (transaction) async {
-      final template = await _existing(transaction, doc);
-      final entry = await _liveEntry(transaction, current);
-      final later = await _unpaidLater(transaction, ledgerId, id, laterMonths);
-      // 그달 항목은 이미 지급했으면 실제로 나간 돈이라 남기고, 지급 전이면 뒤 달과 같이 휴지통에 넣는다.
+      // 종류는 반복 설정 문서를 읽어야 알아서 항목 문서는 그 뒤에 찾는다.
+      final (kind, template) = await _existing(transaction, doc);
+      final current = _entry(ledgerId, month, kind, id);
+      final entry = await _liveEntry(transaction, current, kind);
+      final later = await _unsettledLater(
+        transaction,
+        ledgerId,
+        kind,
+        id,
+        laterMonths,
+      );
+      // 그달 항목은 이미 지급했거나 받았으면 실제로 오간 돈이라 남기고, 그 전이면 뒤 달과 같이 휴지통에 넣는다.
       // 반복 설정을 지워 다시 만들어지지 않으니 휴지통 항목은 보통처럼 자동으로 지워지게 한다.
-      final targets = [if (entry?.isPaid != true) (month, current), ...later];
+      final settled = entry != null && fixedEntrySettled(entry);
+      final targets = [if (!settled) (month, current), ...later];
       final purgeAt = _now().add(trashRetention);
       transaction.delete(doc);
       for (final (_, entryDoc) in targets) {
@@ -156,6 +174,7 @@ class FirestoreTemplatesRepository implements TemplatesRepository {
         templateActivity(
           ActivityAction.templateDelete,
           template == null ? null : TemplateDraft.of(template),
+          kind: kind,
         ),
       ];
     });
@@ -174,7 +193,7 @@ class FirestoreTemplatesRepository implements TemplatesRepository {
       final exists = (await transaction.get(doc)).exists;
       final inTrash = <DocumentReference<Map<String, dynamic>>>[];
       for (final month in months) {
-        final entryDoc = _planned(ledgerId, month, template.id);
+        final entryDoc = _entry(ledgerId, month, template.kind, template.id);
         final data = (await transaction.get(entryDoc)).data();
         if (data != null && entryIsTrashed(data, hasPendingWrites: false)) {
           inTrash.add(entryDoc);
@@ -191,8 +210,9 @@ class FirestoreTemplatesRepository implements TemplatesRepository {
     });
   }
 
-  // 그사이 지워졌으면 notFound로 실패한다. 문서는 있는데 모양이 잘못됐으면 null(기록에는 빈 값으로 남긴다).
-  static Future<ExpenseTemplate?> _existing(
+  // 반복 설정의 종류와 값. 그사이 지워졌으면 notFound로 실패한다.
+  // 문서는 있는데 모양이 잘못됐으면 값은 null(기록에는 빈 값으로 남긴다)이고 종류만 읽는다.
+  static Future<(EntryKind, ExpenseTemplate?)> _existing(
     Transaction transaction,
     DocumentReference<Map<String, dynamic>> doc,
   ) async {
@@ -200,46 +220,47 @@ class FirestoreTemplatesRepository implements TemplatesRepository {
     if (data == null) {
       throw const TemplateWriteException(TemplateWriteFailure.notFound);
     }
-    return templateFromFirestore(doc.id, data);
+    return (
+      templateKindFromFirestore(data),
+      templateFromFirestore(doc.id, data),
+    );
   }
 
-  // 휴지통 밖에 있는 그달 항목. 없거나 휴지통에 있으면(그사이 상대가 바꿈) notFound로 실패한다. 모양이 잘못됐으면 null.
-  static Future<PlannedExpense?> _liveEntry(
+  // 휴지통 밖에 있는 그달 [kind] 항목. 없거나 휴지통에 있으면(그사이 상대가 바꿈) notFound로 실패한다. 모양이 잘못됐으면 null.
+  static Future<LedgerEntry?> _liveEntry(
     Transaction transaction,
     DocumentReference<Map<String, dynamic>> doc,
+    EntryKind kind,
   ) async {
     final data = (await transaction.get(doc)).data();
     if (data == null || entryIsTrashed(data, hasPendingWrites: false)) {
       throw const TemplateWriteException(TemplateWriteFailure.notFound);
     }
-    return switch (entryFromFirestore(EntryKind.planned, doc.id, data)) {
-      final PlannedExpense entry => entry,
-      _ => null,
-    };
+    return entryFromFirestore(kind, doc.id, data);
   }
 
-  // [laterMonths]에서 휴지통 밖에 있는 지급 전 [id] 항목. 지급한 것은 실제로 나간 돈이라 건드리지 않는다.
+  // [laterMonths]에서 휴지통 밖에 있는 지급 전(받기 전) [id] 항목. 지급했거나 받은 것은 실제로 오간 돈이라 건드리지 않는다.
   Future<List<(YearMonth, DocumentReference<Map<String, dynamic>>)>>
-  _unpaidLater(
+  _unsettledLater(
     Transaction transaction,
     String ledgerId,
+    EntryKind kind,
     String id,
     List<YearMonth> laterMonths,
   ) async {
-    final unpaid = <(YearMonth, DocumentReference<Map<String, dynamic>>)>[];
+    final unsettled = <(YearMonth, DocumentReference<Map<String, dynamic>>)>[];
     for (final month in laterMonths) {
-      final doc = _planned(ledgerId, month, id);
+      final doc = _entry(ledgerId, month, kind, id);
       final data = (await transaction.get(doc)).data();
       if (data == null || entryIsTrashed(data, hasPendingWrites: false)) {
         continue;
       }
-      if (entryFromFirestore(EntryKind.planned, id, data) case PlannedExpense(
-        isPaid: false,
-      )) {
-        unpaid.add((month, doc));
+      if (entryFromFirestore(kind, id, data) case final entry?
+          when !fixedEntrySettled(entry)) {
+        unsettled.add((month, doc));
       }
     }
-    return unpaid;
+    return unsettled;
   }
 
   // 트랜잭션은 서버에 닿아야 끝나서 오프라인이면 실패한다. 연결이 끊긴 채로 오래 기다리지 않게 10초만 기다린다.
@@ -271,13 +292,15 @@ class FirestoreTemplatesRepository implements TemplatesRepository {
   }
 }
 
-/// 새 고정 지출 문서. `firestore.rules`의 validTemplate·createdNow와 필드가 같아야 한다.
+/// 새 반복 설정 문서. `firestore.rules`의 validTemplate·createdNow와 필드가 같아야 한다.
 ///
-/// 금액이 비어 있으면(금액 미정) 넣지 않는다.
+/// 금액이 비어 있으면(금액 미정) 넣지 않는다. 고정 수입만 `kind: 'income'`을 넣고 고정 지출은 넣지 않는다.
+/// 고정 수입이 생기기 전(2026-10-29) 문서가 모두 고정 지출이라 그 모양을 그대로 둔다.
 Map<String, Object> newTemplateData(
   TemplateDraft draft, {
   required String uid,
 }) => {
+  if (draft.kind == EntryKind.fixedIncome) 'kind': 'income',
   for (final MapEntry(:key, :value) in _templateFields(draft).entries)
     if (value != null) key: value,
   'createdBy': uid,
@@ -286,8 +309,8 @@ Map<String, Object> newTemplateData(
   'updatedAt': FieldValue.serverTimestamp(),
 };
 
-/// 고정 지출을 고칠 때 쓰는 값. 모든 칸을 다시 쓰고, 비운 금액은 필드를 지운다.
-/// 만든 사람·시간은 그대로 두고 고친 사람·시간만 바꾼다(규칙의 updatedNow).
+/// 반복 설정을 고칠 때 쓰는 값. 모든 칸을 다시 쓰고, 비운 금액은 필드를 지운다. 종류는 바꿀 수 없어서(규칙의 keepsKind)
+/// 쓰지 않는다. 만든 사람·시간은 그대로 두고 고친 사람·시간만 바꾼다(규칙의 updatedNow).
 Map<Object, Object> templateUpdateData(
   TemplateDraft draft, {
   required String uid,
@@ -298,9 +321,9 @@ Map<Object, Object> templateUpdateData(
   'updatedAt': FieldValue.serverTimestamp(),
 };
 
-/// 이미 만들어진 뒤 달에 넣을 고정 지출 항목(지급 전). 반복 설정 [draft]로 [month]의 예정일을 정한다.
+/// 이미 만들어진 뒤 달에 넣을 고정 지출·고정 수입 항목(지급 전·받기 전). 반복 설정 [draft]로 [month]의 예정일을 정한다.
 EntryDraft laterEntryDraft(TemplateDraft draft, YearMonth month) => EntryDraft(
-  kind: EntryKind.planned,
+  kind: draft.kind,
   memberId: draft.memberId,
   amount: draft.amount,
   title: draft.title.trim(),
@@ -312,7 +335,8 @@ EntryDraft laterEntryDraft(TemplateDraft draft, YearMonth month) => EntryDraft(
   },
 );
 
-/// 뒤 달의 지급 전 고정 지출을 반복 설정 [draft]에 맞출 때 쓰는 값. 반복 설정이 정하는 칸만 바꾸고 지급·메모는 그대로 둔다.
+/// 뒤 달의 지급 전 고정 지출(받기 전 고정 수입)을 반복 설정 [draft]에 맞출 때 쓰는 값.
+/// 반복 설정이 정하는 칸만 바꾸고 지급·받음·메모는 그대로 둔다.
 /// [withAmount]면 금액도 맞춘다(비운 금액은 필드를 지운다). 고친 사람·시간도 바꾼다(규칙의 updatedNow).
 Map<Object, Object> laterEntryUpdate(
   TemplateDraft draft,
@@ -331,7 +355,7 @@ Map<Object, Object> laterEntryUpdate(
   'updatedAt': FieldValue.serverTimestamp(),
 };
 
-// 고정 지출이 쓰는 칸(docs/firestore.md의 templates 표). 값이 null이면 비어 있는 칸이다.
+// 반복 설정이 쓰는 칸(docs/firestore.md의 templates 표). 값이 null이면 비어 있는 칸이다.
 Map<String, Object?> _templateFields(TemplateDraft draft) => {
   'title': draft.title.trim(),
   'amount': draft.amount,
@@ -341,14 +365,25 @@ Map<String, Object?> _templateFields(TemplateDraft draft) => {
   'dueDay': draft.dueDay,
 };
 
-/// Firestore 고정 지출 문서를 [ExpenseTemplate]로 바꾼다.
+/// 반복 설정 문서가 만드는 항목 종류. `kind`가 'income'이면 고정 수입, 없으면 고정 지출이다.
+EntryKind templateKindFromFirestore(Map<String, dynamic> data) =>
+    data['kind'] == 'income' ? EntryKind.fixedIncome : EntryKind.planned;
+
+/// Firestore 반복 설정 문서를 [ExpenseTemplate]로 바꾼다.
 ///
-/// 그달 고정 지출을 만드는 데 쓰는 값(누가·분류·결제수단·예정일)이 없거나 잘못됐거나, 금액이 잘못됐으면 null.
-/// 금액이 비어 있으면 금액 미정이다. 제목은 없어도 빈 제목으로 살린다.
+/// 그달 항목을 만드는 데 쓰는 값(누가·예정일, 고정 지출은 분류·결제수단, 고정 수입은 금액)이 없거나 잘못됐거나,
+/// 금액이 잘못됐으면 null. 고정 지출은 금액이 비어 있으면 금액 미정이다. 제목은 없어도 빈 제목으로 살린다.
 ExpenseTemplate? templateFromFirestore(String id, Map<String, dynamic> data) {
+  final kind = templateKindFromFirestore(data);
   final memberId = data['memberId'];
-  final categoryId = data['categoryId'];
-  final paymentMethodId = data['paymentMethodId'];
+  final categoryId = switch (data['categoryId']) {
+    final String id => id,
+    _ => null,
+  };
+  final paymentMethodId = switch (data['paymentMethodId']) {
+    final String id => id,
+    _ => null,
+  };
   final rawAmount = data['amount'];
   final amount = switch (rawAmount) {
     final int won when won >= 0 => won,
@@ -358,22 +393,25 @@ ExpenseTemplate? templateFromFirestore(String id, Map<String, dynamic> data) {
     final int day when day >= 1 && day <= lastDueDay => day,
     _ => null,
   };
+  final income = kind == EntryKind.fixedIncome;
   if (memberId is! String ||
-      categoryId is! String ||
-      paymentMethodId is! String ||
       dueDay == null ||
-      (rawAmount != null && amount == null)) {
+      (rawAmount != null && amount == null) ||
+      (income
+          ? amount == null
+          : categoryId == null || paymentMethodId == null)) {
     return null;
   }
   return ExpenseTemplate(
     id: id,
+    kind: kind,
     title: switch (data['title']) {
       final String title => title,
       _ => '',
     },
     amount: amount,
-    categoryId: categoryId,
-    paymentMethodId: paymentMethodId,
+    categoryId: income ? null : categoryId,
+    paymentMethodId: income ? null : paymentMethodId,
     memberId: memberId,
     dueDay: dueDay,
   );

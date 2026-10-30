@@ -55,13 +55,15 @@ class FirestoreEntriesRepository implements EntriesRepository {
         );
     return combineLatest([
       watch(EntryKind.income),
+      watch(EntryKind.fixedIncome),
       watch(EntryKind.planned),
       watch(EntryKind.extra),
       watch(EntryKind.cardBill),
     ]).map((docs) {
-      final [incomes, planned, extras, cardBills] = docs;
+      final [incomes, fixedIncomes, planned, extras, cardBills] = docs;
       return monthLedgerFromFirestore(
         incomes: incomes,
+        fixedIncomes: fixedIncomes,
         planned: planned,
         extras: extras,
         cardBills: cardBills,
@@ -223,20 +225,22 @@ class FirestoreEntriesRepository implements EntriesRepository {
     bool recordMonth = false,
   }) async {
     if (templates.isEmpty && !recordMonth) return 0;
-    final planned = _entries(ledgerId, month, EntryKind.planned);
     try {
       return await _firestore.runTransaction(timeout: _onlineTimeout, (
         transaction,
       ) async {
         // 트랜잭션은 읽기를 모두 마친 뒤에 써야 한다.
-        final missing = <ExpenseTemplate>[];
+        final missing =
+            <(ExpenseTemplate, DocumentReference<Map<String, dynamic>>)>[];
         for (final template in templates) {
-          final current = await transaction.get(planned.doc(template.id));
-          if (!current.exists) missing.add(template);
+          final doc = _entries(ledgerId, month, template.kind).doc(template.id);
+          if (!(await transaction.get(doc)).exists) {
+            missing.add((template, doc));
+          }
         }
-        for (final template in missing) {
+        for (final (template, doc) in missing) {
           transaction.set(
-            planned.doc(template.id),
+            doc,
             newEntryData(template.draftFor(month), uid: uid),
           );
         }
@@ -339,6 +343,7 @@ class FirestoreEntriesRepository implements EntriesRepository {
 /// [kind] 항목의 Firestore 컬렉션 이름.
 String entryCollection(EntryKind kind) => switch (kind) {
   EntryKind.income => 'incomes',
+  EntryKind.fixedIncome => 'fixedIncomes',
   EntryKind.planned => 'planned',
   EntryKind.extra => 'extras',
   EntryKind.cardBill => 'cardBills',
@@ -346,7 +351,7 @@ String entryCollection(EntryKind kind) => switch (kind) {
 
 /// [kind] 항목의 날짜 필드 이름.
 String entryDateField(EntryKind kind) => switch (kind) {
-  EntryKind.income => 'receivedOn',
+  EntryKind.income || EntryKind.fixedIncome => 'receivedOn',
   EntryKind.planned || EntryKind.cardBill => 'paidOn',
   EntryKind.extra => 'spentOn',
 };
@@ -410,7 +415,7 @@ Map<String, Object?> _entryFields(EntryDraft draft) {
     entryDateField(draft.kind): date == null
         ? null
         : entryDateToFirestore(date),
-    if (draft.kind == EntryKind.planned)
+    if (draft.kind case EntryKind.planned || EntryKind.fixedIncome)
       'dueOn': dueOn == null ? null : entryDateToFirestore(dueOn),
     'memo': memo.isEmpty ? null : memo,
   };
@@ -423,13 +428,14 @@ typedef EntryDoc = ({
   bool hasPendingWrites,
 });
 
-/// 그달 네 컬렉션의 문서로 [MonthLedger]를 만든다. 휴지통 항목은 [MonthLedger.trashed]에 따로 모으고,
+/// 그달 다섯 컬렉션의 문서로 [MonthLedger]를 만든다. 휴지통 항목은 [MonthLedger.trashed]에 따로 모으고,
 /// 읽을 수 없는 문서는 뺀다.
 ///
-/// 고정 지출 문서 id는 휴지통 항목과 읽을 수 없는 문서까지 [MonthLedger.plannedIds]에 모은다.
-/// 고정 지출로 채울 때 그 id의 문서를 다시 만들지 않게 한다.
+/// 고정 지출·고정 수입 문서 id는 휴지통 항목과 읽을 수 없는 문서까지 [MonthLedger.plannedIds]·[MonthLedger.fixedIncomeIds]에
+/// 모은다. 반복 설정으로 채울 때 그 id의 문서를 다시 만들지 않게 한다.
 MonthLedger monthLedgerFromFirestore({
   required List<EntryDoc> incomes,
+  List<EntryDoc> fixedIncomes = const [],
   required List<EntryDoc> planned,
   required List<EntryDoc> extras,
   required List<EntryDoc> cardBills,
@@ -445,12 +451,14 @@ MonthLedger monthLedgerFromFirestore({
   ];
   return MonthLedger(
     incomes: live(incomes, incomeFromFirestore),
+    fixedIncomes: live(fixedIncomes, fixedIncomeFromFirestore),
     plannedExpenses: live(planned, plannedExpenseFromFirestore),
     extraExpenses: live(extras, extraExpenseFromFirestore),
     cardBills: live(cardBills, cardBillFromFirestore),
     trashed: [
       for (final (kind, docs) in [
         (EntryKind.income, incomes),
+        (EntryKind.fixedIncome, fixedIncomes),
         (EntryKind.planned, planned),
         (EntryKind.extra, extras),
         (EntryKind.cardBill, cardBills),
@@ -465,6 +473,7 @@ MonthLedger monthLedgerFromFirestore({
               ),
     ],
     plannedIds: {for (final doc in planned) doc.id},
+    fixedIncomeIds: {for (final doc in fixedIncomes) doc.id},
   );
 }
 
@@ -475,6 +484,7 @@ LedgerEntry? entryFromFirestore(
   Map<String, dynamic> data,
 ) => switch (kind) {
   EntryKind.income => incomeFromFirestore(id, data),
+  EntryKind.fixedIncome => fixedIncomeFromFirestore(id, data),
   EntryKind.planned => plannedExpenseFromFirestore(id, data),
   EntryKind.extra => extraExpenseFromFirestore(id, data),
   EntryKind.cardBill => cardBillFromFirestore(id, data),
@@ -494,7 +504,23 @@ bool entryIsTrashed(
     data['deletedAt'] != null ||
     (hasPendingWrites && data.containsKey('deletedAt'));
 
-/// Firestore 수입 문서를 [Income]으로 바꾼다. 누가·금액이 없거나 잘못됐으면 null.
+/// Firestore 고정 수입 문서를 [FixedIncome]으로 바꾼다. 누가·금액이 없거나 잘못됐으면 null.
+FixedIncome? fixedIncomeFromFirestore(String id, Map<String, dynamic> data) {
+  final memberId = data['memberId'];
+  final amount = _won(data['amount']);
+  if (memberId is! String || amount == null) return null;
+  return FixedIncome(
+    id: id,
+    memberId: memberId,
+    title: _title(data),
+    amount: amount,
+    receivedOn: entryDateFromFirestore(data['receivedOn']),
+    dueOn: entryDateFromFirestore(data['dueOn']),
+    memo: _memo(data),
+  );
+}
+
+/// Firestore 추가 수입 문서를 [Income]으로 바꾼다. 누가·금액이 없거나 잘못됐으면 null.
 Income? incomeFromFirestore(String id, Map<String, dynamic> data) {
   final memberId = data['memberId'];
   final amount = _won(data['amount']);

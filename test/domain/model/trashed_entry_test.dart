@@ -45,6 +45,24 @@ void main() {
       }
     });
 
+    test('반복 설정이 남아 있는 이번 달 이후의 고정 수입도 남긴다', () {
+      const salary = FixedIncome(
+        id: 'tpl-salary',
+        memberId: 'owner',
+        title: '월급',
+        amount: 3000000,
+      );
+      expect(
+        staysInTrash(
+          salary,
+          month: october,
+          thisMonth: october,
+          templateIds: const {'tpl-salary'},
+        ),
+        isTrue,
+      );
+    });
+
     test('지난 달은 다시 만들지 않아서 지울 수 있다', () {
       expect(
         staysInTrash(

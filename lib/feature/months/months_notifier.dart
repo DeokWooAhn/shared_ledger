@@ -44,7 +44,7 @@ class MonthsNotifier extends Notifier<MonthsState> {
   @override
   MonthsState build() => const MonthsState();
 
-  /// [month] 가계부를 추가한다. 그달을 가계부의 달 목록에 더하고, 이번 달 이후면 반복 설정으로 그달 고정 지출(지급 전)을 채운다.
+  /// [month] 가계부를 추가한다. 그달을 가계부의 달 목록에 더하고, 이번 달 이후면 반복 설정으로 그달 고정 지출·고정 수입(지급 전·받기 전)을 채운다.
   /// 지난 달은 채우지 않고 달만 만든다(`AddMonthUseCase`). 한 트랜잭션이라 온라인에서만 되고, 추가했으면 true다.
   /// 실패는 [MonthsState.failure]로 알린다.
   Future<bool> add(YearMonth month) async {

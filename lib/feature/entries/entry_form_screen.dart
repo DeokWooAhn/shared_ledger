@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/providers/providers.dart';
+import '../../core/widget/entry_kind_label.dart';
 import '../../domain/model/category.dart';
 import '../../domain/model/ledger_entries.dart';
 import '../../domain/model/member.dart';
@@ -29,16 +30,16 @@ String entryProblemMessage(EntryProblem problem) => switch (problem) {
 
 String entryFormFailureMessage(EntryFormFailure failure) => switch (failure) {
   EntryFormFailure.offline =>
-    '인터넷에 연결된 뒤에 다시 시도해 주세요. 고정 지출과 고치기·휴지통은 연결돼 있을 때만 돼요.',
+    '인터넷에 연결된 뒤에 다시 시도해 주세요. 고정 지출·고정 수입과 고치기·휴지통은 연결돼 있을 때만 돼요.',
   EntryFormFailure.gone => '그사이 휴지통에 들어갔거나 지워진 항목이에요.',
   EntryFormFailure.save => '저장하지 못했어요. 잠시 후 다시 시도해 주세요.',
   EntryFormFailure.trash => '휴지통에 넣지 못했어요. 잠시 후 다시 시도해 주세요.',
-  EntryFormFailure.stop => '고정 지출을 그만하지 못했어요. 잠시 후 다시 시도해 주세요.',
+  EntryFormFailure.stop => '그만하지 못했어요. 잠시 후 다시 시도해 주세요.',
 };
 
 /// 날짜 칸의 이름표.
 String entryDateLabel(EntryKind kind) => switch (kind) {
-  EntryKind.income => '받은 날',
+  EntryKind.income || EntryKind.fixedIncome => '받은 날',
   EntryKind.planned => '지급한 날',
   EntryKind.extra => '쓴 날',
   EntryKind.cardBill => '출금일',
@@ -49,7 +50,8 @@ String entryLongDate(DateTime date) =>
     '${date.year}년 ${date.month}월 ${date.day}일';
 
 String _titleHint(EntryKind kind) => switch (kind) {
-  EntryKind.income => '예: 월급',
+  EntryKind.income => '예: 용돈',
+  EntryKind.fixedIncome => '예: 월급',
   EntryKind.planned => '예: 관리비',
   EntryKind.extra || EntryKind.cardBill => '예: 마트 장보기',
 };
@@ -58,8 +60,8 @@ String _titleHint(EntryKind kind) => switch (kind) {
 /// 넓은 화면에서는 가운데 560폭으로 둔다.
 ///
 /// 맨 위 종류 칸을 누르면 종류 고르기 시트(05c)가 뜬다. 종류마다 칸이 다르다. 고정 지출은 분류·매달 예정일·지급 완료,
-/// 수입은 받은 날, 카드 대금은 어느 카드인지를 받는다. 반복 설정이 있는 고정 지출을 고칠 때는
-/// '다음 달부터도 이 금액으로'를 고르고, 지우는 대신 그만한다.
+/// 고정 수입은 매달 예정일·받음 완료, 추가 수입은 받은 날, 카드 대금은 어느 카드인지를 받는다.
+/// 반복 설정이 있는 고정 지출·고정 수입을 고칠 때는 '다음 달부터도 이 금액으로'를 고르고, 지우는 대신 그만한다.
 /// 저장하거나 휴지통에 넣거나 그만하면 [EntryFormOutcome]을 돌려주며 닫힌다.
 class EntryFormScreen extends ConsumerStatefulWidget {
   const EntryFormScreen({required this.args, super.key});
@@ -84,6 +86,7 @@ class _EntryFormScreenState extends ConsumerState<EntryFormScreen> {
     _title = TextEditingController(
       text: switch (entry) {
         Income(:final title) ||
+        FixedIncome(:final title) ||
         PlannedExpense(:final title) ||
         ExtraExpense(:final title) => title,
         CardBill() || null => '',
@@ -196,12 +199,12 @@ class _EntryFormScreenState extends ConsumerState<EntryFormScreen> {
       return problem == null ? null : keepAll(entryProblemMessage(problem));
     }
 
-    // 고치는 고정 지출이 반복 설정이 있으면 반복 설정과 함께 고치고 그만한다. 새 고정 지출은 반복 설정과 함께 더한다.
+    // 고치는 고정 지출·고정 수입이 반복 설정이 있으면 반복 설정과 함께 고치고 그만한다. 새것은 반복 설정과 함께 더한다.
     final templates = ref.watch(templatesProvider);
     final template = notifier.templateOf(templates.value);
-    // 고치는 고정 지출이 반복 설정이 있는지 아직 모르면 휴지통·그만하기 단추를 둘 다 숨긴다.
-    final templateKnown = kind != EntryKind.planned || templates.hasValue;
-    final fixed = kind == EntryKind.planned && (!isEdit || template != null);
+    // 고치는 고정 지출·고정 수입이 반복 설정이 있는지 아직 모르면 휴지통·그만하기 단추를 둘 다 숨긴다.
+    final templateKnown = !kind.isFixed || templates.hasValue;
+    final fixed = kind.isFixed && (!isEdit || template != null);
     final paidByCard = methods.any(
       (m) => m.id == state.paymentMethodId && m.kind == PaymentKind.card,
     );
@@ -320,19 +323,18 @@ class _EntryFormScreenState extends ConsumerState<EntryFormScreen> {
               ? () => _pickDueDay(state.dueDay ?? template?.dueDay)
               : null,
         ),
-      if (kind == EntryKind.planned)
+      if (kind.isFixed)
         _PaidSwitch(
+          income: kind == EntryKind.fixedIncome,
           paid: state.paid,
           onChanged: enabled ? notifier.setPaid : null,
         ),
-      if (kind != EntryKind.planned || state.paid)
+      if (!kind.isFixed || state.paid)
         _DateField(
           label: entryDateLabel(kind),
           date: state.date,
-          // 고정 지출의 지급한 날은 지급 완료 스위치로 비운다.
-          onClear: kind == EntryKind.planned || !enabled
-              ? null
-              : notifier.clearDate,
+          // 고정 지출의 지급한 날, 고정 수입의 받은 날은 지급 완료·받음 완료 스위치로 비운다.
+          onClear: kind.isFixed || !enabled ? null : notifier.clearDate,
           onTap: enabled ? () => _pickDate(state) : null,
         ),
       LabeledField(
@@ -370,7 +372,7 @@ class _EntryFormScreenState extends ConsumerState<EntryFormScreen> {
                   minimumSize: const Size(64, 48),
                 ),
                 onPressed: enabled ? notifier.stop : null,
-                child: const Text('고정 지출 그만하기'),
+                child: Text('${entryKindLabel(kind)} 그만하기'),
               )
             else if (isEdit && templateKnown)
               TextButton.icon(
@@ -399,7 +401,7 @@ class _EntryFormScreenState extends ConsumerState<EntryFormScreen> {
                   title: !isEdit
                       ? '항목 추가'
                       : template != null
-                      ? '고정 지출 고치기'
+                      ? '${entryKindLabel(kind)} 고치기'
                       : '항목 고치기',
                   closeKey: const Key('entry-close'),
                 ),
@@ -423,7 +425,7 @@ class _EntryFormScreenState extends ConsumerState<EntryFormScreen> {
   }
 }
 
-/// 고치는 고정 지출의 '다음 달부터도 이 금액으로' 체크. 끄면 금액은 그달([month]월)만 바뀐다.
+/// 고치는 고정 지출·고정 수입의 '다음 달부터도 이 금액으로' 체크. 끄면 금액은 그달([month]월)만 바뀐다.
 class _AmountForLater extends StatelessWidget {
   const _AmountForLater({
     required this.value,
@@ -459,31 +461,39 @@ class _AmountForLater extends StatelessWidget {
   }
 }
 
-/// 고정 지출의 지급 완료 스위치. 켜면 지급한 날 칸이 나온다.
+/// 고정 지출의 지급 완료 스위치. 켜면 지급한 날 칸이 나온다. [income]이면 고정 수입의 받음 완료와 받은 날이다.
 class _PaidSwitch extends StatelessWidget {
-  const _PaidSwitch({required this.paid, required this.onChanged});
+  const _PaidSwitch({
+    required this.income,
+    required this.paid,
+    required this.onChanged,
+  });
 
+  final bool income;
   final bool paid;
   final ValueChanged<bool>? onChanged;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final note = switch ((income, paid)) {
+      (false, true) => '현금 유출에 들어가요.',
+      (false, false) => '아직 빠져나가지 않은 돈이에요.',
+      (true, true) => '현금 유입에 들어가요.',
+      (true, false) => '아직 들어오지 않은 돈이에요. 받으면 켜 주세요.',
+    };
     return SwitchListTile(
-      key: const Key('entry-paid'),
+      key: Key(income ? 'entry-received' : 'entry-paid'),
       contentPadding: EdgeInsets.zero,
       value: paid,
       onChanged: onChanged,
       title: Text(
-        '지급 완료',
+        income ? '받음 완료' : '지급 완료',
         style: theme.textTheme.bodyMedium?.copyWith(
           fontWeight: FontWeight.w600,
         ),
       ),
-      subtitle: Text(
-        keepAll(paid ? '현금 유출에 들어가요.' : '아직 빠져나가지 않은 돈이에요.'),
-        style: theme.textTheme.bodySmall,
-      ),
+      subtitle: Text(keepAll(note), style: theme.textTheme.bodySmall),
     );
   }
 }
