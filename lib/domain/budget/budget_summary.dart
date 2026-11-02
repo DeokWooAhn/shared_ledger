@@ -13,7 +13,7 @@ class BudgetSummary {
     required this.cardUsageByCard,
   });
 
-  /// 현금 유입: 수입 합계.
+  /// 현금 유입: 추가 수입 전체 + 받음 완료인 고정 수입.
   final int cashIn;
 
   /// 이번 달 지출: 고정 지출 전체 + 추가 지출 전체 (결제수단 상관없음).

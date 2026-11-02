@@ -46,6 +46,36 @@ void main() {
       expect(data['updatedAt'], serverTime);
     });
 
+    test('고정 수입은 kind를 income으로 적고 분류·결제수단은 넣지 않는다', () {
+      const salary = TemplateDraft(
+        kind: EntryKind.fixedIncome,
+        memberId: 'owner',
+        title: '월급',
+        amount: 3000000,
+        dueDay: 25,
+      );
+
+      final data = newTemplateData(salary, uid: 'me');
+
+      expect(data.keys.toSet(), {
+        'kind',
+        'title',
+        'amount',
+        'memberId',
+        'dueDay',
+        'createdBy',
+        'updatedBy',
+        'createdAt',
+        'updatedAt',
+      });
+      expect(data['kind'], 'income');
+      // 고칠 때는 종류를 쓰지 않는다(규칙의 keepsKind가 막는다).
+      expect(
+        templateUpdateData(salary, uid: 'me').keys,
+        isNot(contains('kind')),
+      );
+    });
+
     test('금액 미정이면 새 문서에 금액을 넣지 않는다', () {
       const unpriced = TemplateDraft(
         memberId: 'owner',
@@ -107,6 +137,25 @@ void main() {
       expect(entry.amount, 200000);
       expect(entry.date, isNull);
       expect(entry.dueOn, DateTime(2027, 2, 28));
+    });
+
+    test('고정 수입 반복 설정이면 받기 전 고정 수입 항목을 만든다', () {
+      final entry = laterEntryDraft(
+        const TemplateDraft(
+          kind: EntryKind.fixedIncome,
+          memberId: 'owner',
+          title: '월급',
+          amount: 3000000,
+          dueDay: 25,
+        ),
+        const YearMonth(2026, 11),
+      );
+
+      expect(entry.kind, EntryKind.fixedIncome);
+      expect(entry.amount, 3000000);
+      expect(entry.date, isNull);
+      expect(entry.dueOn, DateTime(2026, 11, 25));
+      expect(entryProblemsOf(entry), isEmpty);
     });
 
     test('맞출 때는 반복 설정이 정하는 칸만 쓰고, 금액은 바뀌었을 때만 쓴다', () {
@@ -202,6 +251,32 @@ void main() {
 
     test('제목이 없거나 잘못돼도 빈 제목으로 살린다', () {
       expect(templateFromFirestore('t', {...valid, 'title': 3})?.title, '');
+    });
+
+    test('kind가 income이면 고정 수입이고, 분류·결제수단 없이 금액이 있어야 읽는다', () {
+      const salary = {
+        'kind': 'income',
+        'title': '월급',
+        'amount': 3000000,
+        'memberId': 'owner',
+        'dueDay': 25,
+      };
+
+      expect(
+        templateFromFirestore('t2', salary),
+        const ExpenseTemplate(
+          id: 't2',
+          kind: EntryKind.fixedIncome,
+          title: '월급',
+          amount: 3000000,
+          memberId: 'owner',
+          dueDay: 25,
+        ),
+      );
+      expect(templateKindFromFirestore(salary), EntryKind.fixedIncome);
+      expect(templateKindFromFirestore(valid), EntryKind.planned);
+      final unpriced = Map<String, dynamic>.of(salary)..remove('amount');
+      expect(templateFromFirestore('t2', unpriced), isNull);
     });
   });
 }

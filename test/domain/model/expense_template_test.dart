@@ -108,6 +108,84 @@ void main() {
     expect(templatesMissingIn(const MonthLedger(), const []), isEmpty);
   });
 
+  test('고정 수입 반복 설정은 고정 수입 id만 보고, 같은 id의 고정 지출이 있어도 만든다', () {
+    const salary = ExpenseTemplate(
+      id: 'salary',
+      kind: EntryKind.fixedIncome,
+      title: '월급',
+      amount: 3000000,
+      memberId: 'owner',
+      dueDay: 25,
+    );
+    const bonus = ExpenseTemplate(
+      id: 'bonus',
+      kind: EntryKind.fixedIncome,
+      title: '수당',
+      amount: 100000,
+      memberId: 'owner',
+      dueDay: 10,
+    );
+    // 휴지통에 넣은 수당 문서가 남아 있고, 월급과 같은 id의 고정 지출 문서가 있다.
+    const ledger = MonthLedger(
+      plannedIds: {'salary'},
+      fixedIncomeIds: {'bonus'},
+    );
+
+    expect(templatesMissingIn(ledger, [salary, bonus]), [salary]);
+    expect(
+      salary.draftFor(const YearMonth(2026, 10)).kind,
+      EntryKind.fixedIncome,
+    );
+  });
+
+  test('반복 설정으로 만든 항목은 고정 지출은 지급, 고정 수입은 받음으로 끝난다', () {
+    final paid = DateTime(2026, 10, 25);
+    expect(
+      fixedEntrySettled(
+        PlannedExpense(
+          id: 'p',
+          categoryId: 'c',
+          memberId: 'owner',
+          title: '월세',
+          paymentMethodId: 'p',
+          paidOn: paid,
+        ),
+      ),
+      isTrue,
+    );
+    expect(
+      fixedEntrySettled(
+        const FixedIncome(id: 'f', memberId: 'owner', title: '월급', amount: 1),
+      ),
+      isFalse,
+    );
+    expect(
+      fixedEntrySettled(
+        FixedIncome(
+          id: 'f',
+          memberId: 'owner',
+          title: '월급',
+          amount: 1,
+          receivedOn: paid,
+        ),
+      ),
+      isTrue,
+    );
+    // 다른 종류는 반복 설정으로 만들지 않는다.
+    expect(
+      fixedEntrySettled(
+        Income(
+          id: 'i',
+          memberId: 'owner',
+          title: '용돈',
+          amount: 1,
+          receivedOn: paid,
+        ),
+      ),
+      isFalse,
+    );
+  });
+
   test('되돌리기·고치기 화면의 값은 고정 지출 값과 같다', () {
     expect(
       TemplateDraft.of(template(amount: 1000)),
@@ -133,22 +211,22 @@ void main() {
     );
 
     test('항목 검사에 매달 예정일을 더한다. 금액은 비울 수 있다', () {
-      expect(fixedExpenseProblemsOf(draft(), dueDay: 1), isEmpty);
+      expect(fixedEntryProblemsOf(draft(), dueDay: 1), isEmpty);
       expect(
-        fixedExpenseProblemsOf(draft(amount: 0), dueDay: lastDueDay),
+        fixedEntryProblemsOf(draft(amount: 0), dueDay: lastDueDay),
         isEmpty,
       );
-      expect(fixedExpenseProblemsOf(draft(title: '가' * 41), dueDay: 1), {
+      expect(fixedEntryProblemsOf(draft(title: '가' * 41), dueDay: 1), {
         EntryProblem.titleTooLong,
       });
-      expect(fixedExpenseProblemsOf(draft(amount: -1), dueDay: 1), {
+      expect(fixedEntryProblemsOf(draft(amount: -1), dueDay: 1), {
         EntryProblem.amountNegative,
       });
     });
 
     test('예정일은 1일부터 말일까지만 받는다', () {
       for (final dueDay in [null, 0, lastDueDay + 1]) {
-        expect(fixedExpenseProblemsOf(draft(), dueDay: dueDay), {
+        expect(fixedEntryProblemsOf(draft(), dueDay: dueDay), {
           EntryProblem.dueDayMissing,
         }, reason: '$dueDay');
       }

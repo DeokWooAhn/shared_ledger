@@ -6,7 +6,8 @@ import '../../core/widget/keep_all.dart';
 
 /// 종류 고르기 시트의 짧은 설명.
 String entryKindDescription(EntryKind kind) => switch (kind) {
-  EntryKind.income => '월급처럼 들어온 돈',
+  EntryKind.income => '용돈·환급처럼 그때그때 들어온 돈',
+  EntryKind.fixedIncome => '월급처럼 매달 들어오는 돈',
   EntryKind.planned => '관리비·보험처럼 매달 나가는 돈',
   EntryKind.extra => '그때그때 쓴 돈',
   EntryKind.cardBill => '지난달 카드값이 빠져나간 돈',
@@ -82,7 +83,7 @@ class _EntryKindSheet extends StatelessWidget {
   final EntryKind selected;
 
   static const _groups = [
-    ('수입', [EntryKind.income]),
+    ('수입', [EntryKind.fixedIncome, EntryKind.income]),
     ('지출', [EntryKind.planned, EntryKind.extra]),
     ('카드', [EntryKind.cardBill]),
   ];

@@ -39,10 +39,10 @@ const phone = ExpenseTemplate(
 /// [template]로 만든 그달 고정 지출(문서 id가 반복 설정 id).
 PlannedExpense plannedOf(ExpenseTemplate template) => PlannedExpense(
   id: template.id,
-  categoryId: template.categoryId,
+  categoryId: template.categoryId!,
   memberId: template.memberId,
   title: template.title,
-  paymentMethodId: template.paymentMethodId,
+  paymentMethodId: template.paymentMethodId!,
 );
 
 // 10월이 달 목록에 있는 가계부.

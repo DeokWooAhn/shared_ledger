@@ -809,6 +809,38 @@ void main() {
       expect(textOf(tester, const Key('planned-total')), '0원');
     });
 
+    testWidgets('받기 전 고정 수입은 현금 유입에서 빠지고 몇 건인지 알린다', (tester) async {
+      await pumpSummary(
+        tester,
+        entries: FakeEntriesRepository({
+          october: MonthLedger(
+            incomes: const [
+              Income(id: 'i1', memberId: 'owner', title: '용돈', amount: 50000),
+            ],
+            fixedIncomes: [
+              const FixedIncome(
+                id: 'f1',
+                memberId: 'owner',
+                title: '월급',
+                amount: 3000000,
+              ),
+              FixedIncome(
+                id: 'f2',
+                memberId: 'partner',
+                title: '월급',
+                amount: 2000000,
+                receivedOn: DateTime(2026, 10, 10),
+              ),
+            ],
+          ),
+        }),
+        settings: settings,
+      );
+
+      expect(textOf(tester, const Key('cash-in')), '2,050,000원');
+      expect(findSentence('받기 전 고정 수입 1건은 현금 유입에서 빠져 있어요'), findsOneWidget);
+    });
+
     testWidgets('금액 미정 고정 지출이 있으면 몇 건이 빠졌는지 알린다', (tester) async {
       await pumpSummary(
         tester,

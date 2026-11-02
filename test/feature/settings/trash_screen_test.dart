@@ -117,6 +117,13 @@ Future<void> pumpTrashApp(
   size: size,
 );
 
+/// 반복 설정 목록을 받지 못하는 가짜 저장소(권한 오류 등).
+class BrokenTemplatesRepository extends FakeTemplatesRepository {
+  @override
+  Stream<List<ExpenseTemplate>> watchTemplates(String ledgerId) =>
+      Stream.error(StateError('templates failed'));
+}
+
 Finder inTrash(Finder finder) =>
     find.descendant(of: find.byType(TrashScreen), matching: finder);
 
@@ -254,7 +261,7 @@ void main() {
       expect(inTrash(find.text('관리비')), findsOneWidget);
       expect(inTrash(find.text('금액 미정')), findsOneWidget);
       expect(
-        inTrash(findSentence('고정 지출에서 만든 항목이라 지우면 다시 생겨요. 휴지통에 남겨 둬요.')),
+        inTrash(findSentence('매달 만드는 고정 지출이라 지우면 다시 생겨요. 휴지통에 남겨 둬요.')),
         findsOneWidget,
       );
       expect(
@@ -265,6 +272,27 @@ void main() {
         inTrash(find.byKey(const Key('purge-tpl-management'))),
         findsNothing,
       );
+    });
+
+    testWidgets('반복 설정 목록을 받지 못하면 고정 지출의 완전 삭제만 막고 되살리기는 된다', (tester) async {
+      final entries = trashOf([management]);
+      await pumpTrashApp(
+        tester,
+        entries: entries,
+        templates: BrokenTemplatesRepository(),
+      );
+      await openTrash(tester);
+
+      final purge = tester.widget<TextButton>(
+        inTrash(find.byKey(const Key('purge-tpl-management'))),
+      );
+      expect(purge.onPressed, isNull);
+      await tapShown(
+        tester,
+        inTrash(find.byKey(const Key('restore-tpl-management'))),
+      );
+
+      expect(entries.restored.single.id, 'tpl-management');
     });
 
     testWidgets('달 머리말로 다른 달의 휴지통을 본다. 지난 달의 고정 지출 항목은 지울 수 있다', (

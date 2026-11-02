@@ -234,6 +234,26 @@ void main() {
       expect(entries.added, isEmpty);
     });
 
+    test('고정 수입은 받기 전으로 시작하고, 금액·내용·매달 예정일이 없으면 저장하지 않는다', () async {
+      final templates = FakeTemplatesRepository();
+      final container = await ready(templates: templates);
+      final provider = entryFormNotifierProvider(add(EntryKind.fixedIncome));
+      recordStates(container, provider);
+
+      expect(container.read(provider).date, isNull);
+      await container
+          .read(provider.notifier)
+          .save(amount: '', title: '', memo: '');
+
+      // 고정 지출과 달리 금액을 비워 둘 수 없고, 분류·결제수단은 묻지 않는다.
+      expect(container.read(provider).problems, {
+        EntryProblem.amountMissing,
+        EntryProblem.titleMissing,
+        EntryProblem.dueDayMissing,
+      });
+      expect(templates.added, isEmpty);
+    });
+
     test('칸을 고치거나 고르면 그 칸의 문제만 지운다', () async {
       final container = await ready();
       final provider = entryFormNotifierProvider(add(EntryKind.planned));
@@ -512,6 +532,26 @@ void main() {
       return (container, entries, fake);
     }
 
+    test('id가 같아도 종류가 다른 반복 설정은 그 항목의 반복 설정이 아니다', () async {
+      final (container, _, _) = await withTemplate(
+        templates: [
+          ExpenseTemplate(
+            id: rentTemplate.id,
+            kind: EntryKind.fixedIncome,
+            title: '월급',
+            amount: 1,
+            memberId: 'owner',
+            dueDay: 25,
+          ),
+        ],
+      );
+      final provider = entryFormNotifierProvider(edit());
+      container.listen(templatesProvider, (_, _) {});
+      final templates = await container.read(templatesProvider.future);
+
+      expect(container.read(provider.notifier).templateOf(templates), isNull);
+    });
+
     test('목록을 받기 전에 휴지통을 눌렀어도 반복 설정이 있으면 휴지통에 넣지 않는다', () async {
       final (container, entries, _) = await withTemplate();
       final provider = entryFormNotifierProvider(edit());
@@ -535,7 +575,7 @@ void main() {
       final outcome = container.read(provider).outcome;
       expect(
         outcome,
-        isA<FixedExpenseStopped>()
+        isA<FixedEntryStopped>()
             .having((o) => o.template, 'template', rentTemplate)
             .having((o) => o.months, 'months', [october]),
       );

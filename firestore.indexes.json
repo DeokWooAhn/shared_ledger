@@ -8,6 +8,12 @@
       "indexes": []
     },
     {
+      "collectionGroup": "fixedIncomes",
+      "fieldPath": "purgeAt",
+      "ttl": true,
+      "indexes": []
+    },
+    {
       "collectionGroup": "planned",
       "fieldPath": "purgeAt",
       "ttl": true,

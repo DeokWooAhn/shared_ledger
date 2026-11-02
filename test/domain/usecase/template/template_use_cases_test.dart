@@ -45,13 +45,33 @@ const phone = EntryDraft(
 PlannedExpense rentIn(YearMonth month, {DateTime? paidOn, int? amount}) =>
     PlannedExpense(
       id: rent.id,
-      categoryId: rent.categoryId,
+      categoryId: rent.categoryId!,
       memberId: rent.memberId,
       title: rent.title,
-      paymentMethodId: rent.paymentMethodId,
+      paymentMethodId: rent.paymentMethodId!,
       amount: amount ?? rent.amount,
       dueOn: rent.dueOn(month),
       paidOn: paidOn,
+    );
+
+const salary = ExpenseTemplate(
+  id: 'template-salary',
+  kind: EntryKind.fixedIncome,
+  title: '월급',
+  amount: 3000000,
+  memberId: 'owner',
+  dueDay: 25,
+);
+
+/// [salary]로 [month]에 만든 그달 고정 수입. [receivedOn]이 있으면 받은 것이다.
+FixedIncome salaryIn(YearMonth month, {DateTime? receivedOn, int? amount}) =>
+    FixedIncome(
+      id: salary.id,
+      memberId: salary.memberId,
+      title: salary.title,
+      amount: amount ?? salary.amount!,
+      dueOn: salary.dueOn(month),
+      receivedOn: receivedOn,
     );
 
 /// 반복 설정과 그달 항목을 잇는 가짜 저장소들.
@@ -80,7 +100,7 @@ void main() {
     test('반복 설정과 그달 항목(예정일 포함)을 같은 id로 만들고, 뒤 달에도 지급 전으로 만든다', () async {
       final (:templates, :entries) = fakes(templates: const []);
 
-      final problems = await TemplateUseCases(templates).addFixedExpense(
+      final problems = await TemplateUseCases(templates).addFixedEntry(
         ledger: ledger,
         month: october,
         entry: phone,
@@ -109,7 +129,7 @@ void main() {
     test('매달 예정일을 고르지 않았으면 쓰지 않고 문제를 돌려준다', () async {
       final (:templates, entries: _) = fakes(templates: const []);
 
-      final problems = await TemplateUseCases(templates).addFixedExpense(
+      final problems = await TemplateUseCases(templates).addFixedEntry(
         ledger: ledger,
         month: october,
         entry: phone,
@@ -126,7 +146,7 @@ void main() {
       templates.offline = true;
 
       await expectLater(
-        TemplateUseCases(templates).addFixedExpense(
+        TemplateUseCases(templates).addFixedEntry(
           ledger: ledger,
           month: october,
           entry: phone,
@@ -162,7 +182,7 @@ void main() {
         },
       );
 
-      await TemplateUseCases(templates).updateFixedExpense(
+      await TemplateUseCases(templates).updateFixedEntry(
         ledger: ledger,
         month: october,
         template: rent,
@@ -194,7 +214,7 @@ void main() {
         },
       );
 
-      await TemplateUseCases(templates).updateFixedExpense(
+      await TemplateUseCases(templates).updateFixedEntry(
         ledger: ledger,
         month: october,
         template: rent,
@@ -217,7 +237,7 @@ void main() {
         },
       );
 
-      await TemplateUseCases(templates).updateFixedExpense(
+      await TemplateUseCases(templates).updateFixedEntry(
         ledger: ledger,
         month: october,
         template: rent,
@@ -243,12 +263,9 @@ void main() {
         },
       );
 
-      final months = await TemplateUseCases(templates).stopFixedExpense(
-        ledger: ledger,
-        month: october,
-        id: rent.id,
-        uid: 'me',
-      );
+      final months = await TemplateUseCases(
+        templates,
+      ).stopFixedEntry(ledger: ledger, month: october, id: rent.id, uid: 'me');
 
       expect(months, [october, november]);
       expect(templates.templates, isEmpty);
@@ -268,12 +285,9 @@ void main() {
         },
       );
 
-      final months = await TemplateUseCases(templates).stopFixedExpense(
-        ledger: ledger,
-        month: october,
-        id: rent.id,
-        uid: 'me',
-      );
+      final months = await TemplateUseCases(
+        templates,
+      ).stopFixedEntry(ledger: ledger, month: october, id: rent.id, uid: 'me');
 
       expect(months, [november]);
       expect(entries.monthOf(october).plannedExpenses, [paid]);
@@ -287,14 +301,14 @@ void main() {
         },
       );
       final useCases = TemplateUseCases(templates);
-      final months = await useCases.stopFixedExpense(
+      final months = await useCases.stopFixedEntry(
         ledger: ledger,
         month: october,
         id: rent.id,
         uid: 'me',
       );
 
-      await useCases.resumeFixedExpense(
+      await useCases.resumeFixedEntry(
         ledgerId: 'l1',
         template: rent,
         months: months,
@@ -319,7 +333,7 @@ void main() {
       );
 
       await expectLater(
-        TemplateUseCases(templates).stopFixedExpense(
+        TemplateUseCases(templates).stopFixedEntry(
           ledger: ledger,
           month: october,
           id: rent.id,
@@ -333,6 +347,136 @@ void main() {
           ),
         ),
       );
+    });
+  });
+
+  group('고정 수입', () {
+    const pay = EntryDraft(
+      kind: EntryKind.fixedIncome,
+      memberId: 'owner',
+      title: '월급',
+      amount: 3000000,
+    );
+
+    test('금액이 없으면 쓰지 않고 문제를 돌려준다', () async {
+      final (:templates, entries: _) = fakes(templates: const []);
+
+      final problems = await TemplateUseCases(templates).addFixedEntry(
+        ledger: ledger,
+        month: october,
+        entry: const EntryDraft(
+          kind: EntryKind.fixedIncome,
+          memberId: 'owner',
+          title: '월급',
+        ),
+        dueDay: 25,
+        uid: 'me',
+      );
+
+      expect(problems, {EntryProblem.amountMissing});
+      expect(templates.added, isEmpty);
+    });
+
+    test('더하면 고정 수입 반복 설정과 그달·뒤 달의 받기 전 고정 수입을 만든다', () async {
+      final (:templates, :entries) = fakes(templates: const []);
+
+      final problems = await TemplateUseCases(templates).addFixedEntry(
+        ledger: ledger,
+        month: october,
+        entry: pay,
+        dueDay: 25,
+        uid: 'me',
+      );
+
+      expect(problems, isEmpty);
+      final template = templates.templates.single;
+      expect(template.kind, EntryKind.fixedIncome);
+      expect(template.categoryId, isNull);
+      for (final month in [october, november]) {
+        final income = entries.monthOf(month).fixedIncomes.single;
+        expect(income.id, template.id, reason: '$month');
+        expect(income.isReceived, isFalse, reason: '$month');
+        expect(income.dueOn, DateTime(month.year, month.month, 25));
+        expect(entries.monthOf(month).plannedExpenses, isEmpty);
+      }
+    });
+
+    test('다음 달부터도 이 금액이면 뒤 달의 받기 전 고정 수입만 맞추고, 받은 것은 그대로 둔다', () async {
+      final received = salaryIn(november, receivedOn: DateTime(2026, 11, 25));
+      final (:templates, :entries) = fakes(
+        templates: const [salary],
+        months: {
+          october: MonthLedger(fixedIncomes: [salaryIn(october)]),
+          november: MonthLedger(fixedIncomes: [received]),
+        },
+      );
+      final longer = Ledger(
+        id: 'l1',
+        name: '우리 가계부',
+        ownerUid: 'me',
+        months: {october, november, const YearMonth(2026, 12)},
+      );
+      await entries.fillPlanned(
+        ledgerId: 'l1',
+        month: const YearMonth(2026, 12),
+        templates: const [salary],
+        uid: 'me',
+      );
+
+      await TemplateUseCases(templates).updateFixedEntry(
+        ledger: longer,
+        month: october,
+        template: salary,
+        entry: EntryDraft.of(salaryIn(october, amount: 3200000)),
+        dueDay: 25,
+        amountForLater: true,
+        uid: 'me',
+      );
+
+      expect(templates.templates.single.amount, 3200000);
+      expect(entries.monthOf(october).fixedIncomes.single.amount, 3200000);
+      expect(entries.monthOf(november).fixedIncomes.single, received);
+      expect(
+        entries.monthOf(const YearMonth(2026, 12)).fixedIncomes.single.amount,
+        3200000,
+      );
+    });
+
+    test('그만하면 받은 그달 것은 남기고 뒤 달의 받기 전 것만 휴지통에 넣으며, 되돌리기로 돌아온다', () async {
+      final received = salaryIn(october, receivedOn: DateTime(2026, 10, 25));
+      final (:templates, :entries) = fakes(
+        templates: const [salary],
+        months: {
+          october: MonthLedger(fixedIncomes: [received]),
+          november: MonthLedger(fixedIncomes: [salaryIn(november)]),
+        },
+      );
+      final useCases = TemplateUseCases(templates);
+
+      final months = await useCases.stopFixedEntry(
+        ledger: ledger,
+        month: october,
+        id: salary.id,
+        uid: 'me',
+      );
+
+      expect(months, [november]);
+      expect(entries.monthOf(october).fixedIncomes, [received]);
+      expect(entries.monthOf(november).fixedIncomes, isEmpty);
+      expect(
+        entries.monthOf(november).trashed.single.entry.kind,
+        EntryKind.fixedIncome,
+      );
+
+      await useCases.resumeFixedEntry(
+        ledgerId: 'l1',
+        template: salary,
+        months: months,
+        uid: 'me',
+      );
+
+      expect(templates.templates, [salary]);
+      expect(entries.monthOf(november).fixedIncomes.single.id, salary.id);
     });
   });
 }

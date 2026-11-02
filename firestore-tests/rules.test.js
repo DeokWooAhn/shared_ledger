@@ -108,7 +108,8 @@ function entryRef(db, { type = 'extras', id = 'entry-1', month = MONTH, ledger =
 
 // 종류마다 앱이 쓰는 필드(docs/firestore.md의 항목 표). 날짜·메모는 선택이라 뺐다.
 const ENTRY_FIELDS = {
-  incomes: { memberId: 'owner', title: '월급', amount: 3000000 },
+  incomes: { memberId: 'owner', title: '용돈', amount: 100000 },
+  fixedIncomes: { memberId: 'owner', title: '월급', amount: 3000000, dueOn: '2026-10-25' },
   planned: { memberId: 'owner', title: '관리비', categoryId: 'c1', paymentMethodId: 'p1', amount: 200000 },
   extras: { memberId: 'owner', title: '장보기', paymentMethodId: 'card', amount: 10000 },
   cardBills: { memberId: 'owner', cardId: 'card', amount: 500000 },
@@ -565,6 +566,26 @@ describe('가계부 항목', () => {
       }
     });
 
+    test('고정 수입은 받은 날·예정일을 받고 금액을 꼭 적으며, 분류·결제수단은 받지 않는다', async () => {
+      const db = firestoreAs(EDITOR);
+      const ref = (id) => entryRef(db, { type: 'fixedIncomes', id });
+      await assertSucceeds(setDoc(ref('a'), newEntryOf('fixedIncomes', EDITOR, { receivedOn: '2026-10-25' })));
+      await assertFails(setDoc(ref('b'), newEntryOf('fixedIncomes', EDITOR, { amount: null })));
+      await assertFails(setDoc(ref('c'), newEntryOf('fixedIncomes', EDITOR, { paymentMethodId: 'p1' })));
+      await assertFails(setDoc(ref('d'), newEntryOf('fixedIncomes', EDITOR, { dueOn: '2026/10/25' })));
+      // 추가 수입(incomes)에는 예정일이 없다.
+      await assertFails(
+        setDoc(entryRef(db, { type: 'incomes', id: 'e' }), newEntryOf('incomes', EDITOR, { dueOn: '2026-10-25' })),
+      );
+      // 보기 전용은 고정 수입을 쓸 수 없다.
+      await assertFails(
+        setDoc(
+          entryRef(firestoreAs(VIEWER), { type: 'fixedIncomes', id: 'f', ledger: VIEWER_LEDGER }),
+          newEntryOf('fixedIncomes', VIEWER),
+        ),
+      );
+    });
+
     test('제목은 1~40자여야 한다', async () => {
       const db = firestoreAs(EDITOR);
       await assertSucceeds(setDoc(entryRef(db, { id: 'a' }), newEntry(EDITOR, { title: '가'.repeat(40) })));
@@ -687,6 +708,21 @@ describe('고정 지출 템플릿', () => {
     );
   });
 
+  test('고정 수입(kind: income)은 분류·결제수단 없이 만들고, 금액은 꼭 적는다', async () => {
+    const income = (fields = {}) => {
+      const { categoryId, paymentMethodId, ...rest } = newTemplate(EDITOR, { kind: 'income', title: '월급', amount: 3000000 });
+      return { ...rest, ...fields };
+    };
+    const db = firestoreAs(EDITOR);
+    await assertSucceeds(setDoc(templateRef(db, { id: 'salary' }), income()));
+    const { amount, ...unpriced } = income();
+    await assertFails(setDoc(templateRef(db, { id: 'salary-2' }), unpriced));
+    // 고정 수입에는 분류·결제수단을 넣을 수 없다.
+    await assertFails(setDoc(templateRef(db, { id: 'salary-3' }), income({ categoryId: 'c1' })));
+    // 모르는 종류는 고정 지출로 보고, 고정 지출에는 kind를 넣을 수 없다.
+    await assertFails(setDoc(templateRef(db, { id: 'salary-4' }), newTemplate(EDITOR, { kind: 'expense' })));
+  });
+
   test('금액을 비우면 금액 미정 고정 지출이 된다', async () => {
     const { amount, ...unpriced } = newTemplate(EDITOR);
     await assertSucceeds(setDoc(templateRef(firestoreAs(EDITOR)), unpriced));
@@ -754,6 +790,33 @@ describe('고정 지출 템플릿', () => {
     await assertSucceeds(edit({ amount: deleteField() }));
     await assertFails(edit({ dueDay: 0 }));
     await assertFails(edit({ title: deleteField() }));
+  });
+
+  test('반복 설정의 종류(고정 지출·고정 수입)는 바꿀 수 없다', async () => {
+    await seedTemplate();
+    const db = firestoreAs(EDITOR);
+    // 고정 지출을 고정 수입으로: 분류·결제수단을 지우고 kind를 붙여도 막는다.
+    await assertFails(
+      updateDoc(templateRef(db), {
+        kind: 'income',
+        categoryId: deleteField(),
+        paymentMethodId: deleteField(),
+        updatedBy: EDITOR,
+        updatedAt: serverTimestamp(),
+      }),
+    );
+    const { categoryId, paymentMethodId, ...salary } = newTemplate(OWNER, { kind: 'income', title: '월급', amount: 3000000 });
+    await seed((owner) =>
+      setDoc(templateRef(owner, { id: 'salary' }), {
+        ...salary,
+        createdAt: Timestamp.fromMillis(1000),
+        updatedAt: Timestamp.fromMillis(1000),
+      }),
+    );
+    const salaryEdit = (fields) =>
+      updateDoc(templateRef(db, { id: 'salary' }), { ...fields, updatedBy: EDITOR, updatedAt: serverTimestamp() });
+    await assertSucceeds(salaryEdit({ amount: 3200000 }));
+    await assertFails(salaryEdit({ kind: deleteField(), categoryId: 'c1', paymentMethodId: 'p1' }));
   });
 
   test('편집자는 고정 지출을 지울 수 있고, 보기 전용은 지울 수 없다', async () => {

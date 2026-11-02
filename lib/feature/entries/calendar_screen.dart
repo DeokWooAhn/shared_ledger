@@ -751,7 +751,8 @@ class _DayPanel extends ConsumerWidget {
     if (day.entries.isNotEmpty) {
       total = day.net > 0 ? '+${won(day.net)}' : won(day.net);
     } else if (day.scheduled.isNotEmpty) {
-      total = '${won(-day.scheduledTotal)} 예정';
+      final scheduled = day.scheduledTotal;
+      total = '${scheduled > 0 ? '+' : ''}${won(scheduled)} 예정';
     } else {
       total = null;
     }
@@ -858,7 +859,7 @@ class _DayPanel extends ConsumerWidget {
               Padding(
                 padding: const EdgeInsets.only(top: 8),
                 child: Text(
-                  keepAll('예정 항목을 누르면 지급 완료로 바꿀 수 있어요.'),
+                  keepAll(_scheduledHint(day.scheduled)),
                   style: theme.textTheme.labelSmall?.copyWith(
                     color: colors.textMuted,
                   ),
@@ -869,6 +870,17 @@ class _DayPanel extends ConsumerWidget {
       ),
     );
   }
+}
+
+// 예정 항목을 눌러 할 수 있는 일. 고정 지출은 지급 완료, 고정 수입은 받음 완료로 바꾼다.
+String _scheduledHint(List<LedgerEntry> scheduled) {
+  final incomes = scheduled.whereType<FixedIncome>().length;
+  final done = incomes == 0
+      ? '지급 완료로'
+      : incomes == scheduled.length
+      ? '받음 완료로'
+      : '지급 완료나 받음 완료로';
+  return '예정 항목을 누르면 $done 바꿀 수 있어요.';
 }
 
 // 그날로 추가 지출을 연다. [addMonth]가 있으면(그달 가계부가 없음) 새로 만들지 먼저 묻고, 만든다고 하면 그달 가계부를

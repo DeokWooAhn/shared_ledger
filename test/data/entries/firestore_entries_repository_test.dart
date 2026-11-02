@@ -15,7 +15,7 @@ EntryDoc doc(
 
 void main() {
   group('항목 문서 읽기', () {
-    test('수입은 누가·제목·금액·받은 날·메모를 읽는다', () {
+    test('추가 수입은 누가·제목·금액·받은 날·메모를 읽는다', () {
       final income = incomeFromFirestore('i1', {
         'memberId': 'owner',
         'title': '월급',
@@ -30,6 +30,39 @@ void main() {
       expect(income?.amount, 3000000);
       expect(income?.receivedOn, DateTime(2026, 10, 25));
       expect(income?.memo, '세후');
+    });
+
+    test('고정 수입은 예정일을 읽고, 받은 날이 있어야 받음 완료다', () {
+      const data = {
+        'memberId': 'partner',
+        'title': '월급',
+        'amount': 2500000,
+        'dueOn': '2026-10-25',
+      };
+      final waiting = fixedIncomeFromFirestore('template-2', data);
+      final received = fixedIncomeFromFirestore('template-2', {
+        ...data,
+        'receivedOn': '2026-10-24',
+      });
+
+      expect(waiting?.dueOn, DateTime(2026, 10, 25));
+      expect(waiting?.isReceived, isFalse);
+      expect(received?.receivedOn, DateTime(2026, 10, 24));
+      expect(received?.isReceived, isTrue);
+    });
+
+    test('고정 수입은 금액이 없거나 잘못됐으면 읽지 않는다', () {
+      for (final amount in [null, -1, 1.5]) {
+        expect(
+          fixedIncomeFromFirestore('template-2', {
+            'memberId': 'owner',
+            'title': '월급',
+            'amount': ?amount,
+          }),
+          isNull,
+          reason: '$amount',
+        );
+      }
     });
 
     test('고정 지출은 금액이 비어 있으면 금액 미정으로 읽는다', () {
@@ -176,9 +209,18 @@ void main() {
       EntryKind.income: EntryDraft(
         kind: EntryKind.income,
         memberId: 'owner',
+        amount: 50000,
+        title: '중고 거래',
+        date: DateTime(2026, 10, 12),
+        memo: '책상',
+      ),
+      EntryKind.fixedIncome: EntryDraft(
+        kind: EntryKind.fixedIncome,
+        memberId: 'owner',
         amount: 3000000,
         title: '월급',
-        date: DateTime(2026, 10, 25),
+        date: DateTime(2026, 10, 24),
+        dueOn: DateTime(2026, 10, 25),
         memo: '세후',
       ),
       EntryKind.planned: EntryDraft(
@@ -214,6 +256,14 @@ void main() {
       const audit = {'createdBy', 'updatedBy', 'createdAt', 'updatedAt'};
       final expected = {
         EntryKind.income: {'memberId', 'amount', 'title', 'receivedOn', 'memo'},
+        EntryKind.fixedIncome: {
+          'memberId',
+          'amount',
+          'title',
+          'receivedOn',
+          'dueOn',
+          'memo',
+        },
         EntryKind.planned: {
           'memberId',
           'amount',
@@ -426,6 +476,7 @@ void main() {
     test('종류마다 컬렉션 이름이 정해져 있다', () {
       expect(EntryKind.values.map(entryCollection), [
         'incomes',
+        'fixedIncomes',
         'planned',
         'extras',
         'cardBills',
@@ -443,6 +494,7 @@ void main() {
         };
         final entry = switch (draft.kind) {
           EntryKind.income => incomeFromFirestore('id', data),
+          EntryKind.fixedIncome => fixedIncomeFromFirestore('id', data),
           EntryKind.planned => plannedExpenseFromFirestore('id', data),
           EntryKind.extra => extraExpenseFromFirestore('id', data),
           EntryKind.cardBill => cardBillFromFirestore('id', data),
@@ -558,6 +610,32 @@ void main() {
 
       expect(ledger.plannedExpenses.map((e) => e.id), ['t-live']);
       expect(ledger.plannedIds, {'t-live', 't-trashed', 't-broken'});
+    });
+
+    test('고정 수입은 따로 모으고, 문서 id는 휴지통 항목과 읽을 수 없는 문서까지 모은다', () {
+      const income = {'memberId': 'owner', 'title': '월급', 'amount': 1000};
+      final ledger = monthLedgerFromFirestore(
+        incomes: const [],
+        fixedIncomes: [
+          doc('f-live', income),
+          doc('f-trashed', {
+            ...income,
+            'deletedAt': Timestamp.fromDate(DateTime(2026, 10, 2)),
+          }),
+          doc('f-broken', {...income, 'amount': null}),
+        ],
+        planned: const [],
+        extras: const [],
+        cardBills: const [],
+      );
+
+      expect(ledger.fixedIncomes.map((e) => e.id), ['f-live']);
+      expect(ledger.trashed.map((t) => (t.entry.kind, t.entry.id)), [
+        (EntryKind.fixedIncome, 'f-trashed'),
+      ]);
+      expect(ledger.fixedIncomeIds, {'f-live', 'f-trashed', 'f-broken'});
+      // 고정 지출 id와 섞지 않는다. 같은 id의 고정 지출은 따로 채운다.
+      expect(ledger.plannedIds, isEmpty);
     });
 
     test('휴지통 항목은 넣은 때·자동으로 지울 때와 함께 따로 모은다', () {

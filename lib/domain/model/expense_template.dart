@@ -5,28 +5,34 @@ import 'year_month.dart';
 /// 예정일 '말일'. 31일로 적고 '말일'로 보여준다. 31일이 없는 달에도 그달 마지막 날이 된다.
 const lastDueDay = 31;
 
-/// 고정 지출의 반복 설정(템플릿). 매달 나가는 돈이고, 이것으로 달마다 고정 지출 항목이 만들어진다.
+/// 고정 지출·고정 수입의 반복 설정(템플릿). 매달 나가거나 들어오는 돈이고, 이것으로 달마다 그 항목이 만들어진다.
 ///
-/// 항목 탭에서 고정 지출을 더하면 함께 생기고, 그만하면 지워진다. 따로 보여 주는 화면은 없다.
-/// Firestore 문서 id가 그달 고정 지출의 문서 id가 된다(`months/{yyyy-MM}/planned/{템플릿 id}`).
+/// 항목 탭에서 고정 지출·고정 수입을 더하면 함께 생기고, 그만하면 지워진다. 따로 보여 주는 화면은 없다.
+/// Firestore 문서 id가 그달 항목의 문서 id가 된다(`months/{yyyy-MM}/planned|fixedIncomes/{템플릿 id}`).
 class ExpenseTemplate {
   const ExpenseTemplate({
     required this.id,
     required this.title,
-    required this.categoryId,
-    required this.paymentMethodId,
     required this.memberId,
     required this.dueDay,
+    this.kind = EntryKind.planned,
+    this.categoryId,
+    this.paymentMethodId,
     this.amount,
   });
 
   final String id;
+
+  /// 만드는 항목의 종류. 고정 지출([EntryKind.planned])이나 고정 수입([EntryKind.fixedIncome])이다.
+  final EntryKind kind;
   final String title;
 
-  /// 매달 나가는 금액(원). 달마다 다르면(관리비) null이고, 합계에서는 0원으로 친다.
+  /// 매달 금액(원). 고정 지출은 달마다 다르면(관리비) null이고 합계에서 0원으로 친다. 고정 수입은 꼭 있다.
   final int? amount;
-  final String categoryId;
-  final String paymentMethodId;
+
+  /// 고정 지출만 쓴다. 고정 수입은 null이다.
+  final String? categoryId;
+  final String? paymentMethodId;
 
   /// 누구 몫인지. 이름표 자리 이름(`owner`·`partner`).
   final String memberId;
@@ -39,9 +45,9 @@ class ExpenseTemplate {
   /// [month]에서의 예정일. 그달에 없는 날(2월 30일)이면 그달 말일이다.
   DateTime dueOn(YearMonth month) => dueDateIn(month, dueDay);
 
-  /// [month]에 만들 고정 지출. 지급 전으로 만들고 예정일을 옮긴다.
+  /// [month]에 만들 항목. 지급 전(받기 전)으로 만들고 예정일을 옮긴다.
   EntryDraft draftFor(YearMonth month) => EntryDraft(
-    kind: EntryKind.planned,
+    kind: kind,
     memberId: memberId,
     amount: amount,
     title: title,
@@ -54,6 +60,7 @@ class ExpenseTemplate {
   bool operator ==(Object other) =>
       other is ExpenseTemplate &&
       other.id == id &&
+      other.kind == kind &&
       other.title == title &&
       other.amount == amount &&
       other.categoryId == categoryId &&
@@ -64,6 +71,7 @@ class ExpenseTemplate {
   @override
   int get hashCode => Object.hash(
     id,
+    kind,
     title,
     amount,
     categoryId,
@@ -73,12 +81,13 @@ class ExpenseTemplate {
   );
 }
 
-/// 저장할 고정 지출 값. 입력 화면이 만들고 저장소가 Firestore 문서로 바꾼다.
+/// 저장할 반복 설정 값. 입력 화면이 만들고 저장소가 Firestore 문서로 바꾼다.
 ///
 /// 꼭 필요한 칸이 채워졌는지는 입력 화면이 저장 전에 확인한다.
 class TemplateDraft {
   const TemplateDraft({
     required this.memberId,
+    this.kind = EntryKind.planned,
     this.title = '',
     this.amount,
     this.categoryId,
@@ -86,8 +95,9 @@ class TemplateDraft {
     this.dueDay,
   });
 
-  /// 이미 있는 고정 지출의 값. 고치기 화면의 처음 값이고, 지운 것을 되돌릴 때도 쓴다.
+  /// 이미 있는 반복 설정의 값. 고치기 화면의 처음 값이고, 지운 것을 되돌릴 때도 쓴다.
   factory TemplateDraft.of(ExpenseTemplate template) => TemplateDraft(
+    kind: template.kind,
     memberId: template.memberId,
     title: template.title,
     amount: template.amount,
@@ -96,10 +106,12 @@ class TemplateDraft {
     dueDay: template.dueDay,
   );
 
+  /// 고정 지출([EntryKind.planned])이나 고정 수입([EntryKind.fixedIncome]).
+  final EntryKind kind;
   final String memberId;
   final String title;
 
-  /// 비어 있으면 금액 미정.
+  /// 비어 있으면 금액 미정(고정 지출만).
   final int? amount;
   final String? categoryId;
   final String? paymentMethodId;
@@ -110,6 +122,7 @@ class TemplateDraft {
   @override
   bool operator ==(Object other) =>
       other is TemplateDraft &&
+      other.kind == kind &&
       other.memberId == memberId &&
       other.title == title &&
       other.amount == amount &&
@@ -118,11 +131,18 @@ class TemplateDraft {
       other.dueDay == dueDay;
 
   @override
-  int get hashCode =>
-      Object.hash(memberId, title, amount, categoryId, paymentMethodId, dueDay);
+  int get hashCode => Object.hash(
+    kind,
+    memberId,
+    title,
+    amount,
+    categoryId,
+    paymentMethodId,
+    dueDay,
+  );
 }
 
-/// [month]의 고정 지출 항목을 반복 설정으로 자동으로 채우는지. 이번 달과 다음 달만 채운다.
+/// [month]의 고정 지출·고정 수입 항목을 반복 설정으로 자동으로 채우는지. 이번 달과 다음 달만 채운다.
 ///
 /// 지난 달은 이미 지나간 기록이라 반복 설정으로 덮지 않고, 먼 미래 달은 미리 만들지 않는다.
 bool fillsFromTemplates(YearMonth month, {required YearMonth thisMonth}) =>
@@ -132,19 +152,16 @@ bool fillsFromTemplates(YearMonth month, {required YearMonth thisMonth}) =>
 bool fillsTemplatesOnAdd(YearMonth month, {required YearMonth thisMonth}) =>
     month.compareTo(thisMonth) >= 0;
 
-/// 반복 설정 [templates] 가운데 [ledger]의 달에 아직 고정 지출 항목이 없는 것.
+/// 반복 설정 [templates] 가운데 [ledger]의 달에 아직 그 항목이 없는 것.
 ///
-/// 문서 id가 템플릿 id라서, 휴지통에 넣은 것을 포함해 그 id의 문서가 있으면 다시 만들지 않는다.
+/// 문서 id가 템플릿 id라서, 휴지통에 넣은 것을 포함해 그 종류에 그 id의 문서가 있으면 다시 만들지 않는다.
 List<ExpenseTemplate> templatesMissingIn(
   MonthLedger ledger,
   List<ExpenseTemplate> templates,
-) {
-  final existing = ledger.plannedIds;
-  return [
-    for (final template in templates)
-      if (!existing.contains(template.id)) template,
-  ];
-}
+) => [
+  for (final template in templates)
+    if (!ledger.fixedIdsOf(template.kind).contains(template.id)) template,
+];
 
 /// 매달 [dueDay]일이 [month]에서 며칠인지. 그달에 없는 날(2월 30일)이면 그달 말일이다.
 DateTime dueDateIn(YearMonth month, int dueDay) {
@@ -152,10 +169,10 @@ DateTime dueDateIn(YearMonth month, int dueDay) {
   return DateTime(month.year, month.month, dueDay < last ? dueDay : last);
 }
 
-/// [month]에 넣을 고정 지출 항목. [entry]에 매달 [dueDay]일의 그달 예정일을 붙인다.
+/// [month]에 넣을 고정 지출·고정 수입 항목. [entry]에 매달 [dueDay]일의 그달 예정일을 붙인다.
 EntryDraft fixedEntryIn(EntryDraft entry, YearMonth month, int dueDay) =>
     EntryDraft(
-      kind: EntryKind.planned,
+      kind: entry.kind,
       memberId: entry.memberId,
       amount: entry.amount,
       title: entry.title,
@@ -166,8 +183,8 @@ EntryDraft fixedEntryIn(EntryDraft entry, YearMonth month, int dueDay) =>
       memo: entry.memo,
     );
 
-/// 고정 지출 입력값을 검사한다. 항목 검사([entryProblemsOf])에 매달 예정일(1일~말일, 보안 규칙과 같다)을 더한다.
-Set<EntryProblem> fixedExpenseProblemsOf(
+/// 고정 지출·고정 수입 입력값을 검사한다. 항목 검사([entryProblemsOf])에 매달 예정일(1일~말일, 보안 규칙과 같다)을 더한다.
+Set<EntryProblem> fixedEntryProblemsOf(
   EntryDraft draft, {
   required int? dueDay,
 }) => {
@@ -176,14 +193,15 @@ Set<EntryProblem> fixedExpenseProblemsOf(
     EntryProblem.dueDayMissing,
 };
 
-/// 고정 지출 항목 [entry]와 매달 예정일 [dueDay]로 만든 반복 설정 값. 금액은 [amount]다.
+/// 고정 지출·고정 수입 항목 [entry]와 매달 예정일 [dueDay]로 만든 반복 설정 값. 금액은 [amount]다.
 ///
-/// 그달 금액만 바꾸는 고치기에서는 [amount]에 반복 설정의 원래 금액을 넘긴다.
+/// 그달 금액만 바꾸는 고치기에서는 [amount]에 반복 설정의 원래 금액을 넘긴다. 고정 수입에는 분류·결제수단이 없다.
 TemplateDraft templateDraftOf(
   EntryDraft entry, {
   required int dueDay,
   required int? amount,
 }) => TemplateDraft(
+  kind: entry.kind,
   memberId: entry.memberId,
   title: entry.title.trim(),
   amount: amount,
@@ -192,6 +210,14 @@ TemplateDraft templateDraftOf(
   dueDay: dueDay,
 );
 
-/// [months] 가운데 [month]보다 뒤의 달. 오래된 것부터다. 고정 지출을 더하거나 고치거나 그만할 때 이미 만들어진 뒤 달도 같이 맞춘다.
+/// 반복 설정으로 만든 항목 [entry]가 끝났는지. 고정 지출은 지급 완료, 고정 수입은 받음 완료다.
+/// 끝난 항목은 실제로 오간 돈이라 반복 설정을 고치거나 그만해도 건드리지 않는다. 다른 종류는 false.
+bool fixedEntrySettled(LedgerEntry entry) => switch (entry) {
+  PlannedExpense(:final isPaid) => isPaid,
+  FixedIncome(:final isReceived) => isReceived,
+  Income() || ExtraExpense() || CardBill() => false,
+};
+
+/// [months] 가운데 [month]보다 뒤의 달. 오래된 것부터다. 고정 지출·고정 수입을 더하거나 고치거나 그만할 때 이미 만들어진 뒤 달도 같이 맞춘다.
 List<YearMonth> monthsAfter(Iterable<YearMonth>? months, YearMonth month) =>
     [...?months?.where((m) => m.compareTo(month) > 0)]..sort();

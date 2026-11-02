@@ -66,11 +66,11 @@ class TrashNotifier extends Notifier<TrashState> {
 
   /// [month]의 [entry]를 완전히 지운다. 되살릴 수 없다.
   ///
-  /// 반복 설정이 남아 있는 이번 달 이후의 고정 지출([staysInTrash])은 지우면 다시 만들어져서 지우지 않는다.
-  /// 반복 설정 목록을 아직 받지 못했거나 못 받았으면 남아 있는지 알 수 없어서 고정 지출은 지우지 않는다.
+  /// 반복 설정이 남아 있는 이번 달 이후의 고정 지출·고정 수입([staysInTrash])은 지우면 다시 만들어져서 지우지 않는다.
+  /// 반복 설정 목록을 아직 받지 못했거나 못 받았으면 남아 있는지 알 수 없어서 고정 지출·고정 수입은 지우지 않는다.
   Future<void> purge(LedgerEntry entry, YearMonth month) {
     final templateIds = _templateIds;
-    if (entry is PlannedExpense && templateIds == null) return Future.value();
+    if (entry.kind.isFixed && templateIds == null) return Future.value();
     final known = templateIds ?? const <String>{};
     final thisMonth = YearMonth.of(ref.read(clockProvider)());
     if (staysInTrash(

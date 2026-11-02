@@ -71,7 +71,10 @@ class _SummaryBody extends ConsumerWidget {
     final month = ref.watch(selectedMonthProvider);
     final members = ref.watch(membersProvider).value ?? const [];
     final totals = summary.totals;
-    final cash = _CashCard(totals: totals);
+    final cash = _CashCard(
+      totals: totals,
+      unreceivedIncomes: summary.unreceivedFixedIncomeCount,
+    );
     final empty = summary.isEmpty ? const _EmptyMonthNotice() : null;
     final metrics = _MetricTiles(totals: totals);
     final cards = summary.showsCards
@@ -103,10 +106,12 @@ class _SummaryBody extends ConsumerWidget {
 }
 
 /// 남는 현금과 현금 유입·유출. 라이트·다크 모두 진한 코발트 카드다.
+/// 받기 전 고정 수입이 있으면 현금 유입에서 빠져 있다고 아래에 알린다.
 class _CashCard extends StatelessWidget {
-  const _CashCard({required this.totals});
+  const _CashCard({required this.totals, required this.unreceivedIncomes});
 
   final BudgetSummary totals;
+  final int unreceivedIncomes;
 
   @override
   Widget build(BuildContext context) {
@@ -182,6 +187,14 @@ class _CashCard extends StatelessWidget {
                     ),
                   ],
                 ),
+                if (unreceivedIncomes > 0) ...[
+                  const SizedBox(height: 12),
+                  Text(
+                    keepAll('받기 전 고정 수입 $unreceivedIncomes건은 현금 유입에서 빠져 있어요'),
+                    key: const Key('unreceived-incomes'),
+                    style: text.labelSmall?.copyWith(color: colors.heroSub),
+                  ),
+                ],
               ],
             ),
           ),

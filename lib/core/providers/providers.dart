@@ -68,7 +68,7 @@ final paymentMethodsProvider = StreamProvider<List<PaymentMethod>>((ref) {
   return ref.watch(settingsUseCasesProvider).watchPaymentMethods(ledgerId);
 });
 
-/// 지금 가계부의 고정 지출 반복 설정. 가계부가 없으면 빈 목록.
+/// 지금 가계부의 반복 설정(고정 지출·고정 수입). 가계부가 없으면 빈 목록.
 ///
 /// 항목 입력 화면, 휴지통, 설정의 분류·결제수단 시트와 새 달을 채우는 홈 틀이 같이 읽어서 구독은 한 벌뿐이다.
 final templatesProvider = StreamProvider<List<ExpenseTemplate>>((ref) {
@@ -123,9 +123,9 @@ class SelectedMonthNotifier extends Notifier<YearMonth> {
   void select(YearMonth month) => state = month;
 }
 
-/// 항목 탭의 세 칸. 지출 칸은 고정 지출과 추가 지출을 구역으로 나눠 함께 보여준다.
+/// 항목 탭의 세 칸. 수입 칸은 고정 수입과 추가 수입을, 지출 칸은 고정 지출과 추가 지출을 구역으로 나눠 함께 보여준다.
 enum EntryTab {
-  income([EntryKind.income]),
+  income([EntryKind.fixedIncome, EntryKind.income]),
   expense([EntryKind.planned, EntryKind.extra]),
   cardBill([EntryKind.cardBill]);
 
@@ -134,7 +134,7 @@ enum EntryTab {
   /// 이 칸에 보이는 종류. 보이는 순서다.
   final List<EntryKind> kinds;
 
-  /// + 버튼이 이 칸에서 여는 종류. 지출 칸은 자주 적는 추가 지출이다(입력 화면의 종류 칸에서 바꾼다).
+  /// + 버튼이 이 칸에서 여는 종류. 수입·지출 칸은 자주 적는 추가 수입·추가 지출이다(입력 화면의 종류 칸에서 바꾼다).
   EntryKind get addKind => switch (this) {
     EntryTab.income => EntryKind.income,
     EntryTab.expense => EntryKind.extra,

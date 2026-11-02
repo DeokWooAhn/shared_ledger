@@ -139,6 +139,24 @@ void main() {
     expect(entries.purged, isEmpty);
   });
 
+  test('반복 설정 목록을 받기 전에는 고정 수입도 완전히 지우지 않는다', () async {
+    final (container, entries, _) = await trashed([], loadTemplates: false);
+    const salary = FixedIncome(
+      id: 'template-salary',
+      memberId: 'owner',
+      title: '월급',
+      amount: 3000000,
+    );
+    entries.put(
+      october,
+      const MonthLedger(trashed: [TrashedEntry(entry: salary)]),
+    );
+
+    await container.read(trashNotifierProvider.notifier).purge(salary, october);
+
+    expect(entries.purged, isEmpty);
+  });
+
   test('지난 달의 고정 지출 항목은 다시 만들지 않아서 완전히 지운다', () async {
     final (container, entries, _) = await trashed([]);
     final september = october.previous;

@@ -1,9 +1,12 @@
-// 한 달 가계부를 이루는 네 가지 항목. 금액 단위는 원이다.
+// 한 달 가계부를 이루는 다섯 가지 항목. 금액 단위는 원이다.
 
-/// 항목 종류. Firestore 컬렉션(`incomes`·`planned`·`extras`·`cardBills`)과 하나씩 맞는다.
+/// 항목 종류. Firestore 컬렉션(`incomes`·`fixedIncomes`·`planned`·`extras`·`cardBills`)과 하나씩 맞는다.
 enum EntryKind {
-  /// 수입
+  /// 추가 수입(그때그때 들어온 돈). 고정 수입이 생기기 전(2026-10-29)의 수입도 모두 여기다.
   income,
+
+  /// 고정 수입(월급처럼 매달 들어오는 돈). 반복 설정에서 매달 만들어진다.
+  fixedIncome,
 
   /// 고정 지출
   planned,
@@ -12,7 +15,10 @@ enum EntryKind {
   extra,
 
   /// 카드 대금
-  cardBill,
+  cardBill;
+
+  /// 반복 설정으로 매달 만들어지는 종류(고정 수입·고정 지출)인지.
+  bool get isFixed => this == fixedIncome || this == planned;
 }
 
 /// 항목 제목 길이 제한. `firestore.rules`의 validEntry와 같고, 규칙처럼 UTF-16 단위([String.length])로 센다.
@@ -21,7 +27,7 @@ const entryTitleMaxLength = 40;
 /// 항목 메모 길이 제한. `firestore.rules`의 validEntry와 같다.
 const entryMemoMaxLength = 200;
 
-/// 네 가지 항목의 공통 모양. 목록과 입력 화면이 종류와 상관없이 다룰 때 쓴다.
+/// 다섯 가지 항목의 공통 모양. 목록과 입력 화면이 종류와 상관없이 다룰 때 쓴다.
 sealed class LedgerEntry {
   const LedgerEntry();
 
@@ -41,7 +47,7 @@ sealed class LedgerEntry {
   String? get memo;
 }
 
-/// 수입 (실제 입금 기준).
+/// 추가 수입 (실제 입금 기준). 적으면 바로 현금 유입에 들어간다.
 class Income extends LedgerEntry {
   const Income({
     required this.id,
@@ -65,6 +71,45 @@ class Income extends LedgerEntry {
 
   @override
   EntryKind get kind => EntryKind.income;
+
+  @override
+  DateTime? get date => receivedOn;
+}
+
+/// 고정 수입. 반복 설정(템플릿)에서 매달 만들어진다.
+///
+/// 고정 지출의 지급 완료처럼, 받음 완료([receivedOn]가 있음)일 때만 현금 유입에 들어간다(2026-10-29 결정).
+class FixedIncome extends LedgerEntry {
+  const FixedIncome({
+    required this.id,
+    required this.memberId,
+    required this.title,
+    required this.amount,
+    this.receivedOn,
+    this.dueOn,
+    this.memo,
+  });
+
+  @override
+  final String id;
+  @override
+  final String memberId;
+  final String title;
+  @override
+  final int amount;
+
+  /// 실제로 받은 날. 이 값이 있어야 현금 유입에 들어간다.
+  final DateTime? receivedOn;
+
+  /// 반복 설정에서 옮긴 그달 예정일. 계산에는 쓰지 않는다.
+  final DateTime? dueOn;
+  @override
+  final String? memo;
+
+  bool get isReceived => receivedOn != null;
+
+  @override
+  EntryKind get kind => EntryKind.fixedIncome;
 
   @override
   DateTime? get date => receivedOn;
@@ -203,6 +248,15 @@ class EntryDraft {
       date: entry.receivedOn,
       memo: entry.memo,
     ),
+    FixedIncome() => EntryDraft(
+      kind: EntryKind.fixedIncome,
+      memberId: entry.memberId,
+      amount: entry.amount,
+      title: entry.title,
+      date: entry.receivedOn,
+      dueOn: entry.dueOn,
+      memo: entry.memo,
+    ),
     PlannedExpense() => EntryDraft(
       kind: EntryKind.planned,
       memberId: entry.memberId,
@@ -253,10 +307,10 @@ class EntryDraft {
   /// 카드 대금만 쓴다.
   final String? cardId;
 
-  /// 받은 날·지급한 날·쓴 날·출금일. 고정 지출은 이 값이 있어야 지급 완료다.
+  /// 받은 날·지급한 날·쓴 날·출금일. 고정 지출은 이 값이 있어야 지급 완료, 고정 수입은 받음 완료다.
   final DateTime? date;
 
-  /// 고정 지출만 쓴다. 반복 설정에서 옮긴 그달 예정일이고, 입력 화면에서는 고치지 않고 그대로 둔다.
+  /// 고정 지출·고정 수입만 쓴다. 반복 설정에서 옮긴 그달 예정일이다.
   final DateTime? dueOn;
 
   /// 비었으면 null.
@@ -304,7 +358,7 @@ enum EntryProblem {
   cardMissing,
   memoTooLong,
 
-  /// 고정 지출의 매달 예정일을 고르지 않았다([fixedExpenseProblemsOf]).
+  /// 고정 지출·고정 수입의 매달 예정일을 고르지 않았다([fixedEntryProblemsOf]).
   dueDayMissing,
 }
 

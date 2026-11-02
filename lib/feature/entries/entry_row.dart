@@ -27,7 +27,7 @@ typedef OpenEntryForm =
 /// 목록에 보이는 짧은 날짜. 예: '10/25'
 String entryShortDate(DateTime date) => '${date.month}/${date.day}';
 
-/// 지급 전 고정 지출의 예정일. 그달 마지막 날이면 '말일', 아니면 짧은 날짜다. 예: '말일', '10/25'
+/// 지급 전 고정 지출(받기 전 고정 수입)의 예정일. 그달 마지막 날이면 '말일', 아니면 짧은 날짜다. 예: '말일', '10/25'
 String entryDueDate(DateTime dueOn) =>
     DateTime(dueOn.year, dueOn.month, dueOn.day + 1).month != dueOn.month
     ? '말일'
@@ -46,7 +46,7 @@ String entriesFailureMessage(EntriesFailure failure) => switch (failure) {
 MemberSlot entryMemberSlot(String memberId) =>
     MemberSlot.values.asNameMap()[memberId] ?? MemberSlot.owner;
 
-/// 고치기 화면을 열고, 휴지통에 넣거나 고정 지출을 그만하고 돌아오면 '되돌리기'를 띄운다.
+/// 고치기 화면을 열고, 휴지통에 넣거나 고정 지출·고정 수입을 그만하고 돌아오면 '되돌리기'를 띄운다.
 ///
 /// 되돌리기 실패는 [entriesNotifierProvider]의 실패로 오니, 부르는 화면이 그 실패를 듣고 알린다.
 /// 되돌리기는 부른 화면이 닫힌 뒤에도(요약 탭에서 연 달력을 닫음) 누를 수 있어서, 스낵바가 떠 있는 동안
@@ -71,8 +71,8 @@ Future<void> editEntryWithUndo(
           .read(entriesNotifierProvider.notifier)
           .restore(entry, month),
     ),
-    FixedExpenseStopped(:final template, :final months) => (
-      '고정 지출을 그만했어요. 다음 달부터 만들지 않아요.',
+    FixedEntryStopped(:final template, :final months) => (
+      '${entryKindLabel(template.kind)}을 그만했어요. 다음 달부터 만들지 않아요.',
       () => container
           .read(entriesNotifierProvider.notifier)
           .resumeFixed(template, months),
@@ -98,7 +98,7 @@ Future<void> editEntryWithUndo(
   unawaited(snackBar.closed.whenComplete(keepController.close));
 }
 
-/// 항목 한 줄: 누구 몫인지, 제목과 결제수단·날짜, 금액과 지급 전 표시.
+/// 항목 한 줄: 누구 몫인지, 제목과 결제수단·날짜, 금액과 지급 전·받기 전 표시.
 ///
 /// [showKind]면 제목 아래 줄 앞에 종류를 붙인다(종류가 섞인 달력의 날 목록).
 class EntryRow extends StatelessWidget {
@@ -123,18 +123,25 @@ class EntryRow extends StatelessWidget {
 
   String get _title => switch (entry) {
     Income(:final title) ||
+    FixedIncome(:final title) ||
     PlannedExpense(:final title) ||
     ExtraExpense(:final title) => title,
     CardBill(:final cardId) => methods[cardId]?.name ?? '카드 없음',
   };
 
-  // 제목 아래 한 줄: (종류,) 결제수단, 날짜(지급 전이면 고정 지출의 예정일), 메모.
+  // 제목 아래 한 줄: (종류,) 결제수단, 날짜(지급 전·받기 전이면 고정 지출·고정 수입의 예정일), 메모.
   String get _meta {
     final entry = this.entry;
     final date = entry.date;
     final day = date == null ? null : entryShortDate(date);
     final parts = switch (entry) {
       Income() => [if (day != null) '$day 입금'],
+      FixedIncome(:final dueOn) => [
+        if (day != null)
+          '$day 입금'
+        else if (dueOn != null)
+          '${entryDueDate(dueOn)} 예정',
+      ],
       PlannedExpense(:final paymentMethodId, :final dueOn) => [
         _methodName(paymentMethodId),
         if (day != null)
@@ -163,9 +170,10 @@ class EntryRow extends StatelessWidget {
     final colors = context.appColors;
     final amount = entry.amount;
     final meta = _meta;
-    final unpaid = switch (entry) {
-      PlannedExpense(:final isPaid) => !isPaid,
-      _ => false,
+    final pending = switch (entry) {
+      PlannedExpense(isPaid: false) => '지급 전',
+      FixedIncome(isReceived: false) => '받기 전',
+      _ => null,
     };
     return InkWell(
       onTap: onTap,
@@ -218,7 +226,7 @@ class EntryRow extends StatelessWidget {
                       fontWeight: FontWeight.w700,
                     ),
                   ),
-                if (unpaid) const StatusPill('지급 전'),
+                if (pending != null) StatusPill(pending),
               ],
             ),
           ],
@@ -228,7 +236,7 @@ class EntryRow extends StatelessWidget {
   }
 }
 
-/// 포인트 색 바탕의 작은 표시('지급 전'). 글자로 뜻을 전하므로 색만으로 구분하지 않는다.
+/// 포인트 색 바탕의 작은 표시('지급 전', '받기 전'). 글자로 뜻을 전하므로 색만으로 구분하지 않는다.
 class StatusPill extends StatelessWidget {
   const StatusPill(this.label, {super.key});
 

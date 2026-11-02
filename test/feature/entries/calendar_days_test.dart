@@ -107,9 +107,46 @@ void main() {
       final due = calendar.dayOf(25);
       expect(due.entries, isEmpty);
       expect(due.scheduled.map((e) => e.id), ['관리비', '원금']);
-      // 금액 미정은 0원으로 친다.
-      expect(due.scheduledTotal, 800000);
+      // 나갈 돈이라 빼고, 금액 미정은 0원으로 친다.
+      expect(due.scheduledTotal, -800000);
       expect(calendar.dayOf(15).entries.single.id, '보험');
+    });
+
+    test('받기 전 고정 수입은 예정일에, 받은 것은 받은 날에 들어온 돈으로 놓는다', () {
+      final calendar = CalendarMonth.of(
+        MonthLedger(
+          fixedIncomes: [
+            FixedIncome(
+              id: '월급',
+              memberId: 'owner',
+              title: '월급',
+              amount: 3000000,
+              dueOn: DateTime(2026, 10, 25),
+            ),
+            FixedIncome(
+              id: '수당',
+              memberId: 'partner',
+              title: '수당',
+              amount: 200000,
+              receivedOn: DateTime(2026, 10, 10),
+              dueOn: DateTime(2026, 10, 25),
+            ),
+          ],
+          plannedExpenses: [
+            planned('원금', amount: 800000, dueOn: DateTime(2026, 10, 25)),
+          ],
+        ),
+        october,
+      );
+
+      final due = calendar.dayOf(25);
+      // 고정 수입이 먼저다. 예정 합계는 들어올 돈에서 나갈 돈을 뺀다.
+      expect(due.scheduled.map((e) => e.id), ['월급', '원금']);
+      expect(due.scheduledTotal, 2200000);
+      final received = calendar.dayOf(10);
+      expect(received.entries.single.id, '수당');
+      expect(received.income, 200000);
+      expect(received.spending, 0);
     });
 
     test('날짜가 없거나 그달 밖의 날짜인 항목은 달력에 놓지 않고 센다', () {

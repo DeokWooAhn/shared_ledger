@@ -51,15 +51,17 @@ ActivityDraft entryActivity(
   );
 }
 
-/// 고정 지출 변경 기록. 예: `고정 지출 '월세' 500,000원`, 고쳤으면 `고정 지출 '월세' · 금액 500,000원 → 550,000원, 예정일`
+/// 반복 설정(고정 지출·고정 수입) 변경 기록. 예: `고정 지출 '월세' 500,000원`,
+/// 고쳤으면 `고정 지출 '월세' · 금액 500,000원 → 550,000원, 예정일`
 ///
-/// 지울 반복 설정 문서의 모양이 잘못돼 값을 읽지 못했으면 [template]이 null이고 '고정 지출'만 적는다.
+/// 지울 반복 설정 문서의 모양이 잘못돼 값을 읽지 못했으면 [template]이 null이고 [kind]의 종류 이름만 적는다.
 ActivityDraft templateActivity(
   ActivityAction action,
   TemplateDraft? template, {
   TemplateDraft? before,
+  EntryKind kind = EntryKind.planned,
 }) {
-  if (template == null) return ActivityDraft(action, '고정 지출');
+  if (template == null) return ActivityDraft(action, _entryKindLabel(kind));
   final titleChanged =
       before != null && before.title.trim() != template.title.trim();
   final amountChanged = before != null && before.amount != template.amount;
@@ -75,7 +77,7 @@ ActivityDraft templateActivity(
     ],
   ];
   final summary = [
-    '고정 지출',
+    _entryKindLabel(template.kind),
     if (!titleChanged) _quoted(template.title),
     if (!amountChanged) _amount(template.amount),
   ].join(' ');
@@ -144,14 +146,15 @@ String clampActivitySummary(String summary) {
 }
 
 String _entryKindLabel(EntryKind kind) => switch (kind) {
-  EntryKind.income => '수입',
+  EntryKind.income => '추가 수입',
+  EntryKind.fixedIncome => '고정 수입',
   EntryKind.planned => '고정 지출',
   EntryKind.extra => '추가 지출',
   EntryKind.cardBill => '카드 대금',
 };
 
 String _entryDateLabel(EntryKind kind) => switch (kind) {
-  EntryKind.income => '받은 날',
+  EntryKind.income || EntryKind.fixedIncome => '받은 날',
   EntryKind.planned => '지급한 날',
   EntryKind.extra => '쓴 날',
   EntryKind.cardBill => '출금일',
