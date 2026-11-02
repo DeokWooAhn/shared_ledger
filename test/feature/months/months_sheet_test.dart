@@ -192,6 +192,34 @@ void main() {
     expect(findSentence('9월 휴지통이 비어 있어요.'), findsOneWidget);
   });
 
+  testWidgets('달 목록을 모으지 못한 옛 가계부의 보기 전용은 연·월 휠로 아무 달이나 고른다', (tester) async {
+    // 보기 전용은 달 목록을 모을 수 없어서 months가 null로 남는다.
+    await pumpMonths(
+      tester,
+      ledger: const Ledger(
+        id: 'l1',
+        name: '우리 가계부',
+        ownerUid: 'partner',
+        roles: {'me': MemberRole.viewer},
+      ),
+    );
+
+    expect(inMonths(find.byType(CircularProgressIndicator)), findsNothing);
+    expect(find.byKey(const Key('add-month')), findsNothing);
+    await tester.tap(find.byKey(const Key('pick-any-month')));
+    await settleRoute(tester);
+    await tester.drag(
+      find.byKey(const Key('month-picker-months')),
+      const Offset(0, monthPickerItemExtent * 2),
+    );
+    await settle(tester);
+    await tester.tap(find.byKey(const Key('month-picker-done')));
+    await settleRoute(tester);
+
+    expect(find.byType(MonthsSheet), findsNothing);
+    expect(monthTitle(tester), '8월');
+  });
+
   testWidgets('보기 전용은 달을 추가할 수 없다', (tester) async {
     await pumpMonths(
       tester,

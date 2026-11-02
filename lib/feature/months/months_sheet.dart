@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/providers/providers.dart';
 import '../../core/widget/keep_all.dart';
+import '../../core/widget/month_header.dart';
 import '../../core/widget/month_picker_sheet.dart';
 import '../../domain/model/year_month.dart';
 import 'months_notifier.dart';
@@ -31,6 +32,8 @@ Future<void> showMonthsSheet(BuildContext context) =>
 /// 이번 달이라도 추가하지 않았으면 없다. 달을 누르면 그달로 바꾸고 닫는다. 보던 탭은 그대로다.
 /// 관리자·편집자는 '달 추가'로 연·월 휠에서 달을 골라 더한다. 이미 있는 달을 고르면 그달로 간다.
 /// 실패는 시트 안에 보여준다(스낵바는 시트 뒤에 가린다). 줄마다 합계는 보이지 않는다(달마다 항목을 읽어야 해서).
+/// 달 목록을 아직 모으지 않은 옛 가계부([ledgerMonthsProvider]가 null)는 달을 가리지 않아서, 연·월 휠로 아무 달이나 고른다.
+/// 보기 전용은 목록을 모을 수 없어 이 상태로 남는다.
 class MonthsSheet extends ConsumerWidget {
   const MonthsSheet({super.key});
 
@@ -38,6 +41,17 @@ class MonthsSheet extends ConsumerWidget {
   void _open(BuildContext context, WidgetRef ref, YearMonth month) {
     ref.read(selectedMonthProvider.notifier).select(month);
     Navigator.of(context).pop();
+  }
+
+  // 달 목록이 없는 옛 가계부에서 연·월 휠로 아무 달이나 고른다. 달을 더하지는 않는다.
+  Future<void> _pickAny(BuildContext context, WidgetRef ref) async {
+    final picked = await showMonthPicker(
+      context,
+      selected: ref.read(selectedMonthProvider),
+      current: YearMonth.of(ref.read(clockProvider)()),
+    );
+    if (picked == null || !context.mounted) return;
+    _open(context, ref, picked);
   }
 
   Future<void> _add(BuildContext context, WidgetRef ref) async {
@@ -87,15 +101,22 @@ class MonthsSheet extends ConsumerWidget {
             ),
             const SizedBox(height: 4),
             Text(
-              keepAll('추가한 달만 보여요. 골라도 보던 화면에 그대로 있어요.'),
+              keepAll(
+                months == null
+                    ? '보고 싶은 달을 골라 주세요. 골라도 보던 화면에 그대로 있어요.'
+                    : '추가한 달만 보여요. 골라도 보던 화면에 그대로 있어요.',
+              ),
               style: theme.textTheme.bodySmall,
             ),
             const SizedBox(height: 8),
             if (months == null)
-              const Padding(
-                key: Key('months-loading'),
-                padding: EdgeInsets.symmetric(vertical: 32),
-                child: Center(child: CircularProgressIndicator()),
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: FilledButton.tonal(
+                  key: const Key('pick-any-month'),
+                  onPressed: () => _pickAny(context, ref),
+                  child: Text(yearMonthLabel(selected)),
+                ),
               )
             else if (months.isEmpty)
               const _NoMonths()
