@@ -6,7 +6,8 @@ import 'package:shared_ledger/domain/model/expense_template.dart';
 import 'package:shared_ledger/domain/model/ledger.dart';
 import 'package:shared_ledger/domain/model/year_month.dart';
 import 'package:shared_ledger/feature/home/home_shell.dart';
-import 'package:shared_ledger/feature/months/months_screen.dart';
+import 'package:shared_ledger/feature/entries/entries_screen.dart';
+import 'package:shared_ledger/feature/months/months_sheet.dart';
 import 'package:shared_ledger/feature/summary/summary_screen.dart';
 
 import '../../../testing/app.dart';
@@ -35,9 +36,11 @@ const rent = ExpenseTemplate(
   dueDay: 25,
 );
 
+/// [tab] 탭에서 머리말의 달 이름을 눌러 달 고르기를 연다.
 Future<FakeLedgerRepository> pumpMonths(
   WidgetTester tester, {
   required Ledger ledger,
+  HomeTab tab = HomeTab.home,
   FakeEntriesRepository? entries,
   FakeTemplatesRepository? templates,
 }) async {
@@ -49,12 +52,14 @@ Future<FakeLedgerRepository> pumpMonths(
     entries: entries,
     templates: templates,
   );
-  await openTab(tester, HomeTab.months);
+  await openTab(tester, tab);
+  await tester.tap(find.byKey(const Key('open-months')));
+  await settleRoute(tester);
   return ledgers;
 }
 
 Finder inMonths(Finder finder) =>
-    find.descendant(of: find.byType(MonthsScreen), matching: finder);
+    find.descendant(of: find.byType(MonthsSheet), matching: finder);
 
 void main() {
   testWidgets('추가한 달만 해별로 최근 달부터 보여 주고, 이번 달 표시를 단다', (tester) async {
@@ -86,17 +91,23 @@ void main() {
     expect(inMonths(find.text('이번 달')), findsNothing);
   });
 
-  testWidgets('달을 누르면 그달로 바꾸고 요약 탭으로 간다', (tester) async {
-    await pumpMonths(tester, ledger: ledgerWith({september, october}));
+  testWidgets('달을 누르면 그달로 바꾸고 닫으며, 보던 탭에 그대로 있다', (tester) async {
+    await pumpMonths(
+      tester,
+      ledger: ledgerWith({september, october}),
+      tab: HomeTab.entries,
+    );
+    expect(inMonths(find.byIcon(Icons.check)), findsOneWidget);
 
     await tester.tap(find.byKey(const ValueKey('month-2026-09')));
-    await settle(tester);
+    await settleRoute(tester);
 
-    expect(find.byType(SummaryScreen), findsOneWidget);
+    expect(find.byType(MonthsSheet), findsNothing);
+    expect(find.byType(EntriesScreen), findsOneWidget);
     expect(monthTitle(tester), '9월');
   });
 
-  testWidgets('가계부를 추가하면 반복 설정으로 채우고 그달 요약으로 간다', (tester) async {
+  testWidgets('달을 추가하면 반복 설정으로 채우고, 시트를 닫고 그달을 본다', (tester) async {
     final entries = FakeEntriesRepository();
     await pumpMonths(
       tester,
@@ -106,18 +117,14 @@ void main() {
     );
 
     await tester.tap(find.byKey(const Key('add-month')));
-    await settle(tester);
+    await settleRoute(tester);
     // 이번 달이 있으면 마지막 달의 다음 달(11월)부터 보여준다.
     expect(find.text('2026년 11월'), findsOneWidget);
     await tester.tap(find.byKey(const Key('month-picker-done')));
-    await settle(tester);
+    await settleRoute(tester);
 
     expect(entries.recordedMonths, [const YearMonth(2026, 11)]);
-    expect(
-      find.byKey(const ValueKey('month-2026-11')),
-      findsNothing,
-      reason: '요약 탭으로 옮겼다',
-    );
+    expect(find.byType(MonthsSheet), findsNothing);
     expect(
       entries.monthOf(const YearMonth(2026, 11)).plannedExpenses.single.id,
       rent.id,
@@ -135,36 +142,85 @@ void main() {
     );
 
     await tester.tap(find.byKey(const Key('add-month')));
-    await settle(tester);
+    await settleRoute(tester);
     await tester.drag(
       find.byKey(const Key('month-picker-months')),
       const Offset(0, monthPickerItemExtent * 2),
     );
     await settle(tester);
     await tester.tap(find.byKey(const Key('month-picker-done')));
-    await settle(tester);
+    await settleRoute(tester);
 
     expect(entries.filled, isEmpty);
+    expect(find.byType(MonthsSheet), findsNothing);
     expect(monthTitle(tester), '9월');
   });
 
-  testWidgets('연결이 없으면 추가하지 못했다고 알리고 가계부 탭에 남는다', (tester) async {
+  testWidgets('연결이 없으면 추가하지 못했다고 시트 안에 알리고 시트에 남는다', (tester) async {
     final entries = FakeEntriesRepository()..offline = true;
     await pumpMonths(tester, ledger: ledgerWith({october}), entries: entries);
 
     await tester.tap(find.byKey(const Key('add-month')));
-    await settle(tester);
+    await settleRoute(tester);
     await tester.tap(find.byKey(const Key('month-picker-done')));
-    await settle(tester);
+    await settleRoute(tester);
 
     expect(
-      findSentence('연결되지 않아 가계부를 추가하지 못했어요. 연결된 뒤에 다시 해 주세요.'),
+      inMonths(findSentence('연결되지 않아 달을 추가하지 못했어요. 연결된 뒤에 다시 해 주세요.')),
       findsOneWidget,
     );
-    expect(find.byType(MonthsScreen), findsOneWidget);
+    expect(find.byType(MonthsSheet), findsOneWidget);
   });
 
-  testWidgets('보기 전용은 가계부를 추가할 수 없다', (tester) async {
+  testWidgets('휴지통에서도 달 이름을 눌러 달 고르기로 다른 달의 휴지통을 본다', (tester) async {
+    await pumpApp(
+      tester,
+      auth: FakeAuthRepository(signedIn: me),
+      ledgers: FakeLedgerRepository([
+        ledgerWith({september, october}),
+      ]),
+    );
+    await openTab(tester, HomeTab.settings);
+    await tapVisible(tester, const Key('open-trash'));
+    await settleRoute(tester);
+
+    await tester.tap(find.byKey(const Key('open-months')));
+    await settleRoute(tester);
+    await tester.tap(find.byKey(const ValueKey('month-2026-09')));
+    await settleRoute(tester);
+
+    expect(findSentence('9월 휴지통이 비어 있어요.'), findsOneWidget);
+  });
+
+  testWidgets('달 목록을 모으지 못한 옛 가계부의 보기 전용은 연·월 휠로 아무 달이나 고른다', (tester) async {
+    // 보기 전용은 달 목록을 모을 수 없어서 months가 null로 남는다.
+    await pumpMonths(
+      tester,
+      ledger: const Ledger(
+        id: 'l1',
+        name: '우리 가계부',
+        ownerUid: 'partner',
+        roles: {'me': MemberRole.viewer},
+      ),
+    );
+
+    expect(inMonths(find.byType(CircularProgressIndicator)), findsNothing);
+    expect(find.byKey(const Key('add-month')), findsNothing);
+    await tester.tap(find.byKey(const Key('pick-any-month')));
+    await settleRoute(tester);
+    await tester.drag(
+      find.byKey(const Key('month-picker-months')),
+      const Offset(0, monthPickerItemExtent * 2),
+    );
+    await settle(tester);
+    await tester.tap(find.byKey(const Key('month-picker-done')));
+    await settleRoute(tester);
+
+    expect(find.byType(MonthsSheet), findsNothing);
+    expect(monthTitle(tester), '8월');
+  });
+
+  testWidgets('보기 전용은 달을 추가할 수 없다', (tester) async {
     await pumpMonths(
       tester,
       ledger: ledgerWith({october}, roles: const {'me': MemberRole.viewer}),

@@ -108,7 +108,7 @@ void main() {
       final activity = FakeActivityRepository();
       await pumpActivityApp(tester, activity: activity);
 
-      // 항목 탭에서 추가 지출을 더한다.
+      // 내역 탭에서 추가 지출을 더한다.
       await openTab(tester, HomeTab.entries);
       await tester.tap(
         find.descendant(

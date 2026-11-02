@@ -6,22 +6,22 @@ import '../../core/providers/usecases.dart';
 import '../../domain/model/year_month.dart';
 import '../../domain/repository/entries_repository.dart';
 
-/// 스낵바로 알릴 일회성 실패.
+/// 달 고르기 시트 안에 보여 줄 실패.
 enum MonthsFailure {
-  /// 가계부 추가(반복 설정으로 채우기)는 온라인에서만 된다.
+  /// 달 추가(반복 설정으로 채우기)는 온라인에서만 된다.
   addOffline,
   add,
 }
 
-/// 가계부 탭 상태. 달 목록은 공급자(ledgerMonthsProvider)에서 그리고, 여기에는 추가 중인지와 실패만 둔다.
+/// 달 고르기 상태. 달 목록은 공급자(ledgerMonthsProvider)에서 그리고, 여기에는 추가 중인지와 실패만 둔다.
 @immutable
 class MonthsState {
   const MonthsState({this.adding = false, this.failure});
 
-  /// 가계부를 추가하는 중이다.
+  /// 달을 추가하는 중이다.
   final bool adding;
 
-  /// 스낵바로 알릴 실패. 화면이 알린 뒤 [MonthsNotifier.failureShown]으로 끈다.
+  /// 마지막 추가의 실패. 다시 추가하면 지운다. 시트를 닫으면 Notifier와 함께 없어진다.
   final MonthsFailure? failure;
 
   @override
@@ -39,7 +39,7 @@ final monthsNotifierProvider =
       MonthsNotifier.new,
     );
 
-/// 가계부 탭의 Notifier. 고른 달의 가계부를 추가한다.
+/// 달 고르기의 Notifier. 고른 달의 가계부를 추가한다.
 class MonthsNotifier extends Notifier<MonthsState> {
   @override
   MonthsState build() => const MonthsState();
@@ -76,7 +76,7 @@ class MonthsNotifier extends Notifier<MonthsState> {
       );
       return false;
     } catch (e) {
-      debugPrint('가계부 추가 실패: $e');
+      debugPrint('달 추가 실패: $e');
       if (!ref.mounted) return false;
       state = const MonthsState(failure: MonthsFailure.add);
       return false;
@@ -84,7 +84,4 @@ class MonthsNotifier extends Notifier<MonthsState> {
       templates.close();
     }
   }
-
-  /// 화면이 실패를 알린 뒤 부른다.
-  void failureShown() => state = MonthsState(adding: state.adding);
 }

@@ -15,7 +15,7 @@ import '../../domain/format/won.dart';
 import 'entries_notifier.dart';
 import 'entry_form_notifier.dart';
 
-// 항목 탭과 달력이 같이 쓰는 항목 한 줄, 표시, 고치기 흐름.
+// 내역 탭과 달력이 같이 쓰는 항목 한 줄, 표시, 고치기 흐름.
 
 /// 입력 화면을 열고, 닫힐 때의 결과를 돌려준다. 화면 이동은 router.dart가 정해서 넘겨준다.
 typedef OpenEntryForm =
@@ -49,7 +49,7 @@ MemberSlot entryMemberSlot(String memberId) =>
 /// 고치기 화면을 열고, 휴지통에 넣거나 고정 지출·고정 수입을 그만하고 돌아오면 '되돌리기'를 띄운다.
 ///
 /// 되돌리기 실패는 [entriesNotifierProvider]의 실패로 오니, 부르는 화면이 그 실패를 듣고 알린다.
-/// 되돌리기는 부른 화면이 닫힌 뒤에도(요약 탭에서 연 달력을 닫음) 누를 수 있어서, 스낵바가 떠 있는 동안
+/// 되돌리기는 부른 화면이 닫힌 뒤에도(내역 탭에서 연 달력을 닫음) 누를 수 있어서, 스낵바가 떠 있는 동안
 /// autoDispose Notifier를 살려 두고 누를 때 되살린다.
 Future<void> editEntryWithUndo(
   BuildContext context,

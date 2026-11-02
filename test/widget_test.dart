@@ -378,7 +378,7 @@ void main() {
       roles: {'me': MemberRole.viewer},
     );
 
-    testWidgets('가계부가 있으면 요약 탭에서 이번 달과 두 사람 이름표를 보여준다', (tester) async {
+    testWidgets('가계부가 있으면 홈 탭에서 이번 달을 보고, 탭은 홈·내역·설정이다', (tester) async {
       await pumpApp(
         tester,
         auth: FakeAuthRepository(signedIn: me),
@@ -388,11 +388,12 @@ void main() {
       expect(find.byType(HomeShell), findsOneWidget);
       expect(find.byType(NavigationRail), findsNothing);
       expect(monthTitle(tester), '10월');
-      expect(inMonthHeader(find.text('하')), findsOneWidget);
-      expect(inMonthHeader(find.text('바')), findsOneWidget);
+      // 머리말에는 달 이름만 있고 이름표는 두지 않는다.
+      expect(inMonthHeader(find.text('하')), findsNothing);
+      expect([for (final tab in HomeTab.values) tab.label], ['홈', '내역', '설정']);
     });
 
-    testWidgets('달을 옮기면 항목 탭도 같은 달을 보고, 해를 넘어간다', (tester) async {
+    testWidgets('달을 옮기면 내역 탭도 같은 달을 보고, 해를 넘어간다', (tester) async {
       await pumpApp(
         tester,
         auth: FakeAuthRepository(signedIn: me),
@@ -409,11 +410,11 @@ void main() {
       expect(monthTitle(tester), '2027년 1월');
       await swipeMonth(tester, next: false);
 
-      await openTab(tester, HomeTab.summary);
+      await openTab(tester, HomeTab.home);
       expect(monthTitle(tester), '12월');
     });
 
-    testWidgets('달 이름 양옆의 화살표로도 달을 옮기고, 다음 달 화살표는 달 이름 바로 뒤에 있다', (
+    testWidgets('머리말에는 달을 옮기는 화살표가 없고, 달 이름 바로 뒤에 달 고르기 표시가 붙는다', (
       tester,
     ) async {
       await pumpApp(
@@ -422,21 +423,40 @@ void main() {
         ledgers: FakeLedgerRepository([shared]),
       );
 
+      expect(inMonthHeader(find.byType(IconButton)), findsNothing);
       final title = tester.getRect(find.byKey(const Key('month-title')));
-      final next = tester.getRect(find.byKey(const Key('next-month')));
-      expect(next.left - title.right, lessThan(16));
-
-      await tester.tap(find.byKey(const Key('next-month')));
-      await settle(tester);
-      expect(monthTitle(tester), '11월');
-      await tester.tap(find.byKey(const Key('previous-month')));
-      await settle(tester);
-      await tester.tap(find.byKey(const Key('previous-month')));
-      await settle(tester);
-      expect(monthTitle(tester), '9월');
+      final mark = tester.getRect(
+        inMonthHeader(find.byIcon(Icons.keyboard_arrow_down)),
+      );
+      expect(mark.left - title.right, lessThan(8));
     });
 
-    testWidgets('가계부가 있는 달만 오가고, 사이의 빈 달은 건너뛰며 끝에서는 화살표를 누를 수 없다', (
+    testWidgets('+ 버튼은 탭 막대 위에 떠 있고, + 버튼이 없는 탭에서도 탭 막대의 폭과 탭 위치는 그대로다', (
+      tester,
+    ) async {
+      await pumpApp(
+        tester,
+        auth: FakeAuthRepository(signedIn: me),
+        ledgers: FakeLedgerRepository([
+          const Ledger(id: 'l1', name: '우리 가계부', ownerUid: 'me'),
+        ]),
+      );
+      // 첫 화면으로 들어오는 전환이 끝난 뒤에 잰다.
+      await settleRoute(tester);
+      final bar = tester.getRect(find.byKey(const Key('tab-bar')));
+      final home = tester.getRect(find.byKey(HomeTab.home.key));
+      final add = tester.getRect(find.byKey(const Key('add-entry')));
+      expect(add.bottom, lessThanOrEqualTo(bar.top));
+      expect(add.right, closeTo(bar.right, 1));
+
+      await openTab(tester, HomeTab.settings);
+
+      expect(find.byKey(const Key('add-entry')), findsNothing);
+      expect(tester.getRect(find.byKey(const Key('tab-bar'))), bar);
+      expect(tester.getRect(find.byKey(HomeTab.home.key)), home);
+    });
+
+    testWidgets('가계부가 있는 달만 오가고, 사이의 빈 달은 건너뛰며 끝 달에서는 더 밀어도 그대로다', (
       tester,
     ) async {
       await pumpApp(
@@ -451,25 +471,21 @@ void main() {
           ),
         ]),
       );
-      VoidCallback? arrow(String key) =>
-          tester.widget<IconButton>(find.byKey(Key(key))).onPressed;
 
       // 이번 달(10월) 가계부가 없어서 가장 가까운 달(앞의 달 8월)부터 본다.
       expect(monthTitle(tester), '8월');
-      expect(arrow('previous-month'), isNull);
+      await swipeMonth(tester, next: false);
+      expect(monthTitle(tester), '8월');
       // 이번 달은 추가하지 않아서 + 버튼도 8월에 적게 한다.
       expect(find.byKey(const Key('add-entry')), findsOneWidget);
 
       await swipeMonth(tester);
       expect(monthTitle(tester), '12월');
-      expect(arrow('next-month'), isNull);
       await swipeMonth(tester);
       expect(monthTitle(tester), '12월');
     });
 
-    testWidgets('달이 하나도 없는 가계부는 요약·항목 탭에 가계부 탭을 안내하고 + 버튼을 숨긴다', (
-      tester,
-    ) async {
+    testWidgets('달이 하나도 없는 가계부는 홈·내역 탭에 달 추가를 안내하고 + 버튼을 숨긴다', (tester) async {
       await pumpApp(
         tester,
         auth: FakeAuthRepository(signedIn: me),
@@ -501,7 +517,7 @@ void main() {
         expect(title.didExceedMaxLines, isFalse, reason: '글자 배율 $scale');
         expect(
           tester.getRect(find.byKey(const Key('month-title'))).right,
-          lessThan(tester.getRect(inMonthHeader(find.text('하'))).left),
+          lessThan(phoneSize.width),
           reason: '글자 배율 $scale',
         );
       }
@@ -522,8 +538,8 @@ void main() {
         isSemantics(label: '설정', isSelected: true, isButton: true),
       );
       expect(
-        tester.getSemantics(find.byKey(HomeTab.summary.key)),
-        isSemantics(label: '요약', isSelected: false, isButton: true),
+        tester.getSemantics(find.byKey(HomeTab.home.key)),
+        isSemantics(label: '홈', isSelected: false, isButton: true),
       );
       semantics.dispose();
     });

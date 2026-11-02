@@ -38,7 +38,7 @@ final monthFillNotifierProvider = NotifierProvider<MonthFillNotifier, bool>(
 /// 보고 있는 달에 빠진 고정 지출을 반복 설정으로 채운다. 상태는 채우는 중인지다.
 ///
 /// 실패는 화면에 알리지 않는다. 오프라인이면 다음에 그달을 다시 열 때 채우고, 그동안 그달은 빈 달로 보인다.
-/// 채운 항목은 그달 구독([monthLedgerProvider])으로 요약·항목 탭에 들어온다.
+/// 채운 항목은 그달 구독([monthLedgerProvider])으로 홈·내역 탭에 들어온다.
 class MonthFillNotifier extends Notifier<bool> {
   // 채우는 중에 들어온 가장 최근 요청. 지금 채우기가 끝나면 이어서 채운다.
   PlannedFill? _waiting;

@@ -37,11 +37,14 @@ String trashPurgeLabel(DateTime purgeAt, DateTime now) {
 
 /// 휴지통 화면. 설정 탭에서 들어온다(탭 막대는 그대로 보인다).
 ///
-/// 보고 있는 달의 휴지통 항목을 최근에 넣은 것부터 보여주고, 달 머리말로 다른 달을 본다. 그달 구독을 요약·항목 탭과
+/// 보고 있는 달의 휴지통 항목을 최근에 넣은 것부터 보여주고, 달 머리말로 다른 달을 본다. 그달 구독을 홈·내역 탭과
 /// 같이 써서 읽기가 늘지 않는다. 관리자·편집자는 되살리거나 완전히 지우고(확인 후), 보기 전용은 보기만 한다.
 /// 넣은 지 30일이 지나면 자동으로 지워진다. 반복 설정이 남아 있는 이번 달 이후 고정 지출·고정 수입은 남겨 둔다([staysInTrash]).
 class TrashScreen extends ConsumerWidget {
-  const TrashScreen({super.key});
+  const TrashScreen({this.openMonths, super.key});
+
+  /// 머리말의 달 이름을 누르면 여는 달 고르기. 화면 이동은 router.dart가 정해서 넘겨준다.
+  final void Function(BuildContext context)? openMonths;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -74,7 +77,7 @@ class TrashScreen extends ConsumerWidget {
         description: '보고 있는 달의 휴지통이에요. 넣은 지 30일이 지나면 자동으로 지워져요.',
       ),
       children: [
-        const MonthHeader(),
+        MonthHeader(openMonths: openMonths),
         const SizedBox(height: 12),
         switch (ledger) {
           AsyncData(:final value) => _TrashContent(items: value.trashed),

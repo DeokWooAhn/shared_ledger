@@ -18,7 +18,7 @@ import 'entry_tabs.dart';
 import 'entry_list.dart';
 import 'entry_row.dart';
 
-/// 항목 탭(design/app/04). 보고 있는 달의 항목을 세 칸(수입·지출·카드 대금)으로 나눠 보여준다.
+/// 내역 탭(design/app/04). 보고 있는 달의 항목을 세 칸(수입·지출·카드 대금)으로 나눠 보여준다.
 ///
 /// 수입 칸은 고정 수입과 추가 수입을, 지출 칸은 고정 지출과 추가 지출을 구역으로 나눈다. 고정 지출은 분류마다 묶는다.
 /// 지급 전 고정 지출과 받기 전 고정 수입에는 표시를 붙인다.
@@ -27,13 +27,17 @@ class EntriesScreen extends ConsumerWidget {
   const EntriesScreen({
     required this.openForm,
     required this.openCalendar,
+    required this.openMonths,
     super.key,
   });
 
   final OpenEntryForm openForm;
 
-  /// 달 이름을 누르면 여는 달력. 화면 이동은 router.dart가 정해서 넘겨준다.
+  /// 머리말 오른쪽의 달력 단추로 여는 달력. 화면 이동은 router.dart가 정해서 넘겨준다.
   final void Function(BuildContext context) openCalendar;
+
+  /// 머리말의 달 이름을 누르면 여는 달 고르기.
+  final void Function(BuildContext context) openMonths;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -46,7 +50,16 @@ class EntriesScreen extends ConsumerWidget {
       ref.read(entriesNotifierProvider.notifier).failureShown();
     });
     return TabPage(
-      header: MonthHeader(openCalendar: openCalendar),
+      header: MonthHeader(
+        openMonths: openMonths,
+        trailing: IconButton(
+          key: const Key('open-calendar'),
+          tooltip: '달력',
+          color: Theme.of(context).colorScheme.onSurfaceVariant,
+          onPressed: () => openCalendar(context),
+          icon: const Icon(Icons.calendar_month_outlined),
+        ),
+      ),
       children: [
         EntryTabs(
           selected: tab,

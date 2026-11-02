@@ -4,7 +4,7 @@ import '../../core/providers/providers.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widget/entry_kind_label.dart';
 
-/// 항목 탭의 세 칸(수입·지출·카드 대금) 중 하나를 고르는 세그먼트. 항목 탭 맨 위에 둔다.
+/// 내역 탭의 세 칸(수입·지출·카드 대금) 중 하나를 고르는 세그먼트. 내역 탭 맨 위에 둔다.
 ///
 /// [onSelect]가 null이면 고를 수 없다.
 /// 디자인은 칸 높이가 38이지만, 누르는 곳이 48 이상이 되게 막대 높이 전체를 누를 수 있게 한다.

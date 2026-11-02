@@ -28,7 +28,7 @@ void main() {
     expect(container.read(selectedMonthProvider), const YearMonth(2026, 11));
   });
 
-  group('요약·항목 탭이 오가는 달', () {
+  group('홈·내역 탭이 오가는 달', () {
     Future<ProviderContainer> withLedger(Ledger ledger) async {
       final container = createContainer(
         auth: FakeAuthRepository(signedIn: me),
@@ -75,7 +75,7 @@ void main() {
         await startOf({const YearMonth(2026, 12), const YearMonth(2027, 3)}),
         const YearMonth(2026, 12),
       );
-      // 달이 없으면 이번 달이다(요약·항목 탭은 가계부 탭을 안내한다).
+      // 달이 없으면 이번 달이다(홈·내역 탭은 달 추가를 안내한다).
       expect(await startOf({}), const YearMonth(2026, 10));
     });
 
@@ -176,7 +176,7 @@ void main() {
     expect(templates.watched, ['l1']);
   });
 
-  group('내 역할과 항목 탭의 종류', () {
+  group('내 역할과 내역 탭의 종류', () {
     const shared = Ledger(
       id: 'l1',
       name: '우리 가계부',
@@ -214,7 +214,7 @@ void main() {
       expect(signedOut.read(myRoleProvider), isNull);
     });
 
-    test('항목 탭은 지출 칸에서 시작하고 고른 칸을 기억한다', () {
+    test('내역 탭은 지출 칸에서 시작하고 고른 칸을 기억한다', () {
       final container = createContainer();
 
       expect(container.read(selectedEntryTabProvider), EntryTab.expense);

@@ -151,7 +151,7 @@ String? settingValue(WidgetTester tester, Key row) => tester
 
 void main() {
   group('휴지통', () {
-    testWidgets('항목 탭에서 휴지통에 넣은 항목을 휴지통에서 되살리면 항목 탭에 다시 보인다', (tester) async {
+    testWidgets('내역 탭에서 휴지통에 넣은 항목을 휴지통에서 되살리면 내역 탭에 다시 보인다', (tester) async {
       final entries = FakeEntriesRepository({
         october: const MonthLedger(extraExpenses: [lunch]),
       });
@@ -165,7 +165,7 @@ void main() {
       );
       await settle(tester);
 
-      // 항목 탭에서 휴지통에 넣는다.
+      // 내역 탭에서 휴지통에 넣는다.
       await tester.tap(find.text('점심'));
       await settleRoute(tester);
       final trash = find.descendant(

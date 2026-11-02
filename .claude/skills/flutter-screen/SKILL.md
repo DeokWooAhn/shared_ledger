@@ -28,19 +28,19 @@ Notifier는 저장소 대신 domain의 UseCase를 영역별 홀더로 부른다(
 
 ## 탭 화면
 
-홈은 탭 4개다(`HomeTab`: 요약·항목·가계부·설정). 틀은 `lib/feature/home/home_shell.dart`, 경로는 `lib/router.dart`의 `StatefulShellRoute.indexedStack`.
+홈은 탭 3개다(`HomeTab`: 홈·내역·설정). 틀은 `lib/feature/home/home_shell.dart`, 경로는 `lib/router.dart`의 `StatefulShellRoute.indexedStack`.
 
-- 탭 화면은 `TabPage`(`lib/core/widget/tab_page.dart`)로 감싼다. 넓은 화면에서 본문을 가운데 두고, 좁은 화면에서 떠 있는 탭 막대만큼 아래 여백을 둔다.
+- 탭 화면은 `TabPage`(`lib/core/widget/tab_page.dart`)로 감싼다. 넓은 화면에서 본문을 가운데 두고, 좁은 화면에서 떠 있는 탭 막대(와 그 위의 + 버튼)만큼 아래 여백을 둔다.
   두 칸으로 놓는 탭은 `LayoutBuilder`로 칸 수를 정하고 `TabPage(maxWidth:)`를 넓힌다(월 요약: 본문 폭 840 이상이면 두 칸).
-- 머리말은 달을 보는 탭이면 `MonthHeader`, 아니면 `TabTitle`이다. 예: `lib/feature/summary/summary_screen.dart`, `lib/feature/settings/settings_screen.dart`
+- 머리말은 달을 보는 탭이면 `MonthHeader`(달 이름을 누르면 달 고르기 `showMonthsSheet`, 오른쪽 끝 단추는 `trailing`), 아니면 `TabTitle`이다. 예: `lib/feature/summary/summary_screen.dart`, `lib/feature/settings/settings_screen.dart`
 - 보고 있는 달은 `selectedMonthProvider`를 읽는다(탭을 옮겨도 같은 달). 오늘 날짜가 필요하면 `clockProvider`.
   머리말로 오가는 달은 `ledgerMonthsProvider`(가계부가 있는 달, 이번 달도 추가해야 들어간다. 목록을 아직 모으지 않았으면 null)이고, 달력은 모든 달을 보여준다.
   새 항목을 더하는 쓰기는 `Ledger.needsToRecord(month)`로 그달을 가계부의 달 목록에 같이 더한다(`SaveEntryUseCase`, `docs/firestore.md`의 `months`).
 - 두 사람 표시는 `MemberAvatar`, 이름은 `membersProvider`에서 꺼낸다.
 - 탭을 더하거나 빼면 `HomeTab`과 router.dart의 `Routes.of`·`_tabScreen`을 같이 고친다(`switch`라 빠뜨리면 컴파일 에러).
 - 폭 600 이상(`wideLayoutMinWidth`)에서는 아래 탭 막대 대신 옆 탭 막대(NavigationRail)가 나온다. 위젯 테스트는 두 배치를 다 본다.
-- Android 뒤로가기(버튼·스와이프 동작)는 탭 틀의 `PopScope`(`_HomeBackHandler`)가 받는다. 요약이 아닌 탭의 첫 화면에서는 요약 탭으로 가고,
-  요약 탭에서는 안내 뒤 2초(`homeExitWindow`) 안에 한 번 더 뒤로 가야 앱을 닫는다. 탭 안의 하위 화면과 탭 위로 연 화면은
+- Android 뒤로가기(버튼·스와이프 동작)는 탭 틀의 `PopScope`(`_HomeBackHandler`)가 받는다. 홈이 아닌 탭의 첫 화면에서는 홈 탭으로 가고,
+  홈 탭에서는 안내 뒤 2초(`homeExitWindow`) 안에 한 번 더 뒤로 가야 앱을 닫는다. 탭 안의 하위 화면과 탭 위로 연 화면은
   go_router가 안쪽 Navigator부터 닫아서 평소처럼 닫힌다. 테스트는 `tester.binding.handlePopRoute()`(`test/feature/home/home_back_test.dart`).
   뒤로가기는 스와이프 동작일 수도 있어서 문구에 '누르면'을 쓰지 않는다('한 번 더 뒤로 가면 앱이 종료돼요.').
 - 탭 안에서 더 들어가는 화면(설정 → 분류·결제수단 목록, 휴지통, 변경 기록)은 그 탭 `GoRoute`의 하위 경로로 둔다(router.dart의 `_tabRoutes`). 탭 막대가 그대로 보이고,

@@ -195,7 +195,7 @@ Future<void> tapInEntryForm(WidgetTester tester, Key key) async {
   await settle(tester);
 }
 
-/// 항목 탭에서 [kind]가 보이는 칸을 고르고 + 버튼으로 입력 화면을 연다. 칸이 여는 종류가 아니면 종류 칸에서 고른다.
+/// 내역 탭에서 [kind]가 보이는 칸을 고르고 + 버튼으로 입력 화면을 연다. 칸이 여는 종류가 아니면 종류 칸에서 고른다.
 Future<void> openEntryForm(WidgetTester tester, EntryKind kind) async {
   await openTab(tester, HomeTab.entries);
   await showEntryTabOf(tester, kind);
@@ -485,7 +485,7 @@ void main() {
       await settleRoute(tester);
 
       // 그달에 쓴 항목이 있어서 요약의 분류 소계에도 남는다.
-      await openTab(tester, HomeTab.summary);
+      await openTab(tester, HomeTab.home);
       await tester.ensureVisible(find.byKey(const Key('planned-section')));
       expect(
         find.descendant(
@@ -606,7 +606,7 @@ void main() {
       await settleRoute(tester);
       expect(entries.added.last.draft.paymentMethodId, 'method-new-1');
 
-      await openTab(tester, HomeTab.summary);
+      await openTab(tester, HomeTab.home);
       await tester.ensureVisible(find.byKey(const Key('card-section')));
       await settle(tester);
       expect(
@@ -627,7 +627,7 @@ void main() {
       expect(textOf(tester, const Key('cash-out')), '320,000원');
     });
 
-    testWidgets('카드 이름을 바꾸면 항목·요약 탭에 바뀐 이름으로 보인다', (tester) async {
+    testWidgets('카드 이름을 바꾸면 항목·홈 탭에 바뀐 이름으로 보인다', (tester) async {
       final settings = settingsOf();
       await pumpSettings(
         tester,
@@ -661,7 +661,7 @@ void main() {
       await showEntryTabOf(tester, EntryKind.extra);
       expect(inEntries(find.text('바다 카드')), findsOneWidget);
 
-      await openTab(tester, HomeTab.summary);
+      await openTab(tester, HomeTab.home);
       await tester.ensureVisible(find.byKey(const Key('card-section')));
       expect(
         find.descendant(
@@ -708,7 +708,7 @@ void main() {
       await tester.tap(inEntryForm(find.byKey(const Key('entry-close'))));
       await settleRoute(tester);
 
-      await openTab(tester, HomeTab.summary);
+      await openTab(tester, HomeTab.home);
       expect(textOf(tester, const Key('cash-out')), '0원');
       await tester.ensureVisible(find.byKey(const Key('card-usage')));
       expect(

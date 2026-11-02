@@ -23,7 +23,7 @@ enum EntriesFailure {
   addMonth,
 }
 
-/// 항목 탭 상태. 목록은 공급자(monthLedgerProvider)에서 그리고, 여기에는 동작의 진행 상태만 둔다.
+/// 내역 탭 상태. 목록은 공급자(monthLedgerProvider)에서 그리고, 여기에는 동작의 진행 상태만 둔다.
 @immutable
 class EntriesState {
   const EntriesState({
@@ -59,7 +59,7 @@ final entriesNotifierProvider =
       EntriesNotifier.new,
     );
 
-/// 항목 탭과 달력의 Notifier. 입력 화면에서 휴지통에 넣은 항목이나 그만한 고정 지출·고정 수입을 '되돌리기'로 되살리고,
+/// 내역 탭과 달력의 Notifier. 입력 화면에서 휴지통에 넣은 항목이나 그만한 고정 지출·고정 수입을 '되돌리기'로 되살리고,
 /// 달력에서 가계부가 없는 달의 가계부를 만든다.
 class EntriesNotifier extends Notifier<EntriesState> {
   @override

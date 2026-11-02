@@ -81,7 +81,7 @@ Future<void> pumpEntries(
   await openTab(tester, HomeTab.entries);
 }
 
-// 항목 탭 아래에 입력 화면이 겹쳐 있을 때 입력 화면 안의 것만 찾는다.
+// 내역 탭 아래에 입력 화면이 겹쳐 있을 때 입력 화면 안의 것만 찾는다.
 Finder inForm(Finder finder) =>
     find.descendant(of: find.byType(EntryFormScreen), matching: finder);
 
@@ -188,11 +188,11 @@ void main() {
       expect(find.byType(EntryFormScreen), findsNothing);
     });
 
-    testWidgets('+ 버튼은 요약·항목 탭에만 있다', (tester) async {
+    testWidgets('+ 버튼은 홈·내역 탭에만 있다', (tester) async {
       await pumpEntries(tester);
 
       expect(find.byKey(const Key('add-entry')), findsOneWidget);
-      await openTab(tester, HomeTab.summary);
+      await openTab(tester, HomeTab.home);
       expect(find.byKey(const Key('add-entry')), findsOneWidget);
       for (final tab in [HomeTab.settings]) {
         await openTab(tester, tab);
@@ -202,7 +202,7 @@ void main() {
   });
 
   group('항목 입력', () {
-    testWidgets('+ 버튼으로 추가 지출을 적으면 항목 탭과 요약 탭에 보인다', (tester) async {
+    testWidgets('+ 버튼으로 추가 지출을 적으면 내역 탭과 홈 탭에 보인다', (tester) async {
       final entries = FakeEntriesRepository();
       await pumpEntries(tester, entries: entries);
       await tester.tap(inList(find.byKey(const Key('entry-tab-expense'))));
@@ -225,7 +225,7 @@ void main() {
       expect(find.text('마트 장보기'), findsOneWidget);
       expect(find.text('공동 통장 · 10/15'), findsOneWidget);
 
-      await openTab(tester, HomeTab.summary);
+      await openTab(tester, HomeTab.home);
       expect(textOf(tester, const Key('spending')), '186,000원');
       expect(textOf(tester, const Key('cash-out')), '186,000원');
     });
@@ -251,7 +251,7 @@ void main() {
       );
     });
 
-    testWidgets('요약 탭의 + 버튼은 추가 지출로 열고 보고 있는 달에 넣는다', (tester) async {
+    testWidgets('홈 탭의 + 버튼은 추가 지출로 열고 보고 있는 달에 넣는다', (tester) async {
       final entries = FakeEntriesRepository();
       // 11월은 항목이 있는 달이라 머리말로 갈 수 있다.
       await pumpEntries(
@@ -264,7 +264,7 @@ void main() {
           months: {const YearMonth(2026, 11)},
         ),
       );
-      await openTab(tester, HomeTab.summary);
+      await openTab(tester, HomeTab.home);
       await swipeMonth(tester);
 
       await openAddForm(tester);
@@ -436,7 +436,7 @@ void main() {
       expect(find.text('금액 미정'), findsNothing);
       expect(textIn(tester, const Key('entries-total')), '1,108,000원');
 
-      await openTab(tester, HomeTab.summary);
+      await openTab(tester, HomeTab.home);
       expect(textOf(tester, const Key('planned-total')), '1,108,000원');
     });
 

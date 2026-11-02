@@ -10,7 +10,7 @@ import 'domain/model/ledger.dart';
 import 'domain/model/ledger_entries.dart';
 import 'domain/model/year_month.dart';
 import 'core/widget/loading_screen.dart';
-import 'feature/months/months_screen.dart';
+import 'feature/months/months_sheet.dart';
 import 'feature/ledger/join_ledger_screen.dart';
 import 'feature/ledger/create_ledger_screen.dart';
 import 'feature/auth/sign_in_screen.dart';
@@ -36,17 +36,15 @@ abstract final class Routes {
   static const startCreate = '$start/create';
   static const startJoin = '$start/join';
 
-  // 홈의 탭. 가계부가 있으면 요약 탭에서 시작한다.
-  static const summary = '/';
+  // 홈의 탭. 가계부가 있으면 홈 탭에서 시작한다.
+  static const home = '/';
   static const entries = '/entries';
-  static const months = '/months';
   static const settings = '/settings';
-  static const home = summary;
 
   /// 항목 입력·수정. 탭 막대를 가리는 전체 화면이고, 무엇을 열지는 [EntryFormArgs]를 `extra`로 넘긴다.
   static const entry = '/entry';
 
-  /// 달력. 요약·항목 탭 머리말의 달 이름으로 열고, 입력 화면처럼 탭 막대를 가리는 전체 화면이다.
+  /// 달력. 내역 탭 머리말 오른쪽의 달력 단추로 열고, 입력 화면처럼 탭 막대를 가리는 전체 화면이다.
   /// 닫기 단추 없이 뒤로가기(iOS는 왼쪽 끝 밀기)로 닫는다.
   static const calendar = '/calendar';
 
@@ -58,20 +56,19 @@ abstract final class Routes {
 
   /// [tab] 탭의 경로.
   static String of(HomeTab tab) => switch (tab) {
-    HomeTab.summary => summary,
+    HomeTab.home => home,
     HomeTab.entries => entries,
-    HomeTab.months => months,
     HomeTab.settings => settings,
   };
 }
 
 Widget _tabScreen(HomeTab tab) => switch (tab) {
-  HomeTab.summary => const SummaryScreen(openCalendar: _openCalendar),
+  HomeTab.home => const SummaryScreen(openMonths: _openMonths),
   HomeTab.entries => const EntriesScreen(
     openForm: _openEntryForm,
     openCalendar: _openCalendar,
+    openMonths: _openMonths,
   ),
-  HomeTab.months => const MonthsScreen(openSummary: _openSummary),
   HomeTab.settings => const SettingsScreen(
     openCategories: _openCategories,
     openPaymentMethods: _openPaymentMethods,
@@ -93,14 +90,14 @@ List<RouteBase> _tabRoutes(HomeTab tab) => switch (tab) {
     ),
     GoRoute(
       path: _subPath(Routes.trash),
-      builder: (_, _) => const TrashScreen(),
+      builder: (_, _) => const TrashScreen(openMonths: _openMonths),
     ),
     GoRoute(
       path: _subPath(Routes.activity),
       builder: (_, _) => const ActivityScreen(),
     ),
   ],
-  HomeTab.summary || HomeTab.entries || HomeTab.months => const [],
+  HomeTab.home || HomeTab.entries => const [],
 };
 
 // 하위 GoRoute의 path는 앞의 탭 경로를 뺀 나머지다. 예: '/settings/categories' → 'categories'
@@ -119,7 +116,8 @@ void _openTrash(BuildContext context) =>
 void _openActivity(BuildContext context) =>
     unawaited(context.push<void>(Routes.activity));
 
-void _openSummary(BuildContext context) => context.go(Routes.summary);
+// 머리말의 달 이름. 달을 골라도 보던 탭에 그대로 있다.
+void _openMonths(BuildContext context) => unawaited(showMonthsSheet(context));
 
 void _openCreateLedger(BuildContext context) =>
     unawaited(context.push<void>(Routes.startCreate));
@@ -237,7 +235,7 @@ final routerProvider = Provider<GoRouter>((ref) {
             ),
         ],
       ),
-      // 탭 밖(루트)에 둬서 탭 막대를 가린다. 열 항목 없이 들어오면 항목 탭으로 보낸다.
+      // 탭 밖(루트)에 둬서 탭 막대를 가린다. 열 항목 없이 들어오면 내역 탭으로 보낸다.
       // 입력 화면은 왼쪽 위 뒤로 단추로 닫으니 보통 화면처럼 옆에서 들어오고, iOS는 왼쪽 끝을 밀어 닫는다.
       GoRoute(
         path: Routes.entry,

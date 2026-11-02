@@ -67,7 +67,7 @@ void main() {
       expect(redirectFor(AppGate.ready, Routes.startCreate), Routes.home);
       expect(redirectFor(AppGate.ready, Routes.startJoin), Routes.home);
       expect(redirectFor(AppGate.ready, Routes.home), isNull);
-      expect(redirectFor(AppGate.ready, Routes.months), isNull);
+      expect(redirectFor(AppGate.ready, Routes.entries), isNull);
       expect(redirectFor(AppGate.ready, Routes.settings), isNull);
       expect(redirectFor(AppGate.ready, Routes.categories), isNull);
     });
@@ -76,7 +76,7 @@ void main() {
       expect(redirectFor(AppGate.noLedger, Routes.start), isNull);
       expect(redirectFor(AppGate.noLedger, Routes.startCreate), isNull);
       expect(redirectFor(AppGate.noLedger, Routes.startJoin), isNull);
-      expect(redirectFor(AppGate.noLedger, Routes.months), Routes.start);
+      expect(redirectFor(AppGate.noLedger, Routes.trash), Routes.start);
       expect(redirectFor(AppGate.signedOut, Routes.startJoin), Routes.signIn);
     });
 
@@ -96,10 +96,10 @@ void main() {
       expect(Routes.paymentMethods, '${Routes.settings}/payment-methods');
     });
 
-    test('탭마다 경로가 하나씩 있고, 홈은 요약 탭이다', () {
+    test('탭마다 경로가 하나씩 있고, 홈은 홈 탭이다', () {
       final paths = [for (final tab in HomeTab.values) Routes.of(tab)];
       expect(paths.toSet(), hasLength(HomeTab.values.length));
-      expect(Routes.of(HomeTab.summary), Routes.home);
+      expect(Routes.of(HomeTab.home), Routes.home);
     });
   });
 }

@@ -77,9 +77,9 @@ final templatesProvider = StreamProvider<List<ExpenseTemplate>>((ref) {
   return ref.watch(templateUseCasesProvider).watchTemplates(ledgerId);
 });
 
-/// 가계부가 있는 달(가계부 탭에서 추가했거나 항목이 들어간 적 있는 달, [Ledger.months]). 오래된 것부터 정렬돼 있다.
+/// 가계부가 있는 달(달 고르기에서 추가했거나 항목이 들어간 적 있는 달, [Ledger.months]). 오래된 것부터 정렬돼 있다.
 ///
-/// 요약·항목 탭(과 휴지통)은 이 달들만 오가고, 가계부 탭이 이 목록을 보여준다. 이번 달이라도 추가하지 않았으면 없다.
+/// 홈·내역 탭(과 휴지통)은 이 달들만 오가고, 달 고르기 시트가 이 목록을 보여준다. 이번 달이라도 추가하지 않았으면 없다.
 /// 목록을 아직 모으지 않은 가계부(months가 null)거나 가계부가 없으면 null이고, 그때는 달을 가리지 않는다.
 /// 달력은 이 목록과 상관없이 모든 달을 보여준다.
 final ledgerMonthsProvider = Provider<List<YearMonth>?>((ref) {
@@ -88,7 +88,7 @@ final ledgerMonthsProvider = Provider<List<YearMonth>?>((ref) {
   return [...months]..sort();
 });
 
-/// 요약·항목 탭이 같이 보는 달. 탭을 옮겨도 유지된다.
+/// 홈·내역 탭이 같이 보는 달. 탭을 옮겨도 유지된다.
 ///
 /// 처음에는 가계부가 있는 달 가운데 이번 달에 가장 가까운 달이다(이번 달이 있으면 이번 달, [nearestMonth]).
 /// 달 목록이 바뀌어 보던 달이 목록에서 빠지면(다른 가계부로 옮김 등) 다시 가장 가까운 달로 옮긴다.
@@ -123,7 +123,7 @@ class SelectedMonthNotifier extends Notifier<YearMonth> {
   void select(YearMonth month) => state = month;
 }
 
-/// 항목 탭의 세 칸. 수입 칸은 고정 수입과 추가 수입을, 지출 칸은 고정 지출과 추가 지출을 구역으로 나눠 함께 보여준다.
+/// 내역 탭의 세 칸. 수입 칸은 고정 수입과 추가 수입을, 지출 칸은 고정 지출과 추가 지출을 구역으로 나눠 함께 보여준다.
 enum EntryTab {
   income([EntryKind.fixedIncome, EntryKind.income]),
   expense([EntryKind.planned, EntryKind.extra]),
@@ -142,15 +142,15 @@ enum EntryTab {
   };
 }
 
-/// 항목 탭에서 보고 있는 칸. 처음에는 지출이다.
+/// 내역 탭에서 보고 있는 칸. 처음에는 지출이다.
 ///
-/// + 버튼이 항목 탭에서 눌리면 이 칸의 [EntryTab.addKind]로 입력 화면을 연다. 탭을 옮겨도 유지된다.
+/// + 버튼이 내역 탭에서 눌리면 이 칸의 [EntryTab.addKind]로 입력 화면을 연다. 탭을 옮겨도 유지된다.
 final selectedEntryTabProvider =
     NotifierProvider<SelectedEntryTabNotifier, EntryTab>(
       SelectedEntryTabNotifier.new,
     );
 
-/// 항목 탭에서 보는 칸을 바꾼다.
+/// 내역 탭에서 보는 칸을 바꾼다.
 class SelectedEntryTabNotifier extends Notifier<EntryTab> {
   @override
   EntryTab build() => EntryTab.expense;
@@ -176,7 +176,7 @@ final monthLedgerOfProvider = StreamProvider.autoDispose
 
 /// 보고 있는 달의 항목(휴지통 제외). 가계부가 없으면 빈 달이다.
 ///
-/// 요약·항목 탭이 이 공급자 하나를 같이 읽어서 그달 구독은 한 벌뿐이다. 달을 옮기면 이전 달 구독을 끊는다
+/// 홈·내역 탭이 이 공급자 하나를 같이 읽어서 그달 구독은 한 벌뿐이다. 달을 옮기면 이전 달 구독을 끊는다
 /// (달력이 그 달을 아직 읽고 있으면 남는다). 새 달을 아직 받지 못했으면 이전 달 값 대신 불러오는 중이다.
 final monthLedgerProvider = Provider<AsyncValue<MonthLedger>>(
   (ref) => ref.watch(monthLedgerOfProvider(ref.watch(selectedMonthProvider))),

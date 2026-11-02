@@ -14,7 +14,7 @@ import 'ledger_start_screen.dart';
 
 /// 가계부 만들기 화면(design/app/02a). 가계부 이름과 처음 쓸 달을 정해 만든다.
 ///
-/// 만든 사람이 관리자가 된다. 처음 쓸 달은 이번 달로 시작하고, 연·월 휠로 바꾼다. 다른 달은 나중에 가계부 탭에서 더한다.
+/// 만든 사람이 관리자가 된다. 처음 쓸 달은 이번 달로 시작하고, 연·월 휠로 바꾼다. 다른 달은 나중에 머리말의 달 이름을 눌러 더한다.
 /// 만들면 가계부 목록이 바뀌고 화면 이동 규칙(router.dart)이 홈으로 옮긴다.
 class CreateLedgerScreen extends ConsumerStatefulWidget {
   const CreateLedgerScreen({super.key});
@@ -106,7 +106,7 @@ class _CreateLedgerScreenState extends ConsumerState<CreateLedgerScreen> {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        keepAll('다른 달은 나중에 가계부 탭에서 더할 수 있어요.'),
+                        keepAll('다른 달은 나중에 맨 위 달 이름을 눌러 더할 수 있어요.'),
                         style: theme.textTheme.labelSmall?.copyWith(
                           color: context.appColors.textMuted,
                         ),
