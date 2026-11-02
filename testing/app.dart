@@ -71,7 +71,7 @@ Future<void> openStartPath(WidgetTester tester, Key key) async {
   await settleRoute(tester);
 }
 
-/// 항목 탭에서 [kind]가 보이는 칸(수입·지출·카드 대금)을 고른다. 이미 그 칸이면 그대로 둔다.
+/// 내역 탭에서 [kind]가 보이는 칸(수입·지출·카드 대금)을 고른다. 이미 그 칸이면 그대로 둔다.
 Future<void> showEntryTabOf(WidgetTester tester, EntryKind kind) async {
   final tab = EntryTab.values.firstWhere((t) => t.kinds.contains(kind));
   await tester.tap(
@@ -129,7 +129,7 @@ Future<void> enterVisible(WidgetTester tester, Key key, String text) async {
 // 화면의 문장은 줄바꿈을 막는 글자를 넣어 그리므로(keepAll) 같은 방식으로 찾는다.
 Finder findSentence(String text) => find.text(keepAll(text));
 
-// 이름표 첫 글자는 머리말과 월 요약의 구성원별 소계에 둘 다 나온다. 머리말 것만 찾는다.
+// 머리말(MonthHeader) 안에서만 찾는다.
 Finder inMonthHeader(Finder finder) =>
     find.descendant(of: find.byType(MonthHeader), matching: finder);
 

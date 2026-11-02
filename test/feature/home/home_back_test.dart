@@ -51,7 +51,7 @@ Future<void> pumpHome(WidgetTester tester, {Size size = phoneSize}) => pumpApp(
 final exitHint = find.text(keepAll('한 번 더 뒤로 가면 앱이 종료돼요.'));
 
 void main() {
-  testWidgets('요약이 아닌 탭의 첫 화면에서 뒤로 가면 앱을 닫지 않고 요약 탭으로 간다', (tester) async {
+  testWidgets('요약이 아닌 탭의 첫 화면에서 뒤로 가면 앱을 닫지 않고 홈 탭으로 간다', (tester) async {
     final exits = recordExits(tester);
     await pumpHome(tester);
     await openTab(tester, HomeTab.settings);
@@ -65,7 +65,7 @@ void main() {
     expect(exits, isEmpty);
   });
 
-  testWidgets('요약 탭에서 한 번 뒤로 가면 안내만 하고, 2초 안에 한 번 더 뒤로 가면 앱을 닫는다', (
+  testWidgets('홈 탭에서 한 번 뒤로 가면 안내만 하고, 2초 안에 한 번 더 뒤로 가면 앱을 닫는다', (
     tester,
   ) async {
     final exits = recordExits(tester);
@@ -99,7 +99,7 @@ void main() {
 
     await pressBack(tester);
     await openTab(tester, HomeTab.entries);
-    await openTab(tester, HomeTab.summary);
+    await openTab(tester, HomeTab.home);
     await pressBack(tester);
 
     expect(exitHint, findsOneWidget);

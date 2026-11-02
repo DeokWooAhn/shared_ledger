@@ -18,9 +18,8 @@ const wideLayoutMinWidth = 600.0;
 
 /// 홈의 탭. 순서가 router.dart의 탭 경로(branch) 순서다.
 enum HomeTab {
-  summary('요약', Icons.pie_chart_outline),
-  entries('항목', Icons.format_list_bulleted),
-  months('가계부', Icons.menu_book_outlined),
+  home('홈', Icons.home_outlined),
+  entries('내역', Icons.format_list_bulleted),
   settings('설정', Icons.settings_outlined);
 
   const HomeTab(this.label, this.icon);
@@ -38,7 +37,8 @@ typedef AddEntry =
 
 /// 홈의 탭 틀. 좁은 화면에서는 아래에 떠 있는 탭 막대, 넓은 화면에서는 옆 탭 막대를 둔다.
 ///
-/// 달을 보는 탭(요약·항목)에서는 + 버튼을 둔다. 좁은 화면은 탭 막대 오른쪽, 넓은 화면은 옆 탭 막대 맨 위다.
+/// 달을 보는 탭(홈·내역)에서는 + 버튼을 둔다. 좁은 화면은 탭 막대 위 오른쪽에 떠 있고, 넓은 화면은 옆 탭 막대 맨 위다.
+/// 어느 쪽이든 + 버튼이 있든 없든 탭 막대의 폭과 탭 위치는 그대로다.
 /// 탭마다 화면 상태(스크롤 위치 등)를 [StatefulNavigationShell]이 따로 지킨다.
 /// 보고 있는 달(이번 달·다음 달)에 빠진 고정 지출은 어느 탭에 있든 반복 설정으로 채운다.
 class HomeShell extends ConsumerWidget {
@@ -59,9 +59,9 @@ class HomeShell extends ConsumerWidget {
     initialLocation: tab.index == navigationShell.currentIndex,
   );
 
-  // + 버튼은 쓸 수 있는 사람에게 요약·항목 탭에서만, 보고 있는 달의 가계부가 있을 때만 보인다(가계부는 가계부 탭에서 추가한다).
-  // 달 목록을 아직 모으지 않은 옛 가계부(null)는 가리지 않는다. 항목 탭에서는 보던 칸의 종류(지출 칸은 추가 지출),
-  // 요약 탭에서는 추가 지출로 연다. 고정 지출은 입력 화면의 종류 칸에서 고른다.
+  // + 버튼은 쓸 수 있는 사람에게 홈·내역 탭에서만, 보고 있는 달의 가계부가 있을 때만 보인다(달은 달 고르기에서 추가한다).
+  // 달 목록을 아직 모으지 않은 옛 가계부(null)는 가리지 않는다. 내역 탭에서는 보던 칸의 종류(지출 칸은 추가 지출),
+  // 홈 탭에서는 추가 지출로 연다. 고정 지출은 입력 화면의 종류 칸에서 고른다.
   VoidCallback? _addEntry(BuildContext context, WidgetRef ref) {
     final canWrite = ref.watch(myRoleProvider)?.canWrite ?? false;
     final tab = _current;
@@ -69,14 +69,14 @@ class HomeShell extends ConsumerWidget {
     final month = ref.watch(selectedMonthProvider);
     if (!canWrite || (months != null && !months.contains(month))) return null;
     return switch (tab) {
-      HomeTab.summary || HomeTab.entries => () => onAddEntry(
+      HomeTab.home || HomeTab.entries => () => onAddEntry(
         context,
         tab == HomeTab.entries
             ? ref.read(selectedEntryTabProvider).addKind
             : EntryKind.extra,
         ref.read(selectedMonthProvider),
       ),
-      HomeTab.months || HomeTab.settings => null,
+      HomeTab.settings => null,
     };
   }
 
@@ -105,7 +105,7 @@ class HomeShell extends ConsumerWidget {
     final onAdd = _addEntry(context, ref);
     return _HomeBackHandler(
       current: _current,
-      onBackToSummary: () => navigationShell.goBranch(HomeTab.summary.index),
+      onBackToHome: () => navigationShell.goBranch(HomeTab.home.index),
       child: MediaQuery.sizeOf(context).width >= wideLayoutMinWidth
           ? Scaffold(
               body: Row(
@@ -133,23 +133,23 @@ class HomeShell extends ConsumerWidget {
   }
 }
 
-/// 요약 탭에서 한 번 뒤로 간 뒤 이 시간 안에 다시 뒤로 가면 앱을 닫는다. 안내 스낵바도 이만큼 보인다.
+/// 홈 탭에서 한 번 뒤로 간 뒤 이 시간 안에 다시 뒤로 가면 앱을 닫는다. 안내 스낵바도 이만큼 보인다.
 const homeExitWindow = Duration(seconds: 2);
 
 /// Android 뒤로가기(버튼이나 스와이프 동작)로 탭의 첫 화면을 벗어날 때의 동작.
 ///
-/// 요약이 아닌 탭에서는 요약 탭으로 가고, 요약 탭에서는 안내를 띄운 뒤 [homeExitWindow] 안에 한 번 더 뒤로 가면 앱을 닫는다.
+/// 홈이 아닌 탭에서는 홈 탭으로 가고, 홈 탭에서는 안내를 띄운 뒤 [homeExitWindow] 안에 한 번 더 뒤로 가면 앱을 닫는다.
 /// 탭 안의 하위 화면(설정 → 분류)과 탭 위로 연 화면(항목 입력)은 go_router가 안쪽 Navigator부터 닫으므로
 /// 여기까지 오지 않고 평소처럼 닫힌다.
 class _HomeBackHandler extends StatefulWidget {
   const _HomeBackHandler({
     required this.current,
-    required this.onBackToSummary,
+    required this.onBackToHome,
     required this.child,
   });
 
   final HomeTab current;
-  final VoidCallback onBackToSummary;
+  final VoidCallback onBackToHome;
   final Widget child;
 
   @override
@@ -211,8 +211,8 @@ class _HomeBackHandlerState extends State<_HomeBackHandler> {
 
   void _onBack() {
     final messenger = ScaffoldMessenger.of(context);
-    if (widget.current != HomeTab.summary) {
-      widget.onBackToSummary();
+    if (widget.current != HomeTab.home) {
+      widget.onBackToHome();
       return;
     }
     if (_armed) {
@@ -230,7 +230,7 @@ class _HomeBackHandlerState extends State<_HomeBackHandler> {
   @override
   void didUpdateWidget(_HomeBackHandler oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // 다른 탭으로 옮기면 앱 닫기 대기를 풀고 종료 안내도 닫는다. 요약으로 돌아와 뒤로 가면 처음부터 다시 안내한다.
+    // 다른 탭으로 옮기면 앱 닫기 대기를 풀고 종료 안내도 닫는다. 홈으로 돌아와 뒤로 가면 처음부터 다시 안내한다.
     if (oldWidget.current != widget.current) {
       _disarm();
       _closeExitHint();
@@ -298,7 +298,10 @@ class _AddButton extends StatelessWidget {
   }
 }
 
-/// 좁은 화면의 아래 탭 막대. 둥근 막대 안에서 고른 탭만 포인트 색으로 채운다. [onAdd]가 있으면 오른쪽에 + 버튼을 둔다.
+/// 좁은 화면의 아래 탭 막대. 둥근 막대 안에서 고른 탭만 포인트 색으로 채운다. [onAdd]가 있으면 막대 위 오른쪽에 + 버튼을 띄운다.
+///
+/// 막대는 늘 화면 폭을 다 써서, + 버튼이 생기거나 없어져도 막대의 폭과 탭 위치가 바뀌지 않는다.
+/// + 버튼도 이 영역에 들어가서 본문은 그 높이까지 아래 여백을 둔다(TabPage). 버튼 옆 빈 곳을 누르면 본문이 받는다.
 class _BottomTabBar extends StatelessWidget {
   const _BottomTabBar({
     required this.selected,
@@ -317,16 +320,19 @@ class _BottomTabBar extends StatelessWidget {
       minimum: const EdgeInsets.only(bottom: 12),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-        child: Row(
-          spacing: 10,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          spacing: 12,
           children: [
-            Expanded(
-              child: _FloatingTabBar(selected: selected, onSelect: onSelect),
-            ),
             ?switch (onAdd) {
-              final onAdd? => _AddButton(onPressed: onAdd),
+              final onAdd? => Align(
+                alignment: AlignmentDirectional.centerEnd,
+                child: _AddButton(onPressed: onAdd),
+              ),
               null => null,
             },
+            _FloatingTabBar(selected: selected, onSelect: onSelect),
           ],
         ),
       ),
@@ -345,6 +351,7 @@ class _FloatingTabBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     return DecoratedBox(
+      key: const Key('tab-bar'),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(31),
         boxShadow: [

@@ -7,7 +7,7 @@ const lastDueDay = 31;
 
 /// 고정 지출·고정 수입의 반복 설정(템플릿). 매달 나가거나 들어오는 돈이고, 이것으로 달마다 그 항목이 만들어진다.
 ///
-/// 항목 탭에서 고정 지출·고정 수입을 더하면 함께 생기고, 그만하면 지워진다. 따로 보여 주는 화면은 없다.
+/// 내역 탭에서 고정 지출·고정 수입을 더하면 함께 생기고, 그만하면 지워진다. 따로 보여 주는 화면은 없다.
 /// Firestore 문서 id가 그달 항목의 문서 id가 된다(`months/{yyyy-MM}/planned|fixedIncomes/{템플릿 id}`).
 class ExpenseTemplate {
   const ExpenseTemplate({

@@ -70,7 +70,7 @@ lib/
     theme/                design/app.pen 토큰으로 만든 테마
     widget/               공용 위젯과 화면 도우미(keepAll, signOutWithFeedback, MonthHeader)
   feature/<기능>/        화면: <이름>_screen.dart(View) + <이름>_notifier.dart(Notifier)
-                          feature/home은 홈의 탭 틀(요약·항목·가계부·설정)
+                          feature/home은 홈의 탭 틀(홈·내역·설정)
   main.dart, app.dart   앱 시작점
   router.dart           화면 이동 규칙(go_router). feature 화면을 모은다
   di.dart               저장소 공급자에 Firebase 구현(data)을 넣는다. data를 아는 곳은 여기뿐이다
@@ -175,9 +175,11 @@ Flutter의 `TextEditingController`·`ScrollController`와 헷갈리지 않게 �
 - 위젯 밖에서 `await`한 뒤 `BuildContext`를 쓰지 않는다. `await` 전에 `ScaffoldMessenger`를 잡아 두거나(`signOutWithFeedback`) `context.mounted`를 확인한다.
 - 위젯을 돌려주는 private 메서드보다 작은 위젯 클래스로 나눈다(`_OptionCard`, `_ValuePoint`). 바뀌지 않는 위젯은 `const`.
 - 긴 목록은 `ListView.builder`로 만들고, 항목에는 안정적인 id로 `ValueKey`를 준다. 인덱스를 키로 쓰지 않는다.
-- **탭:** 홈은 탭 4개(`HomeTab`: 요약·항목·가계부·설정)이고 `StatefulShellRoute`가 탭마다 화면 상태를 지킨다. 탭 화면은 `TabPage`로 감싸고,
-  달을 보는 탭은 `MonthHeader`를 머리말로 쓴다. 보고 있는 달은 `selectedMonthProvider` 하나를 모든 탭이 같이 읽는다.
-  항목 탭은 세 칸(`EntryTab`: 수입·지출·카드 대금)이고, 고정 수입·고정 지출은 따로 된 화면 없이 수입·지출 칸과 입력 화면에서 다룬다.
+- **탭:** 홈은 탭 3개(`HomeTab`: 홈·내역·설정)이고 `StatefulShellRoute`가 탭마다 화면 상태를 지킨다(2026-11-02, 통계 탭은 다음 PR). 탭 화면은 `TabPage`로 감싸고,
+  달을 보는 탭은 `MonthHeader`(`11월 ▾`)를 머리말로 쓴다. 달 이름을 누르면 달 고르기 시트가 열리고 좌우로 밀면 옆 달로 간다. 달을 골라도 보던 탭에 머문다.
+  보고 있는 달은 `selectedMonthProvider` 하나를 모든 탭이 같이 읽는다.
+  내역 탭은 세 칸(`EntryTab`: 수입·지출·카드 대금)이고, 고정 수입·고정 지출은 따로 된 화면 없이 수입·지출 칸과 입력 화면에서 다룬다. 달력은 내역 탭 머리말의 달력 단추로 연다.
+  + 버튼은 탭 막대 위에 떠 있어서, 있든 없든 탭 막대의 폭과 탭 위치가 바뀌지 않는다.
 - **넓은 화면:** 아이패드와 Mac(아이패드 앱)에서도 쓴다. 폭 600 이상이면 탭 막대가 옆(NavigationRail)으로 간다. 본문은 `ConstrainedBox(maxWidth: …)`로 가운데 두고,
   두 칸 배치는 `LayoutBuilder`로 바꾼다(`docs/plan.md`의 '화면'). 플랫폼 분기는 `defaultTargetPlatform`.
 - **테마:** 색은 `Theme.of(context).colorScheme`과 `context.appColors`, 글자는 `textTheme`에서 꺼낸다(`lib/core/theme/app_theme.dart`, 원본은 `design/app.pen`). 화면 디자인은 `design/app/*.png`.

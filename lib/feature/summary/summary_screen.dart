@@ -21,14 +21,14 @@ const summaryTwoColumnMinWidth = 840.0;
 /// 두 칸일 때 본문의 최대 폭.
 const summaryTwoColumnMaxWidth = 960.0;
 
-/// 월 요약 탭. 보고 있는 달의 남는 현금, 이번 달 지출·저축, 카드, 고정 지출 소계를 보여준다.
+/// 홈 탭(월 요약). 보고 있는 달의 남는 현금, 이번 달 지출·저축, 카드, 고정 지출 소계를 보여준다.
 ///
 /// 저장소를 부르는 동작이 없어 Notifier 없이 [monthSummaryProvider]만 읽는다.
 class SummaryScreen extends ConsumerWidget {
-  const SummaryScreen({required this.openCalendar, super.key});
+  const SummaryScreen({required this.openMonths, super.key});
 
-  /// 달 이름을 누르면 여는 달력. 화면 이동은 router.dart가 정해서 넘겨준다.
-  final void Function(BuildContext context) openCalendar;
+  /// 머리말의 달 이름을 누르면 여는 달 고르기. 화면 이동은 router.dart가 정해서 넘겨준다.
+  final void Function(BuildContext context) openMonths;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -39,7 +39,7 @@ class SummaryScreen extends ConsumerWidget {
         final bodyWidth = constraints.maxWidth - tabPageSidePadding * 2;
         final twoColumns = bodyWidth >= summaryTwoColumnMinWidth;
         return TabPage(
-          header: MonthHeader(openCalendar: openCalendar),
+          header: MonthHeader(openMonths: openMonths),
           maxWidth: twoColumns ? summaryTwoColumnMaxWidth : tabPageMaxWidth,
           children: [
             if (noMonths)

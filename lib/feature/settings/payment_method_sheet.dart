@@ -102,7 +102,7 @@ class _PaymentMethodSheetState extends ConsumerState<PaymentMethodSheet> {
             label: '종류',
             errorText: state.kindMissing ? keepAll('종류를 골라 주세요.') : null,
             note: state.kind == PaymentKind.card
-                ? '카드로 낸 돈은 다음 달 카드 대금으로 빠져나가요. 카드 대금은 항목 탭에서 이 카드로 적어요.'
+                ? '카드로 낸 돈은 다음 달 카드 대금으로 빠져나가요. 카드 대금은 내역 탭에서 이 카드로 적어요.'
                 : null,
             noteKey: const Key('method-card-note'),
             children: [

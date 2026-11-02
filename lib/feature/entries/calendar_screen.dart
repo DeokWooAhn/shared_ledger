@@ -47,10 +47,10 @@ String calendarDayTitle(DateTime date) =>
 ///
 /// 날짜 판은 손가락을 따라 밀리고 옆 달이 붙어 들어온다. 반 넘게 밀거나 빠르게 튕기면 그 달에 멈추고, 멈춘 달을 본다.
 /// 항목을 누르면 고치는 화면, 항목이 없는 날은 빈 칸 안내를 누르면 그날로 새 항목(추가 지출)을 연다.
-/// 요약·항목 탭이 오가지 않는 달(항목이 없는 달)이면 그달 가계부를 새로 만들지 먼저 묻는다. 만들면 고정 지출이 그달에 채워진다
+/// 홈·내역 탭이 오가지 않는 달(항목이 없는 달)이면 그달 가계부를 새로 만들지 먼저 묻는다. 만들면 고정 지출이 그달에 채워진다
 /// (지난 달은 채우지 않는다).
 /// 그런 달을 보다가 닫으면 두 탭은 달력을 열었던 달로 돌아간다.
-/// 달을 옮기면 요약·항목 탭의 달도 같이 옮긴다. 공휴일은 일요일처럼 빨간색이다. 왼쪽 위 뒤로 단추로 닫는다.
+/// 달을 옮기면 홈·내역 탭의 달도 같이 옮긴다. 공휴일은 일요일처럼 빨간색이다. 왼쪽 위 뒤로 단추로 닫는다.
 /// 저장소를 부르는 동작이 없어 Notifier 없이 공급자만 읽고, 고른 날과 판 위치는 이 화면에서만 쓰는 상태라 위젯에 둔다.
 class CalendarScreen extends ConsumerStatefulWidget {
   const CalendarScreen({required this.openForm, super.key});
@@ -69,7 +69,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     initialPage: _pageOf(ref.read(selectedMonthProvider)),
   );
 
-  // 달력을 연 달. 요약·항목 탭이 오가지 않는 달을 보다가 닫으면 이 달로 돌아간다.
+  // 달력을 연 달. 홈·내역 탭이 오가지 않는 달을 보다가 닫으면 이 달로 돌아간다.
   late final YearMonth _openedMonth;
 
   @override
@@ -78,7 +78,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     _openedMonth = ref.read(selectedMonthProvider);
   }
 
-  // 닫을 때 보던 달이 요약·항목 탭이 오가지 않는 달이면, 두 탭이 그 빈 달에 남지 않게 연 달로 돌려놓는다.
+  // 닫을 때 보던 달이 홈·내역 탭이 오가지 않는 달이면, 두 탭이 그 빈 달에 남지 않게 연 달로 돌려놓는다.
   // 그달에 항목을 추가했으면 그 사이에 오가는 달이 돼서 그대로 둔다.
   void _leaveMonthWithoutLedger() {
     final months = ref.read(ledgerMonthsProvider);
@@ -435,7 +435,7 @@ class _CalendarCard extends StatelessWidget {
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
                 child: Text(
-                  keepAll('날짜 없는 항목 $undated건은 항목 탭에서 볼 수 있어요.'),
+                  keepAll('날짜 없는 항목 $undated건은 내역 탭에서 볼 수 있어요.'),
                   key: const Key('calendar-undated'),
                   textAlign: TextAlign.center,
                   style: theme.textTheme.labelSmall?.copyWith(
@@ -728,7 +728,7 @@ class _DayPanel extends ConsumerWidget {
     final colors = context.appColors;
     final members = ref.watch(membersProvider).value ?? const [];
     final canWrite = ref.watch(myRoleProvider)?.canWrite ?? false;
-    // 요약·항목 탭이 오가지 않는 달이면 그달 가계부가 없는 것이라, 항목을 넣기 전에 만들지 묻는다.
+    // 홈·내역 탭이 오가지 않는 달이면 그달 가계부가 없는 것이라, 항목을 넣기 전에 만들지 묻는다.
     final months = ref.watch(ledgerMonthsProvider);
     final hasLedger = months == null || months.contains(month);
     // 지난 달 가계부를 만들 때는 고정 지출을 채우지 않아서 알리지도 않는다.
@@ -923,7 +923,7 @@ class _AddMonthDialog extends StatelessWidget {
         keepAll(
           templateCount > 0
               ? '추가하면 이 달 가계부가 생기고, 고정 지출 $templateCount개도 함께 들어가요. 추가할까요?'
-              : '추가하면 이 달 가계부가 생겨서 요약·항목 탭에서도 볼 수 있어요. 추가할까요?',
+              : '추가하면 이 달 가계부가 생겨서 홈·내역 탭에서도 볼 수 있어요. 추가할까요?',
         ),
       ),
       actions: [

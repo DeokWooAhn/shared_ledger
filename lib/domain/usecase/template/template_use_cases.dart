@@ -5,7 +5,7 @@ import 'stop_fixed_entry_use_case.dart';
 import 'update_fixed_entry_use_case.dart';
 import 'watch_templates_use_case.dart';
 
-/// 반복 설정(고정 지출·고정 수입) UseCase 묶음. 반복 설정 공급자, 항목 입력 화면, 항목 탭(되돌리기)이 읽는다.
+/// 반복 설정(고정 지출·고정 수입) UseCase 묶음. 반복 설정 공급자, 항목 입력 화면, 내역 탭(되돌리기)이 읽는다.
 class TemplateUseCases {
   TemplateUseCases(TemplatesRepository templates)
     : watchTemplates = WatchTemplatesUseCase(templates),

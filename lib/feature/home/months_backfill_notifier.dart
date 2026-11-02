@@ -27,7 +27,7 @@ final monthsBackfillNotifierProvider =
 ///
 /// 한 번 실행에 [monthsBackfillSpan]의 두 배 남짓한 달을 달마다 네 번씩 읽는다. 앱을 열 때마다 하지 않고,
 /// 적고 나면 [Ledger.months]가 생겨 다시 하지 않는다. 실패(오프라인 등)는 알리지 않고 다음에 앱을 열 때 다시 한다.
-/// 그동안 요약·항목 탭은 예전처럼 모든 달을 오간다.
+/// 그동안 홈·내역 탭은 예전처럼 모든 달을 오간다.
 class MonthsBackfillNotifier extends Notifier<bool> {
   // 이번에 앱을 연 동안 이미 해 본 가계부. 실패해도 같은 세션에서는 다시 하지 않는다.
   final _tried = <String>{};

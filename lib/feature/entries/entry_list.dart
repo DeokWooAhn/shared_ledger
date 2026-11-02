@@ -2,7 +2,7 @@ import '../../domain/model/category.dart';
 import '../../domain/model/ledger_entries.dart';
 import '../../domain/model/month_ledger.dart';
 
-/// 항목 탭 목록의 한 묶음. 고정 지출은 분류마다 묶고, 다른 종류(고정 수입 포함)는 제목 없는 한 묶음이다.
+/// 내역 탭 목록의 한 묶음. 고정 지출은 분류마다 묶고, 다른 종류(고정 수입 포함)는 제목 없는 한 묶음이다.
 class EntryGroup {
   const EntryGroup({
     required this.entries,
@@ -26,7 +26,7 @@ class EntryGroup {
   final String key;
 }
 
-/// 항목 탭에 그릴 한 종류의 목록. 건수와 합계, 고정 지출·고정 수입이면 지급 전·받기 전 건수까지 담는다.
+/// 내역 탭에 그릴 한 종류의 목록. 건수와 합계, 고정 지출·고정 수입이면 지급 전·받기 전 건수까지 담는다.
 class EntryList {
   const EntryList({
     required this.groups,

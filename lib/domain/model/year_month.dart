@@ -63,7 +63,7 @@ YearMonth? monthAfter(List<YearMonth> months, YearMonth from) {
 
 /// [months] 가운데 [to]에 가장 가까운 달. [to]가 있으면 [to]이고, 거리가 같으면 앞의 달이다. 비었으면 null.
 ///
-/// 앱을 켤 때 요약·항목 탭이 처음 볼 달을 고른다(이번 달 가계부가 없을 수 있다).
+/// 앱을 켤 때 홈·내역 탭이 처음 볼 달을 고른다(이번 달 가계부가 없을 수 있다).
 YearMonth? nearestMonth(Iterable<YearMonth> months, YearMonth to) {
   int distance(YearMonth month) =>
       ((month.year - to.year) * 12 + month.month - to.month).abs();

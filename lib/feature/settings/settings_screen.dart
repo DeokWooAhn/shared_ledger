@@ -30,7 +30,7 @@ String signInMethodLabel(SignInMethod method) => switch (method) {
 /// 로그인 방법·로그아웃.
 ///
 /// 가계부 이름은 관리자만, 이름표 이름은 관리자·편집자가 시트에서 바꾼다. 분류와 결제수단은 목록 화면에서 고친다.
-/// 휴지통 줄에는 보고 있는 달의 휴지통 건수를 보여준다(요약·항목 탭과 같은 그달 구독). 탈퇴는 6단계에서 넣는다(docs/plan.md).
+/// 휴지통 줄에는 보고 있는 달의 휴지통 건수를 보여준다(홈·내역 탭과 같은 그달 구독). 탈퇴는 6단계에서 넣는다(docs/plan.md).
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({
     required this.openCategories,

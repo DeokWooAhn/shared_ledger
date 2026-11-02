@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../providers/providers.dart';
 import '../../domain/model/year_month.dart';
-import 'member_avatar.dart';
 
 /// 연도까지 붙인 달 이름. 예: '2026년 10월'
 String yearMonthLabel(YearMonth month) => '${month.year}년 ${month.month}월';
@@ -12,81 +11,57 @@ String yearMonthLabel(YearMonth month) => '${month.year}년 ${month.month}월';
 String monthLabel(YearMonth month, {required YearMonth current}) =>
     month.year == current.year ? '${month.month}월' : yearMonthLabel(month);
 
-/// 요약·항목 탭(과 휴지통) 맨 위의 머리말. 달 이름 양옆의 화살표나 달 이름을 좌우로 밀어 달을 옮기고,
-/// 두 사람의 이름표를 보여준다. [openCalendar]를 주면 달 이름을 눌러 달력을 연다.
+/// 홈·내역 탭(과 휴지통) 맨 위의 머리말. 달 이름(`11월 ▾`)을 누르면 달 고르기를 열고([openMonths]),
+/// 달 이름을 좌우로 밀어 옆 달로 옮긴다. [trailing]은 오른쪽 끝에 둔다(내역 탭의 달력 단추).
 ///
-/// 보고 있는 달은 [selectedMonthProvider]라서 두 탭이 같은 달을 본다. 옮기는 달은 [ledgerMonthsProvider]의 달(항목 있는 달과
-/// 이번 달)이라 사이의 빈 달은 건너뛰고, 끝 달에서는 그쪽 화살표를 누를 수 없다.
+/// 보고 있는 달은 [selectedMonthProvider]라서 탭들이 같은 달을 본다. 옮기는 달은 [ledgerMonthsProvider]의 달(추가한 달)이라
+/// 사이의 빈 달은 건너뛰고, 끝 달에서는 그쪽으로 밀어도 옮기지 않는다.
 class MonthHeader extends ConsumerWidget {
-  const MonthHeader({this.openCalendar, super.key});
+  const MonthHeader({this.openMonths, this.trailing, super.key});
 
-  /// 달력을 연다. 화면 이동은 router.dart가 정해서 넘겨준다. null이면 달 이름을 누를 수 없다.
-  final void Function(BuildContext context)? openCalendar;
+  /// 달 고르기를 연다. 화면 이동은 router.dart가 정해서 넘겨준다. null이면 달 이름을 누를 수 없다.
+  final void Function(BuildContext context)? openMonths;
+
+  /// 머리말 오른쪽 끝에 둘 단추.
+  final Widget? trailing;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final month = ref.watch(selectedMonthProvider);
     final current = YearMonth.of(ref.watch(clockProvider)());
-    final members = ref.watch(membersProvider).value ?? const [];
     final selectedMonth = ref.read(selectedMonthProvider.notifier);
-    // 누를 수 없는 화살표(끝 달)는 IconButton이 흐리게 그린다. 아이콘에 색을 따로 주면 흐려지지 않는다.
-    final arrowColor = theme.colorScheme.onSurfaceVariant;
     // 목록을 아직 모으지 않은 가계부면 바로 앞뒤 달로 간다.
     final months = ref.watch(ledgerMonthsProvider);
     final previous = months == null
         ? month.previous
         : monthBefore(months, month);
     final next = months == null ? month.next : monthAfter(months, month);
-    final goPrevious = previous == null
-        ? null
-        : () => selectedMonth.select(previous);
-    final goNext = next == null ? null : () => selectedMonth.select(next);
+    final trailing = this.trailing;
     return Row(
       children: [
-        // 달 이름은 남는 폭을 다 쓸 수 있고, 다음 달 화살표는 이름 바로 뒤에 붙는다.
+        // 달 이름은 남는 폭을 다 쓰고, 그 폭 어디를 밀어도 달을 옮긴다.
         Expanded(
-          child: Row(
-            children: [
-              IconButton(
-                key: const Key('previous-month'),
-                tooltip: '이전 달',
-                color: arrowColor,
-                onPressed: goPrevious,
-                icon: const Icon(Icons.chevron_left, size: 22),
-              ),
-              Flexible(
-                child: MonthSwipeTitle(
-                  month: month,
-                  label: monthLabel(month, current: current),
-                  onNext: goNext,
-                  onPrevious: goPrevious,
-                  onTap: switch (openCalendar) {
-                    final open? => () => open(context),
-                    null => null,
-                  },
-                  tapHint: '달력 열기',
-                  titleKey: const Key('month-title'),
-                  tapKey: const Key('open-calendar'),
-                  alignment: AlignmentDirectional.centerStart,
-                  style: theme.textTheme.headlineSmall?.copyWith(fontSize: 22),
-                ),
-              ),
-              IconButton(
-                key: const Key('next-month'),
-                tooltip: '다음 달',
-                color: arrowColor,
-                onPressed: goNext,
-                icon: const Icon(Icons.chevron_right, size: 22),
-              ),
-            ],
+          child: MonthSwipeTitle(
+            month: month,
+            label: monthLabel(month, current: current),
+            onNext: next == null ? null : () => selectedMonth.select(next),
+            onPrevious: previous == null
+                ? null
+                : () => selectedMonth.select(previous),
+            onTap: switch (openMonths) {
+              final open? => () => open(context),
+              null => null,
+            },
+            tapHint: '달 고르기',
+            tapIcon: Icons.keyboard_arrow_down,
+            titleKey: const Key('month-title'),
+            tapKey: const Key('open-months'),
+            alignment: AlignmentDirectional.centerStart,
+            style: theme.textTheme.headlineSmall?.copyWith(fontSize: 24),
           ),
         ),
-        for (final member in members)
-          Padding(
-            padding: const EdgeInsets.only(left: 4),
-            child: MemberAvatar(member: member),
-          ),
+        ?trailing,
       ],
     );
   }
@@ -100,7 +75,8 @@ const monthSwipeDistance = 48.0;
 /// [onNext]·[onPrevious]가 null이면 그쪽으로는 옮기지 않는다(머리말의 끝 달).
 ///
 /// 달이 바뀌면 이름이 민 방향으로 미끄러진다. 화면 읽기 도구에서는 조절(위·아래로 쓸기)로 달을 옮기고,
-/// [onTap]이 있으면 눌러서 그 동작([tapHint])을 한다. 머리말과 달력이 같이 쓴다.
+/// [onTap]이 있으면 눌러서 그 동작([tapHint])을 한다. [tapIcon]이 있으면 달 이름 뒤에 붙여 누를 수 있다는 걸 보여준다.
+/// 머리말과 달력이 같이 쓴다.
 class MonthSwipeTitle extends StatefulWidget {
   const MonthSwipeTitle({
     required this.month,
@@ -109,6 +85,7 @@ class MonthSwipeTitle extends StatefulWidget {
     required this.onPrevious,
     this.onTap,
     this.tapHint,
+    this.tapIcon,
     this.titleKey,
     this.tapKey,
     this.alignment = AlignmentDirectional.center,
@@ -122,6 +99,7 @@ class MonthSwipeTitle extends StatefulWidget {
   final VoidCallback? onPrevious;
   final VoidCallback? onTap;
   final String? tapHint;
+  final IconData? tapIcon;
 
   /// 테스트에서 달 이름 글자와 누르는 곳을 찾을 키.
   final Key? titleKey;
@@ -148,12 +126,32 @@ class _MonthSwipeTitleState extends State<MonthSwipeTitle> {
   @override
   Widget build(BuildContext context) {
     final onTap = widget.onTap;
-    Widget title = Text(
-      widget.label,
-      key: widget.titleKey,
-      maxLines: 1,
-      style: widget.style,
+    final tapIcon = widget.tapIcon;
+    // 달 이름만 미끄러지고, 붙인 아이콘은 제자리에 있다.
+    Widget title = MonthSlide(
+      month: widget.month,
+      alignment: widget.alignment,
+      child: Text(
+        widget.label,
+        key: widget.titleKey,
+        maxLines: 1,
+        style: widget.style,
+      ),
     );
+    if (onTap != null && tapIcon != null) {
+      title = Row(
+        mainAxisSize: MainAxisSize.min,
+        spacing: 2,
+        children: [
+          title,
+          Icon(
+            tapIcon,
+            size: 26,
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
+        ],
+      );
+    }
     if (onTap != null) {
       title = InkWell(
         key: widget.tapKey,
@@ -175,7 +173,7 @@ class _MonthSwipeTitleState extends State<MonthSwipeTitle> {
       child: Align(
         alignment: widget.alignment,
         widthFactor: 1,
-        // 따로 한 덩어리로 둬서 옆 이름표(두 사람 이름)와 합쳐 읽지 않게 한다.
+        // 따로 한 덩어리로 둬서 옆 단추와 합쳐 읽지 않게 한다.
         child: Semantics(
           container: true,
           header: true,
@@ -188,11 +186,7 @@ class _MonthSwipeTitleState extends State<MonthSwipeTitle> {
           child: FittedBox(
             fit: BoxFit.scaleDown,
             alignment: widget.alignment,
-            child: MonthSlide(
-              month: widget.month,
-              alignment: widget.alignment,
-              child: title,
-            ),
+            child: title,
           ),
         ),
       ),

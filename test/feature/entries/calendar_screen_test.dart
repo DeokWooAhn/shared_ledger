@@ -98,7 +98,7 @@ const rentTemplate = ExpenseTemplate(
   dueDay: 25,
 );
 
-/// 요약 탭에서 달 이름을 눌러 달력을 연다.
+/// 내역 탭에서 머리말의 달력 단추를 눌러 달력을 연다.
 Future<FakeEntriesRepository> openCalendar(
   WidgetTester tester, {
   Ledger ledger = mine,
@@ -117,6 +117,7 @@ Future<FakeEntriesRepository> openCalendar(
     holidays: holidays ?? FakeHolidaysRepository({2026: holidays2026}),
     size: size,
   );
+  await openTab(tester, HomeTab.entries);
   await tester.tap(find.byKey(const Key('open-calendar')));
   await settleRoute(tester);
   return entries;
@@ -155,7 +156,7 @@ Future<void> tapShown(WidgetTester tester, Finder finder) async {
 
 void main() {
   group('열고 닫기', () {
-    testWidgets('요약 탭의 달 이름을 누르면 달력이 열리고 오늘을 고른다', (tester) async {
+    testWidgets('내역 탭의 달력 단추를 누르면 달력이 열리고 오늘을 고른다', (tester) async {
       await openCalendar(tester);
 
       expect(find.byType(CalendarScreen), findsOneWidget);
@@ -164,7 +165,7 @@ void main() {
       expect(find.byKey(const Key('calendar-day-empty')), findsOneWidget);
     });
 
-    testWidgets('항목 탭에서도 달 이름으로 달력을 열고, 뒤로 단추로 닫는다', (tester) async {
+    testWidgets('달력은 내역 탭에만 있고, 뒤로 단추로 닫으면 내역 탭으로 돌아온다', (tester) async {
       await pumpApp(
         tester,
         auth: FakeAuthRepository(signedIn: me),
@@ -172,6 +173,7 @@ void main() {
         settings: settings,
         entries: FakeEntriesRepository({october: octoberLedger()}),
       );
+      expect(find.byKey(const Key('open-calendar')), findsNothing);
       await openTab(tester, HomeTab.entries);
       await tester.tap(find.byKey(const Key('open-calendar')));
       await settleRoute(tester);
@@ -184,7 +186,7 @@ void main() {
       expect(find.byKey(HomeTab.entries.key), findsOneWidget);
     });
 
-    testWidgets('달 이름의 누르는 곳은 머리말과 달력 위 모두 높이 48 이상이다', (tester) async {
+    testWidgets('달 이름과 달력 단추의 누르는 곳은 머리말과 달력 위 모두 높이 48 이상이다', (tester) async {
       await openCalendar(tester);
       expect(
         tester.getSize(find.byKey(const Key('calendar-month'))).height,
@@ -193,10 +195,13 @@ void main() {
 
       await tester.tap(find.byKey(const Key('calendar-back')));
       await settleRoute(tester);
-      expect(
-        tester.getSize(find.byKey(const Key('open-calendar'))).height,
-        greaterThanOrEqualTo(48),
-      );
+      for (final key in ['open-months', 'open-calendar']) {
+        expect(
+          tester.getSize(find.byKey(Key(key))).height,
+          greaterThanOrEqualTo(48),
+          reason: key,
+        );
+      }
     });
 
     testWidgets('글자를 두 배로 키워도 오늘 단추의 글자가 한 줄이다', (tester) async {
@@ -221,7 +226,9 @@ void main() {
       expect(today.didExceedMaxLines, isFalse);
     });
 
-    testWidgets('머리말의 달 이름은 화면 읽기 도구가 달력 열기 단추로 읽는다', (tester) async {
+    testWidgets('머리말의 달 이름은 화면 읽기 도구가 달 고르기 단추로, 달력 단추는 달력으로 읽는다', (
+      tester,
+    ) async {
       final semantics = tester.ensureSemantics();
       await pumpApp(
         tester,
@@ -229,11 +236,16 @@ void main() {
         ledgers: FakeLedgerRepository([mine]),
       );
 
+      await openTab(tester, HomeTab.entries);
       expect(
         tester.getSemantics(find.byKey(const Key('open-calendar'))),
+        isSemantics(tooltip: '달력', isButton: true, hasTapAction: true),
+      );
+      expect(
+        tester.getSemantics(find.byKey(const Key('open-months'))),
         isSemantics(
           label: '10월',
-          hint: '달력 열기',
+          hint: '달 고르기',
           isButton: true,
           isHeader: true,
           hasTapAction: true,
@@ -254,7 +266,7 @@ void main() {
       expect(inDay(18, find.text('-25.8만')), findsOneWidget);
       expect(inDay(25, find.text('예정')), findsOneWidget);
       expect(inDay(25, find.textContaining('80')), findsNothing);
-      expect(findSentence('날짜 없는 항목 1건은 항목 탭에서 볼 수 있어요.'), findsOneWidget);
+      expect(findSentence('날짜 없는 항목 1건은 내역 탭에서 볼 수 있어요.'), findsOneWidget);
     });
 
     testWidgets('화면 읽기 도구는 칸을 한 문장으로 읽고 누를 수 있다', (tester) async {
@@ -390,7 +402,7 @@ void main() {
     });
 
     testWidgets('휴지통에 넣고 돌아온 뒤 달력을 닫아도 되돌리기로 다시 꺼낸다', (tester) async {
-      // 요약 탭에서 연 달력이라, 달력을 닫으면 항목 Notifier를 듣는 화면이 없다.
+      // 홈 탭에서 연 달력이라, 달력을 닫으면 항목 Notifier를 듣는 화면이 없다.
       final entries = await openCalendar(tester);
       await tester.tap(day(18));
       await settle(tester);
@@ -512,7 +524,7 @@ void main() {
       await tapShown(tester, find.byKey(const Key('calendar-day-empty')));
       // 고정 지출을 채우지 않으니 알리지도 않는다.
       expect(
-        findSentence('추가하면 이 달 가계부가 생겨서 요약·항목 탭에서도 볼 수 있어요. 추가할까요?'),
+        findSentence('추가하면 이 달 가계부가 생겨서 홈·내역 탭에서도 볼 수 있어요. 추가할까요?'),
         findsOneWidget,
       );
       await tester.tap(find.byKey(const Key('add-month-confirm')));
@@ -665,7 +677,7 @@ void main() {
       expect(monthTitle(tester), '10월');
     });
 
-    testWidgets('요약·항목 탭이 오가는 달로 옮기고 닫으면 탭도 그 달을 본다', (tester) async {
+    testWidgets('홈·내역 탭이 오가는 달로 옮기고 닫으면 탭도 그 달을 본다', (tester) async {
       await openCalendar(
         tester,
         ledger: Ledger(
