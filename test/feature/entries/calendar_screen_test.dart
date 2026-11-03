@@ -245,7 +245,7 @@ void main() {
         tester.getSemantics(find.byKey(const Key('open-months'))),
         isSemantics(
           label: '10월',
-          hint: '달 고르기',
+          hint: '월별 가계부 열기',
           isButton: true,
           isHeader: true,
           hasTapAction: true,

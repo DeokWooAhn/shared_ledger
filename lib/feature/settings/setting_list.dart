@@ -76,6 +76,139 @@ class SettingCard extends StatelessWidget {
   }
 }
 
+/// 설정 탭의 묶음. 카드 밖 위에 굵은 제목을 두고, 카드 안의 줄 사이에 구분선을 넣는다.
+///
+/// 누른 자리의 물결이 카드 끝까지 퍼지도록 양옆 여백은 줄 안에 둔다([SettingLinkRow], [SettingRow.inset]).
+class SettingGroup extends StatelessWidget {
+  const SettingGroup({
+    required this.title,
+    required this.children,
+    this.footer = const [],
+    super.key,
+  });
+
+  final String title;
+  final List<Widget> children;
+
+  /// 줄 아래에 구분선 없이 붙일 것(단추·안내). 양옆 여백은 묶음이 준다.
+  final List<Widget> footer;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final divider = Divider(
+      height: 1,
+      indent: 16,
+      endIndent: 16,
+      color: theme.colorScheme.outline,
+    );
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(4, 0, 4, 8),
+          child: Semantics(
+            header: true,
+            child: Text(
+              title,
+              style: theme.textTheme.titleMedium?.copyWith(fontSize: 15),
+            ),
+          ),
+        ),
+        Card(
+          clipBehavior: Clip.antiAlias,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              for (final (index, child) in children.indexed) ...[
+                if (index > 0) divider,
+                child,
+              ],
+              if (footer.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: footer,
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// 설정 탭에서 다른 화면으로 가는 줄. 선 아이콘, 굵은 이름과 그 아래 작은 설명, 오른쪽 화살표.
+class SettingLinkRow extends StatelessWidget {
+  const SettingLinkRow({
+    required this.icon,
+    required this.title,
+    required this.onTap,
+    this.subtitle,
+    super.key,
+  });
+
+  final IconData icon;
+  final String title;
+
+  /// 이름 아래 작게 보일 설명. 예: '4개', '공동 통장 · 공용 카드'
+  final String? subtitle;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final subtitle = this.subtitle;
+    // 화면 읽기 도구가 이름과 설명을 한 줄의 버튼으로 읽게 한다.
+    return MergeSemantics(
+      child: Semantics(
+        button: true,
+        child: InkWell(
+          onTap: onTap,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 60),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              child: Row(
+                spacing: 14,
+                children: [
+                  Icon(icon, size: 22, color: scheme.onSurface),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      spacing: 2,
+                      children: [
+                        Text(
+                          title,
+                          style: theme.textTheme.bodyLarge?.copyWith(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        if (subtitle != null)
+                          Text(
+                            keepAll(subtitle),
+                            style: theme.textTheme.labelSmall?.copyWith(
+                              color: scheme.onSurfaceVariant,
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                  Icon(Icons.chevron_right, color: scheme.onSurfaceVariant),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 /// 설정 한 줄: 아이콘 칸, 이름, 오른쪽 값, 누를 수 있으면 화살표.
 class SettingRow extends StatelessWidget {
   const SettingRow({
@@ -86,6 +219,7 @@ class SettingRow extends StatelessWidget {
     this.badge,
     this.titleColor,
     this.onTap,
+    this.inset = 0,
     super.key,
   });
 
@@ -105,6 +239,9 @@ class SettingRow extends StatelessWidget {
   /// null이면 누를 수 없고 화살표도 없다(보기 전용).
   final VoidCallback? onTap;
 
+  /// 줄 안쪽 양옆 여백. 여백 없는 카드([SettingGroup])에 둘 때 줘서 물결이 카드 끝까지 퍼지게 한다.
+  final double inset;
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -121,7 +258,7 @@ class SettingRow extends StatelessWidget {
           child: ConstrainedBox(
             constraints: const BoxConstraints(minHeight: 64),
             child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8),
+              padding: EdgeInsets.symmetric(horizontal: inset, vertical: 8),
               child: Row(
                 spacing: 14,
                 children: [

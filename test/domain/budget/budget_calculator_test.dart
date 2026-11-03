@@ -163,6 +163,53 @@ void main() {
     expect(summary.plannedByCategory, {'saving': 200000, 'living': 50000});
   });
 
+  test('빠져나간 저축은 지급 완료한 계좌 저축과 카드로 낸 저축이고, 지급 전 계좌 저축은 남는 현금에 남는다', () {
+    final summary = _calculator.summarize(
+      MonthLedger(
+        incomes: const [
+          Income(id: 'i1', memberId: 'm1', title: '월급', amount: 1000000),
+        ],
+        plannedExpenses: [
+          _planned(categoryId: 'saving', amount: 300000, paidOn: _paidDay),
+          _planned(categoryId: 'saving', amount: 200000),
+          _planned(
+            categoryId: 'saving',
+            paymentMethodId: 'card-a',
+            amount: 50000,
+          ),
+          _planned(amount: 100000, paidOn: _paidDay),
+        ],
+      ),
+    );
+
+    expect(summary.saving, 550000);
+    expect(summary.paidSaving, 350000);
+    expect(summary.remainingCash, 600000);
+    // 지급 전 저축 200,000원은 남는 현금에만 들어가 두 번 세지 않는다.
+    expect(summary.saved, 950000);
+  });
+
+  test('결제수단별 지출은 고정 지출과 추가 지출을 결제수단마다 더한다', () {
+    final summary = _calculator.summarize(
+      MonthLedger(
+        plannedExpenses: [
+          _planned(amount: 100000),
+          _planned(paymentMethodId: 'card-a', amount: 30000),
+          _planned(amount: null),
+        ],
+        extraExpenses: [
+          _extra(amount: 5000),
+          _extra(paymentMethodId: 'card-a', amount: 7000),
+        ],
+      ),
+    );
+
+    expect(summary.spendingByPaymentMethod, {
+      'account': 105000,
+      'card-a': 37000,
+    });
+  });
+
   test('금액이 정해지지 않은 고정 지출은 0원으로 친다', () {
     final summary = _calculator.summarize(
       MonthLedger(

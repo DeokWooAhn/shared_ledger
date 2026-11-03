@@ -20,6 +20,7 @@ const wideLayoutMinWidth = 600.0;
 enum HomeTab {
   home('홈', Icons.home_outlined),
   entries('내역', Icons.format_list_bulleted),
+  stats('통계', Icons.bar_chart_rounded),
   settings('설정', Icons.settings_outlined);
 
   const HomeTab(this.label, this.icon);
@@ -37,7 +38,7 @@ typedef AddEntry =
 
 /// 홈의 탭 틀. 좁은 화면에서는 아래에 떠 있는 탭 막대, 넓은 화면에서는 옆 탭 막대를 둔다.
 ///
-/// 달을 보는 탭(홈·내역)에서는 + 버튼을 둔다. 좁은 화면은 탭 막대 위 오른쪽에 떠 있고, 넓은 화면은 옆 탭 막대 맨 위다.
+/// 내역 탭에서만 + 버튼을 둔다. 좁은 화면은 탭 막대 위 오른쪽에 떠 있고, 넓은 화면은 옆 탭 막대 맨 위다.
 /// 어느 쪽이든 + 버튼이 있든 없든 탭 막대의 폭과 탭 위치는 그대로다.
 /// 탭마다 화면 상태(스크롤 위치 등)를 [StatefulNavigationShell]이 따로 지킨다.
 /// 보고 있는 달(이번 달·다음 달)에 빠진 고정 지출은 어느 탭에 있든 반복 설정으로 채운다.
@@ -59,24 +60,21 @@ class HomeShell extends ConsumerWidget {
     initialLocation: tab.index == navigationShell.currentIndex,
   );
 
-  // + 버튼은 쓸 수 있는 사람에게 홈·내역 탭에서만, 보고 있는 달의 가계부가 있을 때만 보인다(달은 달 고르기에서 추가한다).
-  // 달 목록을 아직 모으지 않은 옛 가계부(null)는 가리지 않는다. 내역 탭에서는 보던 칸의 종류(지출 칸은 추가 지출),
-  // 홈 탭에서는 추가 지출로 연다. 고정 지출은 입력 화면의 종류 칸에서 고른다.
+  // + 버튼은 쓸 수 있는 사람에게 내역 탭에서만, 보고 있는 달의 가계부가 있을 때만 보인다(달은 달 고르기에서 추가한다).
+  // 달 목록을 아직 모으지 않은 옛 가계부(null)는 가리지 않는다. 보던 칸의 종류(지출 칸은 추가 지출)로 연다.
+  // 고정 지출은 입력 화면의 종류 칸에서 고른다. 홈의 카드는 누르면 그에 맞는 탭으로 간다.
   VoidCallback? _addEntry(BuildContext context, WidgetRef ref) {
     final canWrite = ref.watch(myRoleProvider)?.canWrite ?? false;
-    final tab = _current;
     final months = ref.watch(ledgerMonthsProvider);
     final month = ref.watch(selectedMonthProvider);
     if (!canWrite || (months != null && !months.contains(month))) return null;
-    return switch (tab) {
-      HomeTab.home || HomeTab.entries => () => onAddEntry(
+    return switch (_current) {
+      HomeTab.entries => () => onAddEntry(
         context,
-        tab == HomeTab.entries
-            ? ref.read(selectedEntryTabProvider).addKind
-            : EntryKind.extra,
+        ref.read(selectedEntryTabProvider).addKind,
         ref.read(selectedMonthProvider),
       ),
-      HomeTab.settings => null,
+      HomeTab.home || HomeTab.stats || HomeTab.settings => null,
     };
   }
 

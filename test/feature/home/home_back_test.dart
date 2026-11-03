@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_ledger/domain/model/auth_user.dart';
 import 'package:shared_ledger/domain/model/ledger.dart';
 import 'package:shared_ledger/core/widget/keep_all.dart';
+import 'package:shared_ledger/feature/entries/entries_screen.dart';
 import 'package:shared_ledger/feature/entries/entry_form_screen.dart';
 import 'package:shared_ledger/feature/home/home_shell.dart';
 import 'package:shared_ledger/feature/settings/categories_screen.dart';
@@ -119,6 +120,7 @@ void main() {
   testWidgets('탭 위로 연 항목 입력 화면에서는 입력 화면만 닫히고 앱은 그대로다', (tester) async {
     final exits = recordExits(tester);
     await pumpHome(tester);
+    await openTab(tester, HomeTab.entries);
     await tester.tap(find.byKey(const Key('add-entry')));
     await settleRoute(tester);
     expect(find.byType(EntryFormScreen), findsOneWidget);
@@ -127,7 +129,7 @@ void main() {
     await settleRoute(tester);
 
     expect(find.byType(EntryFormScreen), findsNothing);
-    expect(find.byType(SummaryScreen), findsOneWidget);
+    expect(find.byType(EntriesScreen), findsOneWidget);
     expect(exitHint, findsNothing);
     expect(exits, isEmpty);
   });

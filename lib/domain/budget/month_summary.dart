@@ -22,6 +22,7 @@ class MonthSummary {
     required this.unpricedPlannedCount,
     required this.isEmpty,
     this.unreceivedFixedIncomeCount = 0,
+    this.unpaidPlannedCount = 0,
   });
 
   /// 한 달 가계부와 설정으로 요약을 만든다. 계산은 [BudgetCalculator]가 한다.
@@ -67,6 +68,9 @@ class MonthSummary {
       unreceivedFixedIncomeCount: ledger.fixedIncomes
           .where((income) => !income.isReceived)
           .length,
+      unpaidPlannedCount: ledger.plannedExpenses
+          .where((expense) => !expense.isPaid)
+          .length,
       isEmpty:
           ledger.incomes.isEmpty &&
           ledger.fixedIncomes.isEmpty &&
@@ -94,6 +98,9 @@ class MonthSummary {
 
   /// 아직 받지 않은 고정 수입 건수. 받기 전에는 현금 유입에 들어가지 않는다.
   final int unreceivedFixedIncomeCount;
+
+  /// 아직 지급하지 않은 고정 지출 건수(내역 탭의 '지급 전').
+  final int unpaidPlannedCount;
 
   /// 금액이 아직 정해지지 않은 고정 지출 건수. 합계에서는 0원으로 친다.
   final int unpricedPlannedCount;

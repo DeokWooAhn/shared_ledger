@@ -250,6 +250,28 @@ void main() {
     expect(summary.totals.cashIn, 2000000);
   });
 
+  test('지급 전 고정 지출 건수를 센다(카드로 내는 것도 지급 완료 전이면 센다)', () {
+    final summary = summarize(
+      MonthLedger(
+        plannedExpenses: [
+          PlannedExpense(
+            id: 'paid',
+            categoryId: 'c-living',
+            memberId: 'owner',
+            title: '낸 것',
+            paymentMethodId: 'p-account',
+            amount: 1000,
+            paidOn: DateTime(2026, 10, 5),
+          ),
+          planned('unpaid', amount: 1000),
+          planned('card', paymentMethodId: sharedCard.id, amount: 1000),
+        ],
+      ),
+    );
+
+    expect(summary.unpaidPlannedCount, 2);
+  });
+
   test('항목이 하나도 없는 달만 빈 달이다', () {
     expect(summarize(const MonthLedger()).isEmpty, isTrue);
     // 받기 전 고정 수입만 있어도 빈 달이 아니다.

@@ -120,7 +120,7 @@ void main() {
     await settleRoute(tester);
     // 이번 달이 있으면 마지막 달의 다음 달(11월)부터 보여준다.
     expect(find.text('2026년 11월'), findsOneWidget);
-    await tester.tap(find.byKey(const Key('month-picker-done')));
+    await tester.tap(find.byKey(const Key('add-month-done')));
     await settleRoute(tester);
 
     expect(entries.recordedMonths, [const YearMonth(2026, 11)]);
@@ -131,6 +131,61 @@ void main() {
     );
     expect(find.byType(SummaryScreen), findsOneWidget);
     expect(monthTitle(tester), '11월');
+  });
+
+  testWidgets('새 달 추가는 시트를 겹쳐 띄우지 않고 같은 시트 안에서 휠로 넘어가며, 뒤로 단추로 달 목록에 돌아온다', (
+    tester,
+  ) async {
+    await pumpMonths(tester, ledger: ledgerWith({september, october}));
+    expect(find.text('월별 가계부'), findsOneWidget);
+    final listSheet = tester.getRect(find.byType(BottomSheet));
+    final listButton = tester.getRect(find.byKey(const Key('add-month')));
+
+    await tester.tap(find.byKey(const Key('add-month')));
+    await settleRoute(tester);
+
+    expect(find.byType(BottomSheet), findsOneWidget);
+    expect(inMonths(find.byKey(const Key('add-month-step'))), findsOneWidget);
+    expect(find.byKey(const ValueKey('month-2026-10')), findsNothing);
+    // 두 단계는 시트 크기와 아래 단추 자리가 같다.
+    expect(tester.getRect(find.byType(BottomSheet)), listSheet);
+    expect(tester.getRect(find.byKey(const Key('add-month-done'))), listButton);
+    await tester.tap(find.byKey(const Key('months-back')));
+    await settleRoute(tester);
+    expect(find.byType(MonthsSheet), findsOneWidget);
+    expect(find.byKey(const ValueKey('month-2026-10')), findsOneWidget);
+  });
+
+  testWidgets('글자를 크게 해도 두 단계가 넘치지 않는다', (tester) async {
+    tester.platformDispatcher.textScaleFactorTestValue = 2;
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+    await pumpMonths(tester, ledger: ledgerWith({september, october}));
+    expect(tester.takeException(), isNull);
+
+    await tester.tap(find.byKey(const Key('add-month')));
+    await settleRoute(tester);
+    expect(tester.takeException(), isNull);
+    expect(
+      find.byKey(const Key('add-month-done')).hitTestable(),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('새 달 추가 단계에서 뒤로가기를 하면 시트를 닫지 않고 달 목록으로 돌아간다', (tester) async {
+    await pumpMonths(tester, ledger: ledgerWith({october}));
+    await tester.tap(find.byKey(const Key('add-month')));
+    await settleRoute(tester);
+
+    await tester.binding.handlePopRoute();
+    await settleRoute(tester);
+
+    expect(find.byType(MonthsSheet), findsOneWidget);
+    expect(find.byKey(const Key('add-month-step')), findsNothing);
+    expect(find.byKey(const ValueKey('month-2026-10')), findsOneWidget);
+    // 달 목록에서 한 번 더 뒤로 가면 시트를 닫는다.
+    await tester.binding.handlePopRoute();
+    await settleRoute(tester);
+    expect(find.byType(MonthsSheet), findsNothing);
   });
 
   testWidgets('이미 있는 달을 고르면 새로 만들지 않고 그달로 간다', (tester) async {
@@ -148,7 +203,14 @@ void main() {
       const Offset(0, monthPickerItemExtent * 2),
     );
     await settle(tester);
-    await tester.tap(find.byKey(const Key('month-picker-done')));
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('add-month-done')),
+        matching: find.text('이 달 보기'),
+      ),
+      findsOneWidget,
+    );
+    await tester.tap(find.byKey(const Key('add-month-done')));
     await settleRoute(tester);
 
     expect(entries.filled, isEmpty);
@@ -162,11 +224,11 @@ void main() {
 
     await tester.tap(find.byKey(const Key('add-month')));
     await settleRoute(tester);
-    await tester.tap(find.byKey(const Key('month-picker-done')));
+    await tester.tap(find.byKey(const Key('add-month-done')));
     await settleRoute(tester);
 
     expect(
-      inMonths(findSentence('연결되지 않아 달을 추가하지 못했어요. 연결된 뒤에 다시 해 주세요.')),
+      inMonths(findSentence('연결되지 않아 새 달을 추가하지 못했어요. 연결된 뒤에 다시 해 주세요.')),
       findsOneWidget,
     );
     expect(find.byType(MonthsSheet), findsOneWidget);
@@ -206,14 +268,14 @@ void main() {
 
     expect(inMonths(find.byType(CircularProgressIndicator)), findsNothing);
     expect(find.byKey(const Key('add-month')), findsNothing);
-    await tester.tap(find.byKey(const Key('pick-any-month')));
-    await settleRoute(tester);
+    // 휠은 따로 시트를 띄우지 않고 달 고르기 시트 안에 있다.
+    expect(find.byType(BottomSheet), findsOneWidget);
     await tester.drag(
-      find.byKey(const Key('month-picker-months')),
+      inMonths(find.byKey(const Key('month-picker-months'))),
       const Offset(0, monthPickerItemExtent * 2),
     );
     await settle(tester);
-    await tester.tap(find.byKey(const Key('month-picker-done')));
+    await tester.tap(find.byKey(const Key('pick-any-month')));
     await settleRoute(tester);
 
     expect(find.byType(MonthsSheet), findsNothing);

@@ -53,7 +53,7 @@ class MonthHeader extends ConsumerWidget {
               final open? => () => open(context),
               null => null,
             },
-            tapHint: '달 고르기',
+            tapHint: '월별 가계부 열기',
             tapIcon: Icons.keyboard_arrow_down,
             titleKey: const Key('month-title'),
             tapKey: const Key('open-months'),

@@ -188,13 +188,11 @@ void main() {
       expect(find.byType(EntryFormScreen), findsNothing);
     });
 
-    testWidgets('+ 버튼은 홈·내역 탭에만 있다', (tester) async {
+    testWidgets('+ 버튼은 내역 탭에만 있다', (tester) async {
       await pumpEntries(tester);
 
       expect(find.byKey(const Key('add-entry')), findsOneWidget);
-      await openTab(tester, HomeTab.home);
-      expect(find.byKey(const Key('add-entry')), findsOneWidget);
-      for (final tab in [HomeTab.settings]) {
+      for (final tab in [HomeTab.home, HomeTab.stats, HomeTab.settings]) {
         await openTab(tester, tab);
         expect(find.byKey(const Key('add-entry')), findsNothing);
       }
@@ -251,7 +249,7 @@ void main() {
       );
     });
 
-    testWidgets('홈 탭의 + 버튼은 추가 지출로 열고 보고 있는 달에 넣는다', (tester) async {
+    testWidgets('+ 버튼은 홈에서 옮긴 달에 추가 지출로 넣는다', (tester) async {
       final entries = FakeEntriesRepository();
       // 11월은 항목이 있는 달이라 머리말로 갈 수 있다.
       await pumpEntries(
@@ -266,6 +264,7 @@ void main() {
       );
       await openTab(tester, HomeTab.home);
       await swipeMonth(tester);
+      await openTab(tester, HomeTab.entries);
 
       await openAddForm(tester);
       expect(find.text('쓴 날'), findsOneWidget);
@@ -421,7 +420,7 @@ void main() {
   });
 
   group('항목 고치기', () {
-    testWidgets('항목을 눌러 금액을 채우고 저장하면 목록과 요약이 바뀐다', (tester) async {
+    testWidgets('항목을 눌러 금액을 채우고 저장하면 목록과 통계가 바뀐다', (tester) async {
       final entries = FakeEntriesRepository({october: plannedMonth});
       await pumpEntries(tester, entries: entries);
 
@@ -436,7 +435,7 @@ void main() {
       expect(find.text('금액 미정'), findsNothing);
       expect(textIn(tester, const Key('entries-total')), '1,108,000원');
 
-      await openTab(tester, HomeTab.home);
+      await openTab(tester, HomeTab.stats);
       expect(textOf(tester, const Key('planned-total')), '1,108,000원');
     });
 

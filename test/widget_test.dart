@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_ledger/core/widget/month_picker_sheet.dart';
+import 'package:shared_ledger/core/widget/summary_parts.dart';
 import 'package:shared_ledger/feature/ledger/join_ledger_screen.dart';
 import 'package:shared_ledger/domain/repository/ledger_repository.dart';
 import 'package:shared_ledger/domain/model/auth_user.dart';
@@ -16,6 +17,8 @@ import 'package:shared_ledger/feature/home/home_shell.dart';
 import 'package:shared_ledger/feature/ledger/ledger_start_screen.dart';
 import 'package:shared_ledger/feature/settings/invite_sheet.dart';
 import 'package:shared_ledger/feature/summary/summary_screen.dart';
+import 'package:shared_ledger/feature/entries/entries_screen.dart';
+import 'package:shared_ledger/core/providers/providers.dart';
 
 import '../testing/app.dart';
 import '../testing/fakes.dart';
@@ -378,7 +381,7 @@ void main() {
       roles: {'me': MemberRole.viewer},
     );
 
-    testWidgets('가계부가 있으면 홈 탭에서 이번 달을 보고, 탭은 홈·내역·설정이다', (tester) async {
+    testWidgets('가계부가 있으면 홈 탭에서 이번 달을 보고, 탭은 홈·내역·통계·설정이다', (tester) async {
       await pumpApp(
         tester,
         auth: FakeAuthRepository(signedIn: me),
@@ -390,7 +393,10 @@ void main() {
       expect(monthTitle(tester), '10월');
       // 머리말에는 달 이름만 있고 이름표는 두지 않는다.
       expect(inMonthHeader(find.text('하')), findsNothing);
-      expect([for (final tab in HomeTab.values) tab.label], ['홈', '내역', '설정']);
+      expect(
+        [for (final tab in HomeTab.values) tab.label],
+        ['홈', '내역', '통계', '설정'],
+      );
     });
 
     testWidgets('달을 옮기면 내역 탭도 같은 달을 보고, 해를 넘어간다', (tester) async {
@@ -431,7 +437,7 @@ void main() {
       expect(mark.left - title.right, lessThan(8));
     });
 
-    testWidgets('+ 버튼은 탭 막대 위에 떠 있고, + 버튼이 없는 탭에서도 탭 막대의 폭과 탭 위치는 그대로다', (
+    testWidgets('+ 버튼은 내역 탭에서만 탭 막대 위에 떠 있고, 다른 탭에서도 탭 막대의 폭과 탭 위치는 그대로다', (
       tester,
     ) async {
       await pumpApp(
@@ -443,15 +449,14 @@ void main() {
       );
       // 첫 화면으로 들어오는 전환이 끝난 뒤에 잰다.
       await settleRoute(tester);
+      expect(find.byKey(const Key('add-entry')), findsNothing);
       final bar = tester.getRect(find.byKey(const Key('tab-bar')));
       final home = tester.getRect(find.byKey(HomeTab.home.key));
+
+      await openTab(tester, HomeTab.entries);
       final add = tester.getRect(find.byKey(const Key('add-entry')));
       expect(add.bottom, lessThanOrEqualTo(bar.top));
       expect(add.right, closeTo(bar.right, 1));
-
-      await openTab(tester, HomeTab.settings);
-
-      expect(find.byKey(const Key('add-entry')), findsNothing);
       expect(tester.getRect(find.byKey(const Key('tab-bar'))), bar);
       expect(tester.getRect(find.byKey(HomeTab.home.key)), home);
     });
@@ -476,8 +481,10 @@ void main() {
       expect(monthTitle(tester), '8월');
       await swipeMonth(tester, next: false);
       expect(monthTitle(tester), '8월');
-      // 이번 달은 추가하지 않아서 + 버튼도 8월에 적게 한다.
+      // 이번 달은 추가하지 않아서 내역 탭의 + 버튼도 8월에 적게 한다.
+      await openTab(tester, HomeTab.entries);
       expect(find.byKey(const Key('add-entry')), findsOneWidget);
+      await openTab(tester, HomeTab.home);
 
       await swipeMonth(tester);
       expect(monthTitle(tester), '12월');
@@ -576,6 +583,9 @@ void main() {
       expect(find.text('보기 전용'), findsOneWidget);
       expect(find.byKey(const Key('create-invite')), findsNothing);
 
+      // 로그아웃은 맨 아래 '계정 · 로그아웃'으로 여는 계정 화면에 있다.
+      await tapVisible(tester, const Key('open-account'));
+      await settleRoute(tester);
       await tapVisible(tester, const Key('sign-out'));
 
       expect(auth.signOutCalls, 1);
@@ -742,7 +752,9 @@ void main() {
       size: size,
     );
 
-    testWidgets('그달의 남는 현금·지출·저축·카드·고정 지출 소계를 보여준다', (tester) async {
+    testWidgets('그달의 남는 현금·지출·저축·할 일·카드를 보여주고, 고정 지출 소계는 통계 탭에 있다', (
+      tester,
+    ) async {
       await pumpSummary(
         tester,
         entries: FakeEntriesRepository({october: designMonth}),
@@ -754,7 +766,8 @@ void main() {
       expect(textOf(tester, const Key('cash-out')), '2,827,000원');
       expect(textOf(tester, const Key('spending')), '2,657,000원');
       expect(textOf(tester, const Key('saving')), '1,600,000원');
-      expect(textOf(tester, const Key('planned-total')), '2,299,000원');
+      // 지급 전: 계좌 이자 하나와 카드 둘.
+      expect(findSentence('지급 전 고정 지출 3건'), findsOneWidget);
 
       final cards = find.byKey(const Key('card-section'));
       Finder inCards(String text) =>
@@ -770,7 +783,11 @@ void main() {
       expect(findSentence('이번 달 출금 · 카드 대금 2건'), findsOneWidget);
       // 결제수단에 있어도 이번 달에 쓰지 않은 카드는 줄을 만들지 않는다.
       expect(find.byKey(const ValueKey('card-p-account')), findsNothing);
+      expect(find.byKey(const Key('empty-month')), findsNothing);
+      expect(find.byKey(const Key('planned-section')), findsNothing);
 
+      await openTab(tester, HomeTab.stats);
+      expect(textOf(tester, const Key('planned-total')), '2,299,000원');
       final planned = find.byKey(const Key('planned-section'));
       Finder inPlanned(String text) =>
           find.descendant(of: planned, matching: find.text(text));
@@ -792,7 +809,6 @@ void main() {
         ),
         findsOneWidget,
       );
-      expect(find.byKey(const Key('empty-month')), findsNothing);
       expect(find.byKey(const Key('unpriced-planned')), findsNothing);
     });
 
@@ -803,6 +819,7 @@ void main() {
         entries: FakeEntriesRepository({october: designMonth}),
         settings: settings,
       );
+      await openTab(tester, HomeTab.stats);
 
       final parts = find.descendant(
         of: find.byKey(const Key('member-split')),
@@ -822,7 +839,76 @@ void main() {
       expect(textOf(tester, const Key('remaining-cash')), '0원');
       expect(findSentence('아직 이 달에 적은 항목이 없어요.'), findsOneWidget);
       expect(find.byKey(const Key('card-section')), findsNothing);
-      expect(textOf(tester, const Key('planned-total')), '0원');
+      expect(find.byKey(const Key('pending-row')), findsNothing);
+    });
+
+    testWidgets('홈의 카드를 누르면 그에 맞는 탭과 칸으로 간다', (tester) async {
+      final semantics = tester.ensureSemantics();
+      await pumpSummary(
+        tester,
+        entries: FakeEntriesRepository({october: designMonth}),
+        settings: settings,
+      );
+
+      for (final (key, tab) in [
+        ('home-cash', EntryTab.income),
+        ('home-spending', EntryTab.expense),
+        ('home-saving', EntryTab.expense),
+        ('card-usage', EntryTab.expense),
+        ('card-bills', EntryTab.cardBill),
+      ]) {
+        await openTab(tester, HomeTab.home);
+        await tapVisible(tester, Key(key));
+        await settleRoute(tester);
+        expect(find.byType(EntriesScreen), findsOneWidget, reason: key);
+        expect(
+          tester.getSemantics(find.byKey(Key('entry-tab-${tab.name}'))),
+          isSemantics(isSelected: true),
+          reason: key,
+        );
+      }
+      semantics.dispose();
+    });
+
+    testWidgets('홈 카드를 누르면 기다리지 않고 바로 그 탭으로 바뀐다', (tester) async {
+      await pumpSummary(
+        tester,
+        entries: FakeEntriesRepository({october: designMonth}),
+        settings: settings,
+      );
+
+      await tester.tap(find.byKey(const Key('home-saving')));
+      await tester.pump();
+
+      expect(find.byType(EntriesScreen), findsOneWidget);
+      expect(find.byKey(const Key('remaining-cash')), findsNothing);
+    });
+
+    testWidgets('현금 카드는 안쪽 여백까지 카드 전체가 누름 자리 하나다', (tester) async {
+      final semantics = tester.ensureSemantics();
+      await pumpSummary(
+        tester,
+        entries: FakeEntriesRepository({october: designMonth}),
+        settings: settings,
+      );
+
+      final card = find.byType(HeroCard);
+      expect(
+        find.descendant(of: card, matching: find.byType(InkWell)),
+        findsOneWidget,
+      );
+      expect(
+        tester.getRect(find.byKey(const Key('home-cash'))),
+        tester.getRect(card),
+      );
+      // 현금 유출 금액을 눌러도 카드 하나라서 수입 칸으로 간다.
+      await tester.tap(find.byKey(const Key('cash-out')));
+      await settleRoute(tester);
+      expect(
+        tester.getSemantics(find.byKey(const Key('entry-tab-income'))),
+        isSemantics(isSelected: true),
+      );
+      semantics.dispose();
     });
 
     testWidgets('받기 전 고정 수입은 현금 유입에서 빠지고 몇 건인지 알린다', (tester) async {
@@ -870,10 +956,11 @@ void main() {
         }),
         settings: settings,
       );
+      expect(find.byKey(const Key('empty-month')), findsNothing);
 
+      await openTab(tester, HomeTab.stats);
       expect(findSentence('금액 미정 1건은 합계에서 빠져 있어요'), findsOneWidget);
       expect(textOf(tester, const Key('planned-total')), '50,000원');
-      expect(find.byKey(const Key('empty-month')), findsNothing);
     });
 
     testWidgets('달을 옮기면 그 달의 요약으로 바뀐다', (tester) async {
@@ -907,7 +994,7 @@ void main() {
       expect(find.byKey(const Key('remaining-cash')), findsNothing);
     });
 
-    testWidgets('넓은 화면에서는 고정 지출을 오른쪽 칸에 둔다', (tester) async {
+    testWidgets('넓은 화면에서는 할 일과 카드를 오른쪽 칸에 둔다', (tester) async {
       await pumpSummary(
         tester,
         entries: FakeEntriesRepository({october: designMonth}),
@@ -916,9 +1003,11 @@ void main() {
       );
 
       final cash = tester.getRect(find.byKey(const Key('remaining-cash')));
-      final planned = tester.getRect(find.byKey(const Key('planned-section')));
-      expect(planned.left, greaterThan(cash.right));
-      expect(planned.top, lessThan(cash.bottom));
+      final pending = tester.getRect(find.byKey(const Key('pending-row')));
+      final cards = tester.getRect(find.byKey(const Key('card-section')));
+      expect(pending.left, greaterThan(cash.right));
+      expect(pending.top, lessThan(cash.bottom));
+      expect(cards.left, pending.left);
     });
 
     testWidgets('아이패드 세로처럼 덜 넓으면 한 칸으로 둔다', (tester) async {
@@ -929,10 +1018,10 @@ void main() {
         size: const Size(768, 1024),
       );
 
-      final cash = tester.getRect(find.byKey(const Key('card-section')));
-      final planned = tester.getRect(find.byKey(const Key('planned-section')));
-      expect(planned.top, greaterThan(cash.bottom));
-      expect(planned.width, lessThanOrEqualTo(tabPageMaxWidth));
+      final spending = tester.getRect(find.byKey(const Key('spending')));
+      final cards = tester.getRect(find.byKey(const Key('card-section')));
+      expect(cards.top, greaterThan(spending.bottom));
+      expect(cards.width, lessThanOrEqualTo(tabPageMaxWidth));
     });
 
     testWidgets('본문 폭이 840에 못 미치면 탭 영역이 840을 넘어도 한 칸으로 둔다', (tester) async {
@@ -946,9 +1035,9 @@ void main() {
       final page = tester.getSize(find.byType(SummaryScreen)).width;
       expect(page, inInclusiveRange(840, 879), reason: '옆 탭 막대를 뺀 탭 영역 폭');
 
+      final spending = tester.getRect(find.byKey(const Key('spending')));
       final cards = tester.getRect(find.byKey(const Key('card-section')));
-      final planned = tester.getRect(find.byKey(const Key('planned-section')));
-      expect(planned.top, greaterThan(cards.bottom));
+      expect(cards.top, greaterThan(spending.bottom));
     });
 
     testWidgets('글자를 크게 해도 넘치지 않는다', (tester) async {

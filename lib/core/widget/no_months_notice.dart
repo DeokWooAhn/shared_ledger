@@ -24,7 +24,7 @@ class NoMonthsNotice extends StatelessWidget {
               style: theme.textTheme.bodyMedium,
             ),
             Text(
-              keepAll('맨 위 달 이름을 눌러 쓸 달을 추가해 주세요.'),
+              keepAll('맨 위 달 이름을 눌러 새 달을 추가해 주세요.'),
               textAlign: TextAlign.center,
               style: theme.textTheme.bodySmall,
             ),

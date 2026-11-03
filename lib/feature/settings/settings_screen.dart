@@ -2,12 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/providers/providers.dart';
-import '../../domain/model/auth_user.dart';
 import '../../domain/model/ledger.dart';
 import '../../domain/model/member.dart';
 import '../../core/widget/keep_all.dart';
 import '../../core/widget/member_avatar.dart';
-import '../../core/widget/sign_out.dart';
 import '../../core/widget/tab_page.dart';
 import '../../core/widget/wallet_glyph.dart';
 import 'invite_sheet.dart';
@@ -17,26 +15,25 @@ import 'rename_sheet.dart';
 import 'setting_list.dart';
 import 'setting_sheet.dart';
 
-/// 설정 탭 안의 화면(분류, 결제수단·카드, 휴지통, 변경 기록)을 연다. 화면 이동은 router.dart가 정해서 넘겨준다.
+/// 설정 탭 안의 화면(분류, 결제수단·카드, 휴지통, 변경 기록, 계정)을 연다. 화면 이동은 router.dart가 정해서 넘겨준다.
 typedef OpenSettingPage = void Function(BuildContext context);
 
-/// 화면에 보이는 로그인 방법 이름.
-String signInMethodLabel(SignInMethod method) => switch (method) {
-  SignInMethod.google => 'Google',
-  SignInMethod.apple => 'Apple',
-};
+/// 결제수단 줄의 설명에 이름을 몇 개까지 보여줄지. 더 있으면 '외 N개'로 줄인다.
+const settingsPaymentNamesShown = 2;
 
-/// 설정 탭(design/app/07). 가계부 이름, 두 사람의 이름표·역할과 초대, 분류·결제수단, 휴지통·변경 기록,
-/// 로그인 방법·로그아웃.
+/// 설정 탭(design/app/07). 가계부 이름, 두 사람의 이름표·역할과 초대, 가계부 관리(분류·결제수단),
+/// 기록 관리(변경 기록·휴지통), 맨 아래에 계정 화면으로 가는 '계정 · 로그아웃'.
 ///
+/// 묶음 제목은 카드 밖에 굵게 두고, 다른 화면으로 가는 줄은 이름 아래에 작은 설명을 단다([SettingLinkRow]).
 /// 가계부 이름은 관리자만, 이름표 이름은 관리자·편집자가 시트에서 바꾼다. 분류와 결제수단은 목록 화면에서 고친다.
-/// 휴지통 줄에는 보고 있는 달의 휴지통 건수를 보여준다(홈·내역 탭과 같은 그달 구독). 탈퇴는 6단계에서 넣는다(docs/plan.md).
+/// 휴지통 줄에는 보고 있는 달에 지운 항목이 있으면 그 건수를 보여준다(홈·내역 탭과 같은 그달 구독).
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({
     required this.openCategories,
     required this.openPaymentMethods,
     required this.openTrash,
     required this.openActivity,
+    required this.openAccount,
     super.key,
   });
 
@@ -44,6 +41,7 @@ class SettingsScreen extends ConsumerWidget {
   final OpenSettingPage openPaymentMethods;
   final OpenSettingPage openTrash;
   final OpenSettingPage openActivity;
+  final OpenSettingPage openAccount;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -58,77 +56,101 @@ class SettingsScreen extends ConsumerWidget {
     final methods = ref.watch(paymentMethodsProvider).value;
     final month = ref.watch(selectedMonthProvider);
     final trashed = ref.watch(monthLedgerProvider).value?.trashed;
-    final signInMethod = user.signInMethod;
+    final visibleMethods = methods?.where((m) => !m.hidden).toList();
     return TabPage(
       header: const TabTitle('설정'),
       children: [
         _LedgerCard(ledger: ledger, canRename: ledger.canRename(user.uid)),
-        const SizedBox(height: 12),
+        const SizedBox(height: 24),
         _MembersSection(
           ledger: ledger,
           uid: user.uid,
           members: members,
           canWrite: canWrite,
         ),
-        const SizedBox(height: 12),
-        SettingCard(
-          title: '가계부',
+        const SizedBox(height: 24),
+        SettingGroup(
+          title: '가계부 관리',
           children: [
-            SettingRow(
+            SettingLinkRow(
               key: const Key('open-categories'),
-              leading: const SettingIconTile(Icons.sell_outlined),
+              icon: Icons.sell_outlined,
               title: '분류',
-              value: categories == null
+              subtitle: categories == null
                   ? null
                   : '${categories.where((c) => !c.hidden).length}개',
               onTap: () => openCategories(context),
             ),
-            SettingRow(
+            SettingLinkRow(
               key: const Key('open-payment-methods'),
-              leading: const SettingIconTile(Icons.credit_card),
-              title: '결제수단·카드',
-              value: methods == null
+              icon: Icons.account_balance_wallet_outlined,
+              title: '결제수단',
+              subtitle: visibleMethods == null
                   ? null
-                  : '${methods.where((m) => !m.hidden).length}개',
+                  : paymentNamesLabel([for (final m in visibleMethods) m.name]),
               onTap: () => openPaymentMethods(context),
             ),
-            SettingRow(
+          ],
+        ),
+        const SizedBox(height: 24),
+        SettingGroup(
+          title: '기록 관리',
+          children: [
+            SettingLinkRow(
+              key: const Key('open-activity'),
+              icon: Icons.history,
+              title: '변경 기록',
+              onTap: () => openActivity(context),
+            ),
+            SettingLinkRow(
               key: const Key('open-trash'),
-              leading: const SettingIconTile(Icons.delete_outline),
+              icon: Icons.delete_outline,
               title: '휴지통',
-              value: trashed == null
+              subtitle: trashed == null || trashed.isEmpty
                   ? null
                   : '${month.month}월 ${trashed.length}건',
               onTap: () => openTrash(context),
             ),
-            SettingRow(
-              key: const Key('open-activity'),
-              leading: const SettingIconTile(Icons.history),
-              title: '변경 기록',
-              onTap: () => openActivity(context),
-            ),
           ],
         ),
         const SizedBox(height: 12),
-        SettingCard(
-          title: '계정',
-          children: [
-            if (signInMethod != null)
-              SettingRow(
-                key: const Key('sign-in-method'),
-                leading: const SettingIconTile(Icons.login),
-                title: '로그인 방법',
-                value: signInMethodLabel(signInMethod),
-              ),
-            SettingRow(
-              key: const Key('sign-out'),
-              leading: const SettingIconTile(Icons.logout),
-              title: '로그아웃',
-              onTap: () => signOutWithFeedback(context, ref),
-            ),
-          ],
-        ),
+        _AccountLink(onTap: () => openAccount(context)),
       ],
+    );
+  }
+}
+
+/// 결제수단 줄의 설명. 이름을 [settingsPaymentNamesShown]개까지 ' · '로 잇고, 더 있으면 '외 N개'를 붙인다.
+/// 하나도 없으면 '없음'.
+String paymentNamesLabel(List<String> names) {
+  if (names.isEmpty) return '없음';
+  final shown = names.take(settingsPaymentNamesShown).join(' · ');
+  final rest = names.length - settingsPaymentNamesShown;
+  return rest > 0 ? '$shown 외 $rest개' : shown;
+}
+
+/// 맨 아래의 작은 '계정 · 로그아웃'. 누르면 계정 화면(로그인 방법·로그아웃)으로 간다.
+class _AccountLink extends StatelessWidget {
+  const _AccountLink({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Align(
+      alignment: AlignmentDirectional.centerStart,
+      child: TextButton(
+        key: const Key('open-account'),
+        onPressed: onTap,
+        style: TextButton.styleFrom(
+          foregroundColor: theme.colorScheme.onSurfaceVariant,
+          textStyle: theme.textTheme.labelMedium,
+          minimumSize: const Size(48, 48),
+          padding: const EdgeInsets.symmetric(horizontal: 4),
+        ),
+        child: const Text('계정 · 로그아웃'),
+      ),
     );
   }
 }
@@ -216,7 +238,7 @@ class _MembersSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return SettingCard(
+    return SettingGroup(
       title: '구성원',
       footer: [
         if (ledger.canInvite(uid)) ...[
@@ -290,6 +312,7 @@ class _MemberRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final role = this.role;
     return SettingRow(
+      inset: 16,
       leading: MemberAvatar(member: member, size: 40),
       title: isMe ? '${member.name} (나)' : member.name,
       trailing: SettingChip(role == null ? '초대 전' : memberRoleLabel(role)),

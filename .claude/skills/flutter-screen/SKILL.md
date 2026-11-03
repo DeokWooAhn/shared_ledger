@@ -28,9 +28,9 @@ Notifier는 저장소 대신 domain의 UseCase를 영역별 홀더로 부른다(
 
 ## 탭 화면
 
-홈은 탭 3개다(`HomeTab`: 홈·내역·설정). 틀은 `lib/feature/home/home_shell.dart`, 경로는 `lib/router.dart`의 `StatefulShellRoute.indexedStack`.
+홈은 탭 4개다(`HomeTab`: 홈·내역·통계·설정). 틀은 `lib/feature/home/home_shell.dart`, 경로는 `lib/router.dart`의 `StatefulShellRoute.indexedStack`이다.
 
-- 탭 화면은 `TabPage`(`lib/core/widget/tab_page.dart`)로 감싼다. 넓은 화면에서 본문을 가운데 두고, 좁은 화면에서 떠 있는 탭 막대(와 그 위의 + 버튼)만큼 아래 여백을 둔다.
+- 탭 화면은 `TabPage`(`lib/core/widget/tab_page.dart`)로 감싼다. 넓은 화면에서 본문을 가운데 두고, 좁은 화면에서 떠 있는 탭 막대(내역 탭이면 그 위의 + 버튼까지)만큼 아래 여백을 둔다.
   두 칸으로 놓는 탭은 `LayoutBuilder`로 칸 수를 정하고 `TabPage(maxWidth:)`를 넓힌다(월 요약: 본문 폭 840 이상이면 두 칸).
 - 머리말은 달을 보는 탭이면 `MonthHeader`(달 이름을 누르면 달 고르기 `showMonthsSheet`, 오른쪽 끝 단추는 `trailing`), 아니면 `TabTitle`이다. 예: `lib/feature/summary/summary_screen.dart`, `lib/feature/settings/settings_screen.dart`
 - 보고 있는 달은 `selectedMonthProvider`를 읽는다(탭을 옮겨도 같은 달). 오늘 날짜가 필요하면 `clockProvider`.
