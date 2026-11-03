@@ -3,6 +3,7 @@ import 'package:shared_ledger/domain/model/category.dart';
 import 'package:shared_ledger/domain/model/ledger_entries.dart';
 import 'package:shared_ledger/domain/model/month_ledger.dart';
 import 'package:shared_ledger/domain/model/payment_method.dart';
+import 'package:shared_ledger/domain/model/year_month.dart';
 import 'package:shared_ledger/domain/usecase/summary/summary_use_cases.dart';
 
 const living = Category(id: 'c-living', name: '소비');
@@ -44,5 +45,25 @@ void main() {
     expect(summary.categories, [(category: living, amount: 150000)]);
     expect(summary.cards, [(card: card, amount: 30000)]);
     expect(summary.isEmpty, isFalse);
+  });
+
+  test('보고 있는 달까지의 가계부 달로 통계(그동안 모은 돈)를 계산한다', () {
+    const september = YearMonth(2026, 9);
+    const october = YearMonth(2026, 10);
+    const income = MonthLedger(
+      incomes: [
+        Income(id: 'i1', memberId: 'owner', title: '월급', amount: 100000),
+      ],
+    );
+    final stats = const SummaryUseCases().calculateStatistics(
+      income,
+      month: october,
+      history: {september: income, october: income},
+      categories: const [living],
+      paymentMethods: const [account, card],
+    );
+
+    expect(stats.saved, 200000);
+    expect(stats.previous?.month, september);
   });
 }

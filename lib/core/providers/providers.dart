@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../domain/budget/month_summary.dart';
+import '../../domain/budget/statistics.dart';
 import '../../domain/model/activity.dart';
 import '../../domain/model/auth_user.dart';
 import '../../domain/model/category.dart';
@@ -205,6 +206,56 @@ final monthSummaryProvider = Provider<AsyncValue<MonthSummary>>((ref) {
           .watch(summaryUseCasesProvider)
           .calculateMonthSummary(
             ledger,
+            categories: categories,
+            paymentMethods: paymentMethods,
+          ),
+    );
+  }
+  return const AsyncLoading();
+});
+
+/// 통계 탭의 값. 보고 있는 달까지 가계부가 있는 모든 달의 항목으로 계산한다(`CalculateStatisticsUseCase`).
+///
+/// 달마다 [monthLedgerOfProvider] 구독을 같이 써서, 처음에는 그 달들의 항목을 다 읽고 그 뒤로는 바뀐 것만 받는다.
+/// 통계 탭을 열어야 읽기 시작한다. 달 목록을 모으지 않은 옛 가계부는 보고 있는 달만 읽는다(모은 돈은 모름).
+/// 하나라도 실패하면 실패, 아직 받지 못했으면 불러오는 중이다.
+final statisticsProvider = Provider<AsyncValue<Statistics>>((ref) {
+  final month = ref.watch(selectedMonthProvider);
+  final months = ref.watch(ledgerMonthsProvider);
+  final ledgers = {
+    for (final key in {
+      ...?months?.where((m) => m.compareTo(month) <= 0),
+      month,
+    })
+      key: ref.watch(monthLedgerOfProvider(key)),
+  };
+  final categories = ref.watch(categoriesProvider);
+  final paymentMethods = ref.watch(paymentMethodsProvider);
+  for (final AsyncValue<Object> value in [
+    ...ledgers.values,
+    categories,
+    paymentMethods,
+  ]) {
+    if (value case AsyncError(:final error, :final stackTrace)) {
+      return AsyncError(error, stackTrace);
+    }
+  }
+  final history = {
+    for (final MapEntry(:key, :value) in ledgers.entries)
+      if (value case AsyncData(:final value)) key: value,
+  };
+  if ((history[month], categories, paymentMethods) case (
+    final ledger?,
+    AsyncData(value: final categories),
+    AsyncData(value: final paymentMethods),
+  ) when history.length == ledgers.length) {
+    return AsyncData(
+      ref
+          .watch(summaryUseCasesProvider)
+          .calculateStatistics(
+            ledger,
+            month: month,
+            history: months == null ? null : history,
             categories: categories,
             paymentMethods: paymentMethods,
           ),

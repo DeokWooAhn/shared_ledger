@@ -70,7 +70,7 @@ lib/
     theme/                design/app.pen 토큰으로 만든 테마
     widget/               공용 위젯과 화면 도우미(keepAll, signOutWithFeedback, MonthHeader)
   feature/<기능>/        화면: <이름>_screen.dart(View) + <이름>_notifier.dart(Notifier)
-                          feature/home은 홈의 탭 틀(홈·내역·설정)
+                          feature/home은 홈의 탭 틀(홈·내역·통계·설정)
   main.dart, app.dart   앱 시작점
   router.dart           화면 이동 규칙(go_router). feature 화면을 모은다
   di.dart               저장소 공급자에 Firebase 구현(data)을 넣는다. data를 아는 곳은 여기뿐이다
@@ -160,7 +160,7 @@ MVVM의 ViewModel 역할은 Riverpod `Notifier`를 상속한 클래스가 맡는
 Flutter의 `TextEditingController`·`ScrollController`와 헷갈리지 않게 하려는 것이다.
 
 - **화면 하나 = View + Notifier.** `join_ledger_screen.dart` + `ledger_start_notifier.dart`가 정석이다(만들기·입장 두 화면이 Notifier 하나를 같이 쓴다).
-  Notifier가 맡을 동작이 없는 화면(`settings_screen.dart`: 시트 열기와 `signOutWithFeedback`만 씀)은 Notifier 없이 공급자만 읽는다.
+  Notifier가 맡을 동작이 없는 화면(`settings_screen.dart`: 시트 열기와 화면 이동만, `account_screen.dart`: `signOutWithFeedback`만 씀)은 Notifier 없이 공급자만 읽는다.
 - **Notifier**는 Riverpod `Notifier<불변 State>`이고 `NotifierProvider.autoDispose`로 만든다. 사용자 동작은 메서드로 받는다.
   `await` 뒤에는 `ref.mounted`를 확인한 뒤 상태를 바꾼다(화면이 사라지면 Notifier도 해제된다).
 - **State**는 불변 클래스다. 진행 중인 동작(`pending`), 입력란 문제, 일회성 실패를 필드로 두고 화면 문구는 넣지 않는다.
@@ -175,16 +175,18 @@ Flutter의 `TextEditingController`·`ScrollController`와 헷갈리지 않게 �
 - 위젯 밖에서 `await`한 뒤 `BuildContext`를 쓰지 않는다. `await` 전에 `ScaffoldMessenger`를 잡아 두거나(`signOutWithFeedback`) `context.mounted`를 확인한다.
 - 위젯을 돌려주는 private 메서드보다 작은 위젯 클래스로 나눈다(`_OptionCard`, `_ValuePoint`). 바뀌지 않는 위젯은 `const`.
 - 긴 목록은 `ListView.builder`로 만들고, 항목에는 안정적인 id로 `ValueKey`를 준다. 인덱스를 키로 쓰지 않는다.
-- **탭:** 홈은 탭 3개(`HomeTab`: 홈·내역·설정)이고 `StatefulShellRoute`가 탭마다 화면 상태를 지킨다(2026-11-02, 통계 탭은 다음 PR). 탭 화면은 `TabPage`로 감싸고,
+- **탭:** 홈은 탭 4개(`HomeTab`: 홈·내역·통계·설정)이고 `StatefulShellRoute`가 탭마다 화면 상태를 지킨다(2026-11-02). 탭 화면은 `TabPage`로 감싸고,
   달을 보는 탭은 `MonthHeader`(`11월 ▾`)를 머리말로 쓴다. 달 이름을 누르면 달 고르기 시트가 열리고 좌우로 밀면 옆 달로 간다. 달을 골라도 보던 탭에 머문다.
   보고 있는 달은 `selectedMonthProvider` 하나를 모든 탭이 같이 읽는다.
   내역 탭은 세 칸(`EntryTab`: 수입·지출·카드 대금)이고, 고정 수입·고정 지출은 따로 된 화면 없이 수입·지출 칸과 입력 화면에서 다룬다. 달력은 내역 탭 머리말의 달력 단추로 연다.
-  + 버튼은 탭 막대 위에 떠 있어서, 있든 없든 탭 막대의 폭과 탭 위치가 바뀌지 않는다.
+  + 버튼은 내역 탭에서만 탭 막대 위에 떠 있어서, 있든 없든 탭 막대의 폭과 탭 위치가 바뀌지 않는다.
+  홈의 카드는 누르면 내역 탭의 그에 맞는 칸으로 간다(현금 카드는 카드 전체가 누름 자리 하나). 통계 탭은 '통계' 제목과 기간 칩을 머리말로 쓴다(홈과 헷갈리지 않게).
 - **넓은 화면:** 아이패드와 Mac(아이패드 앱)에서도 쓴다. 폭 600 이상이면 탭 막대가 옆(NavigationRail)으로 간다. 본문은 `ConstrainedBox(maxWidth: …)`로 가운데 두고,
   두 칸 배치는 `LayoutBuilder`로 바꾼다(`docs/plan.md`의 '화면'). 플랫폼 분기는 `defaultTargetPlatform`.
 - **테마:** 색은 `Theme.of(context).colorScheme`과 `context.appColors`, 글자는 `textTheme`에서 꺼낸다(`lib/core/theme/app_theme.dart`, 원본은 `design/app.pen`). 화면 디자인은 `design/app/*.png`.
 - **문구:** 해요체. 여러 단어로 된 문장(설명·안내·오류)은 `keepAll()`로 감싸고, 입력란 오류도 `errorText: keepAll(...)`로 넘긴다.
   Flutter는 한글을 단어 중간에서 줄바꿈한다. 저장하거나 비교하는 값에는 쓰지 않는다. '가구'·'가족' 대신 '가계부'·'두 사람'을 쓴다.
+  두 문장 이상인 안내는 문장 사이(긴 한 문장은 쉼표 뒤)에 `\n`을 넣어 문장 단위로 줄을 바꾼다(2026-11-03).
 - **접근성:** 입력란은 `LabeledField`로 이름표와 묶어 화면 읽기 도구가 함께 읽게 한다. 아이콘만 있는 버튼에는 `tooltip`.
   누를 수 있는 것은 높이 48 이상(테마의 버튼은 54). 색만으로 뜻을 전하지 않는다.
 - 테스트에서 찾을 위젯에는 `Key('kebab-case')`를 준다(`sign-in-google`, `join-ledger`).

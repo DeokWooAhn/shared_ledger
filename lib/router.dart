@@ -20,11 +20,13 @@ import 'feature/entries/entry_form_notifier.dart';
 import 'feature/entries/entry_form_screen.dart';
 import 'feature/home/home_shell.dart';
 import 'feature/ledger/ledger_start_screen.dart';
+import 'feature/settings/account_screen.dart';
 import 'feature/settings/activity_screen.dart';
 import 'feature/settings/categories_screen.dart';
 import 'feature/settings/payment_methods_screen.dart';
 import 'feature/settings/settings_screen.dart';
 import 'feature/settings/trash_screen.dart';
+import 'feature/stats/stats_screen.dart';
 import 'feature/summary/summary_screen.dart';
 
 abstract final class Routes {
@@ -39,6 +41,7 @@ abstract final class Routes {
   // 홈의 탭. 가계부가 있으면 홈 탭에서 시작한다.
   static const home = '/';
   static const entries = '/entries';
+  static const stats = '/stats';
   static const settings = '/settings';
 
   /// 항목 입력·수정. 탭 막대를 가리는 전체 화면이고, 무엇을 열지는 [EntryFormArgs]를 `extra`로 넘긴다.
@@ -48,32 +51,39 @@ abstract final class Routes {
   /// 닫기 단추 없이 뒤로가기(iOS는 왼쪽 끝 밀기)로 닫는다.
   static const calendar = '/calendar';
 
-  /// 설정 탭 안의 분류·결제수단 목록, 휴지통, 변경 기록. 탭 막대는 그대로 보인다.
+  /// 설정 탭 안의 분류·결제수단 목록, 휴지통, 변경 기록, 계정. 탭 막대는 그대로 보인다.
   static const categories = '$settings/categories';
   static const paymentMethods = '$settings/payment-methods';
   static const trash = '$settings/trash';
   static const activity = '$settings/activity';
+  static const account = '$settings/account';
 
   /// [tab] 탭의 경로.
   static String of(HomeTab tab) => switch (tab) {
     HomeTab.home => home,
     HomeTab.entries => entries,
+    HomeTab.stats => stats,
     HomeTab.settings => settings,
   };
 }
 
 Widget _tabScreen(HomeTab tab) => switch (tab) {
-  HomeTab.home => const SummaryScreen(openMonths: _openMonths),
+  HomeTab.home => const SummaryScreen(
+    openMonths: _openMonths,
+    openEntries: _openEntries,
+  ),
   HomeTab.entries => const EntriesScreen(
     openForm: _openEntryForm,
     openCalendar: _openCalendar,
     openMonths: _openMonths,
   ),
+  HomeTab.stats => const StatsScreen(openMonths: _openMonths),
   HomeTab.settings => const SettingsScreen(
     openCategories: _openCategories,
     openPaymentMethods: _openPaymentMethods,
     openTrash: _openTrash,
     openActivity: _openActivity,
+    openAccount: _openAccount,
   ),
 };
 
@@ -96,8 +106,12 @@ List<RouteBase> _tabRoutes(HomeTab tab) => switch (tab) {
       path: _subPath(Routes.activity),
       builder: (_, _) => const ActivityScreen(),
     ),
+    GoRoute(
+      path: _subPath(Routes.account),
+      builder: (_, _) => const AccountScreen(),
+    ),
   ],
-  HomeTab.home || HomeTab.entries => const [],
+  HomeTab.home || HomeTab.entries || HomeTab.stats => const [],
 };
 
 // 하위 GoRoute의 path는 앞의 탭 경로를 뺀 나머지다. 예: '/settings/categories' → 'categories'
@@ -115,6 +129,12 @@ void _openTrash(BuildContext context) =>
 
 void _openActivity(BuildContext context) =>
     unawaited(context.push<void>(Routes.activity));
+
+void _openAccount(BuildContext context) =>
+    unawaited(context.push<void>(Routes.account));
+
+// 홈의 카드와 할 일 줄. 내역 탭에서 어느 칸을 볼지는 홈 화면이 먼저 골라 둔다.
+void _openEntries(BuildContext context) => context.go(Routes.entries);
 
 // 머리말의 달 이름. 달을 골라도 보던 탭에 그대로 있다.
 void _openMonths(BuildContext context) => unawaited(showMonthsSheet(context));

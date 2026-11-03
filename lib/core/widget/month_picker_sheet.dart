@@ -42,32 +42,12 @@ class MonthPickerSheet extends StatefulWidget {
 }
 
 class _MonthPickerSheetState extends State<MonthPickerSheet> {
-  late final List<int> _years = [
-    for (
-      var year = min(widget.selected.year, widget.current.year) - 10;
-      year <= max(widget.selected.year, widget.current.year) + 10;
-      year++
-    )
-      year,
-  ];
-  late int _year = widget.selected.year;
-  late int _month = widget.selected.month;
-  late final _yearWheel = FixedExtentScrollController(
-    initialItem: _years.indexOf(_year),
-  );
-  late final _monthWheel = FixedExtentScrollController(initialItem: _month - 1);
-
-  @override
-  void dispose() {
-    _yearWheel.dispose();
-    _monthWheel.dispose();
-    super.dispose();
-  }
+  // 휠이 가리키는 달. 화면에 그리지 않고 '완료'에서만 읽어서 setState 없이 바꾼다.
+  late YearMonth _picked = widget.selected;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
+    final scheme = Theme.of(context).colorScheme;
     final actionStyle = TextButton.styleFrom(
       foregroundColor: scheme.onSurface,
       minimumSize: const Size.fromHeight(52),
@@ -79,57 +59,10 @@ class _MonthPickerSheetState extends State<MonthPickerSheet> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Semantics(
-              liveRegion: true,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                spacing: 4,
-                children: [
-                  Text(
-                    '$_year년 $_month월',
-                    key: const Key('month-picker-title'),
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontSize: 19,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  ExcludeSemantics(
-                    child: Icon(
-                      Icons.arrow_drop_up,
-                      color: scheme.onSurfaceVariant,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 12),
-            SizedBox(
-              height: monthPickerItemExtent * 3,
-              child: Row(
-                children: [
-                  Expanded(
-                    child: _Wheel(
-                      key: const Key('month-picker-years'),
-                      name: '연도',
-                      labels: [for (final year in _years) '$year년'],
-                      selected: _years.indexOf(_year),
-                      controller: _yearWheel,
-                      onChanged: (index) =>
-                          setState(() => _year = _years[index]),
-                    ),
-                  ),
-                  Expanded(
-                    child: _Wheel(
-                      key: const Key('month-picker-months'),
-                      name: '월',
-                      labels: [for (var m = 1; m <= 12; m++) '$m월'],
-                      selected: _month - 1,
-                      controller: _monthWheel,
-                      onChanged: (index) => setState(() => _month = index + 1),
-                    ),
-                  ),
-                ],
-              ),
+            MonthWheels(
+              initial: widget.selected,
+              current: widget.current,
+              onChanged: (month) => _picked = month,
             ),
             const SizedBox(height: 12),
             Row(
@@ -147,8 +80,7 @@ class _MonthPickerSheetState extends State<MonthPickerSheet> {
                   child: TextButton(
                     key: const Key('month-picker-done'),
                     style: actionStyle,
-                    onPressed: () =>
-                        Navigator.of(context).pop(YearMonth(_year, _month)),
+                    onPressed: () => Navigator.of(context).pop(_picked),
                     child: const Text('완료'),
                   ),
                 ),
@@ -157,6 +89,125 @@ class _MonthPickerSheetState extends State<MonthPickerSheet> {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// 연·월 휠 두 개와 그 위의 지금 가리키는 달('2026년 11월'). 굴릴 때마다 [onChanged]로 알린다.
+///
+/// 따로 띄우는 달 고르기 시트([MonthPickerSheet])와, 다른 시트 안에서 한 단계로 고르는 곳(달 고르기의 달 추가)이 같이 쓴다.
+/// [initial]은 처음 가리킬 달, [current]는 이번 달이다. 연도는 둘 중 이른 해 10년 전부터 늦은 해 10년 뒤까지 고른다.
+class MonthWheels extends StatefulWidget {
+  const MonthWheels({
+    required this.initial,
+    required this.current,
+    required this.onChanged,
+    super.key,
+  });
+
+  final YearMonth initial;
+  final YearMonth current;
+  final ValueChanged<YearMonth> onChanged;
+
+  @override
+  State<MonthWheels> createState() => _MonthWheelsState();
+}
+
+class _MonthWheelsState extends State<MonthWheels> {
+  late final List<int> _years = [
+    for (
+      var year = min(widget.initial.year, widget.current.year) - 10;
+      year <= max(widget.initial.year, widget.current.year) + 10;
+      year++
+    )
+      year,
+  ];
+  late int _year = widget.initial.year;
+  late int _month = widget.initial.month;
+  late final _yearWheel = FixedExtentScrollController(
+    initialItem: _years.indexOf(_year),
+  );
+  late final _monthWheel = FixedExtentScrollController(initialItem: _month - 1);
+
+  void _change({int? year, int? month}) {
+    setState(() {
+      _year = year ?? _year;
+      _month = month ?? _month;
+    });
+    widget.onChanged(YearMonth(_year, _month));
+  }
+
+  @override
+  void dispose() {
+    _yearWheel.dispose();
+    _monthWheel.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Semantics(
+          liveRegion: true,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            spacing: 4,
+            children: [
+              // 글자를 키워도 한 줄에 들어가게 폭이 모자라면 줄인다.
+              Flexible(
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    '$_year년 $_month월',
+                    key: const Key('month-picker-title'),
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontSize: 19,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ),
+              ExcludeSemantics(
+                child: Icon(
+                  Icons.arrow_drop_up,
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        SizedBox(
+          height: monthPickerItemExtent * 3,
+          child: Row(
+            children: [
+              Expanded(
+                child: _Wheel(
+                  key: const Key('month-picker-years'),
+                  name: '연도',
+                  labels: [for (final year in _years) '$year년'],
+                  selected: _years.indexOf(_year),
+                  controller: _yearWheel,
+                  onChanged: (index) => _change(year: _years[index]),
+                ),
+              ),
+              Expanded(
+                child: _Wheel(
+                  key: const Key('month-picker-months'),
+                  name: '월',
+                  labels: [for (var m = 1; m <= 12; m++) '$m월'],
+                  selected: _month - 1,
+                  controller: _monthWheel,
+                  onChanged: (index) => _change(month: index + 1),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }
@@ -211,20 +262,24 @@ class _Wheel extends StatelessWidget {
           onSelectedItemChanged: onChanged,
           childDelegate: ListWheelChildBuilderDelegate(
             childCount: labels.length,
+            // 글자를 키워도 칸을 넘지 않게 칸보다 크면 줄인다.
             builder: (context, index) => Center(
-              child: Text(
-                labels[index],
-                style: index == selected
-                    ? TextStyle(
-                        fontSize: 30,
-                        fontWeight: FontWeight.w700,
-                        color: scheme.onSurface,
-                      )
-                    : TextStyle(
-                        fontSize: 27,
-                        fontWeight: FontWeight.w400,
-                        color: muted,
-                      ),
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  labels[index],
+                  style: index == selected
+                      ? TextStyle(
+                          fontSize: 30,
+                          fontWeight: FontWeight.w700,
+                          color: scheme.onSurface,
+                        )
+                      : TextStyle(
+                          fontSize: 27,
+                          fontWeight: FontWeight.w400,
+                          color: muted,
+                        ),
+                ),
               ),
             ),
           ),

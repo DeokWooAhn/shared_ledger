@@ -146,7 +146,8 @@ String? settingValue(WidgetTester tester, Key row) => tester
     .widgetList<Text>(
       find.descendant(of: find.byKey(row), matching: find.byType(Text)),
     )
-    .map((text) => text.data)
+    // 설정 줄의 설명은 keepAll로 단어 안 줄바꿈을 막아 두어서 그 글자를 뺀다.
+    .map((text) => text.data?.replaceAll('\u2060', ''))
     .lastOrNull;
 
 void main() {

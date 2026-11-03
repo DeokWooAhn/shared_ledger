@@ -117,6 +117,9 @@ Future<void> scrollTo(WidgetTester tester, Key key) =>
 
 Future<void> tapVisible(WidgetTester tester, Key key) async {
   await scrollTo(tester, key);
+  // 화면 끝에 걸쳐 보이면 떠 있는 탭 막대에 가려 누르지 못하므로 끝까지 보이게 더 옮긴다.
+  await tester.ensureVisible(find.byKey(key));
+  await tester.pump();
   await tester.tap(find.byKey(key));
   await settle(tester);
 }

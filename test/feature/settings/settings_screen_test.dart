@@ -206,7 +206,9 @@ Future<void> openEntryForm(WidgetTester tester, EntryKind kind) async {
 
 void main() {
   group('설정 탭', () {
-    testWidgets('가계부 이름과 만든 달, 보이는 분류·결제수단 개수, 로그인 방법을 보여준다', (tester) async {
+    testWidgets('가계부 이름과 만든 달, 보이는 분류 개수와 결제수단 이름을 보여주고, 로그인 방법은 계정 화면에 있다', (
+      tester,
+    ) async {
       await pumpSettings(tester);
 
       expect(find.text('우리 가계부'), findsOneWidget);
@@ -215,18 +217,21 @@ void main() {
       expect(
         find.descendant(
           of: find.byKey(const Key('open-categories')),
-          matching: find.text('2개'),
+          matching: findSentence('2개'),
         ),
         findsOneWidget,
       );
       expect(
         find.descendant(
           of: find.byKey(const Key('open-payment-methods')),
-          matching: find.text('2개'),
+          matching: findSentence('공동 통장 · 공용 카드'),
         ),
         findsOneWidget,
       );
-      await tester.ensureVisible(find.byKey(const Key('sign-in-method')));
+      expect(find.byKey(const Key('sign-in-method')), findsNothing);
+
+      await tapShown(tester, find.byKey(const Key('open-account')));
+      await settleRoute(tester);
       expect(
         find.descendant(
           of: find.byKey(const Key('sign-in-method')),
@@ -236,14 +241,50 @@ void main() {
       );
     });
 
-    testWidgets('화면 읽기 도구는 설정 줄을 이름·값과 함께 버튼으로 읽는다', (tester) async {
+    testWidgets('묶음 제목은 카드 밖에 있고, 결제수단이 많으면 두 개까지 이름을 보이고 나머지는 개수로 줄인다', (
+      tester,
+    ) async {
+      await pumpSettings(
+        tester,
+        settings: settingsOf(
+          paymentMethods: const [
+            account,
+            sharedCard,
+            PaymentMethod(
+              id: 'p-auto',
+              name: '자동이체',
+              kind: PaymentKind.account,
+            ),
+          ],
+        ),
+      );
+
+      expect(find.text('가계부 관리'), findsOneWidget);
+      expect(find.text('기록 관리'), findsOneWidget);
+      expect(
+        find.ancestor(of: find.text('가계부 관리'), matching: find.byType(Card)),
+        findsNothing,
+      );
+      expect(
+        find.descendant(
+          of: find.byKey(const Key('open-payment-methods')),
+          matching: findSentence('공동 통장 · 공용 카드 외 1개'),
+        ),
+        findsOneWidget,
+      );
+      expect(paymentNamesLabel(const []), '없음');
+    });
+
+    testWidgets('화면 읽기 도구는 설정 줄을 이름·설명과 함께 버튼으로 읽는다', (tester) async {
       final semantics = tester.ensureSemantics();
       await pumpSettings(tester);
 
       final row = tester.getSemantics(find.byKey(const Key('open-categories')));
       expect(row.label, contains('분류'));
-      expect(row.label, contains('2개'));
+      expect(row.label.replaceAll('\u2060', ''), contains('2개'));
       expect(row.flagsCollection.isButton, isTrue);
+      await tapShown(tester, find.byKey(const Key('open-account')));
+      await settleRoute(tester);
       final method = tester.getSemantics(
         find.byKey(const Key('sign-in-method')),
       );
@@ -441,7 +482,7 @@ void main() {
       expect(settings.addedCategories, isEmpty);
     });
 
-    testWidgets('분류를 숨기면 새 항목에서는 고를 수 없지만 지난 항목과 요약에는 그대로 보인다', (tester) async {
+    testWidgets('분류를 숨기면 새 항목에서는 고를 수 없지만 지난 항목과 통계에는 그대로 보인다', (tester) async {
       final settings = settingsOf();
       await pumpSettings(
         tester,
@@ -484,8 +525,8 @@ void main() {
       await tester.tap(inEntryForm(find.byKey(const Key('entry-close'))));
       await settleRoute(tester);
 
-      // 그달에 쓴 항목이 있어서 요약의 분류 소계에도 남는다.
-      await openTab(tester, HomeTab.home);
+      // 그달에 쓴 항목이 있어서 통계의 분류 소계에도 남는다.
+      await openTab(tester, HomeTab.stats);
       await tester.ensureVisible(find.byKey(const Key('planned-section')));
       expect(
         find.descendant(

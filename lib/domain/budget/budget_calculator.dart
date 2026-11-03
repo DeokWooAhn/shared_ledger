@@ -30,20 +30,26 @@ class BudgetCalculator {
     var plannedTotal = 0;
     var cashOut = 0;
     var saving = 0;
+    var paidSaving = 0;
     var cardUsage = 0;
     final byCategory = <String, int>{};
     final byMember = <String, int>{};
     final byCard = <String, int>{};
+    final byPaymentMethod = <String, int>{};
 
     for (final expense in ledger.plannedExpenses) {
       final amount = expense.amount ?? 0;
       plannedTotal += amount;
       _add(byCategory, expense.categoryId, amount);
       _add(byMember, expense.memberId, amount);
+      _add(byPaymentMethod, expense.paymentMethodId, amount);
+      final card = _isCard(expense.paymentMethodId);
       if (_countsAsSaving(expense.categoryId)) {
         saving += amount;
+        // 카드는 쓴 달에 빠져나간 것으로 본다(대금은 다음 달 현금 유출이다).
+        if (card || expense.isPaid) paidSaving += amount;
       }
-      if (_isCard(expense.paymentMethodId)) {
+      if (card) {
         // 카드는 지급일과 상관없이 다음 달 청구 예정으로 본다.
         cardUsage += amount;
         _add(byCard, expense.paymentMethodId, amount);
@@ -55,6 +61,7 @@ class BudgetCalculator {
     var extraTotal = 0;
     for (final expense in ledger.extraExpenses) {
       extraTotal += expense.amount;
+      _add(byPaymentMethod, expense.paymentMethodId, expense.amount);
       if (_isCard(expense.paymentMethodId)) {
         cardUsage += expense.amount;
         _add(byCard, expense.paymentMethodId, expense.amount);
@@ -74,12 +81,14 @@ class BudgetCalculator {
       spending: plannedTotal + extraTotal,
       cashOut: cashOut,
       saving: saving,
+      paidSaving: paidSaving,
       cardUsage: cardUsage,
       cardBillTotal: cardBillTotal,
       plannedTotal: plannedTotal,
       plannedByCategory: byCategory,
       plannedByMember: byMember,
       cardUsageByCard: byCard,
+      spendingByPaymentMethod: byPaymentMethod,
     );
   }
 
