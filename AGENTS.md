@@ -160,7 +160,7 @@ MVVM의 ViewModel 역할은 Riverpod `Notifier`를 상속한 클래스가 맡는
 Flutter의 `TextEditingController`·`ScrollController`와 헷갈리지 않게 하려는 것이다.
 
 - **화면 하나 = View + Notifier.** `join_ledger_screen.dart` + `ledger_start_notifier.dart`가 정석이다(만들기·입장 두 화면이 Notifier 하나를 같이 쓴다).
-  Notifier가 맡을 동작이 없는 화면(`settings_screen.dart`: 시트 열기와 `signOutWithFeedback`만 씀)은 Notifier 없이 공급자만 읽는다.
+  Notifier가 맡을 동작이 없는 화면(`settings_screen.dart`: 시트 열기와 화면 이동만, `account_screen.dart`: `signOutWithFeedback`만 씀)은 Notifier 없이 공급자만 읽는다.
 - **Notifier**는 Riverpod `Notifier<불변 State>`이고 `NotifierProvider.autoDispose`로 만든다. 사용자 동작은 메서드로 받는다.
   `await` 뒤에는 `ref.mounted`를 확인한 뒤 상태를 바꾼다(화면이 사라지면 Notifier도 해제된다).
 - **State**는 불변 클래스다. 진행 중인 동작(`pending`), 입력란 문제, 일회성 실패를 필드로 두고 화면 문구는 넣지 않는다.

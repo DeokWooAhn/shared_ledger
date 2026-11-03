@@ -79,6 +79,9 @@ void main() {
     });
 
     expect(stats.savedMonths?.map((m) => m.month), [september, october]);
+    // 밖에서 목록을 고칠 수 없다.
+    expect(() => stats.savedMonths?.clear(), throwsUnsupportedError);
+    expect(() => stats.payments.clear(), throwsUnsupportedError);
     expect(stats.savedSaving, 300000);
     expect(stats.savedCash, 2500000);
     expect(stats.saved, 2800000);

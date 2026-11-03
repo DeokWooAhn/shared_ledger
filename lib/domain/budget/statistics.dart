@@ -70,10 +70,11 @@ class Statistics {
           if (key.compareTo(month) < 0)
             (month: key, totals: calculator.summarize(value)),
       ]..sort((a, b) => a.month.compareTo(b.month));
-      saved = [
+      // 밖에서 고칠 수 없게 한다.
+      saved = List.unmodifiable([
         for (final (:month, :totals) in earlier) _saved(month, totals),
         _saved(month, summary.totals),
-      ];
+      ]);
       if (earlier.lastOrNull case (:final month, :final totals)?) {
         previous = (month: month, spending: totals.spending);
       }
@@ -88,12 +89,12 @@ class Statistics {
       summary: summary,
       savedMonths: saved,
       previous: previous,
-      payments: [
+      payments: List.unmodifiable([
         for (final method in paymentMethods)
           if (bySpending[method.id] case final amount? when amount > 0)
             (method: method, amount: amount),
         if (orphans > 0) (method: null, amount: orphans),
-      ],
+      ]),
     );
   }
 
