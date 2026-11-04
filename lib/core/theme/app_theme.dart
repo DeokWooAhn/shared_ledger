@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -34,6 +35,7 @@ class AppPalette {
     required this.onDanger,
     required this.track,
     required this.segmentOn,
+    required this.chart,
   });
 
   final Color bgApp;
@@ -73,6 +75,10 @@ class AppPalette {
   /// 세그먼트에서 고른 칸의 바탕.
   final Color segmentOn;
 
+  /// 그래프에서 항목마다 구분할 색(분류 도넛 등). 이 순서대로 쓰고 돌려 쓰지 않는다.
+  /// 색약 구분(dataviz 검사)을 통과한 값이고, 밝은 화면에서 대비가 낮은 색이 있어 범례에 이름·금액을 같이 적는다.
+  final List<Color> chart;
+
   static const light = AppPalette._(
     bgApp: Color(0xFFF4F6FA),
     card: Color(0xFFFFFFFF),
@@ -100,6 +106,14 @@ class AppPalette {
     onDanger: Color(0xFFFFFFFF),
     track: Color(0xFFE9EDF5),
     segmentOn: Color(0xFFFFFFFF),
+    chart: [
+      Color(0xFF2D5BFF),
+      Color(0xFFEB6834),
+      Color(0xFF1BAF7A),
+      Color(0xFFEDA100),
+      Color(0xFFE87BA4),
+      Color(0xFF6250D6),
+    ],
   );
 
   static const dark = AppPalette._(
@@ -129,6 +143,14 @@ class AppPalette {
     onDanger: Color(0xFF121212),
     track: Color(0xFF222632),
     segmentOn: Color(0xFF2E3443),
+    chart: [
+      Color(0xFF4F78FF),
+      Color(0xFFD95926),
+      Color(0xFF199E70),
+      Color(0xFFC98500),
+      Color(0xFFD55181),
+      Color(0xFF9085E9),
+    ],
   );
 
   static AppPalette of(Brightness brightness) => switch (brightness) {
@@ -147,6 +169,7 @@ class AppPalette {
 /// - 남는 현금 카드는 [hero](진한 코발트) 바탕에 금액 [accentOnDark], 현금 유입·유출 금액 [onHero], 보조 글자 [heroSub].
 /// - 막대그래프에서 강조하지 않는 막대는 [barMuted].
 /// - 세그먼트(항목 종류 고르기)는 [track] 바탕에 고른 칸만 [segmentOn].
+/// - 그래프에서 항목을 색으로 나눌 때는 [chart]를 앞에서부터 쓴다.
 @immutable
 class AppColors extends ThemeExtension<AppColors> {
   const AppColors({
@@ -163,6 +186,7 @@ class AppColors extends ThemeExtension<AppColors> {
     required this.avatar,
     required this.track,
     required this.segmentOn,
+    required this.chart,
   });
 
   AppColors.from(AppPalette p)
@@ -180,6 +204,7 @@ class AppColors extends ThemeExtension<AppColors> {
         avatar: p.avatar,
         track: p.track,
         segmentOn: p.segmentOn,
+        chart: p.chart,
       );
 
   final Color textMuted;
@@ -195,6 +220,7 @@ class AppColors extends ThemeExtension<AppColors> {
   final Color avatar;
   final Color track;
   final Color segmentOn;
+  final List<Color> chart;
 
   static final light = AppColors.from(AppPalette.light);
   static final dark = AppColors.from(AppPalette.dark);
@@ -219,6 +245,7 @@ class AppColors extends ThemeExtension<AppColors> {
     Color? avatar,
     Color? track,
     Color? segmentOn,
+    List<Color>? chart,
   }) => AppColors(
     textMuted: textMuted ?? this.textMuted,
     accentText: accentText ?? this.accentText,
@@ -233,6 +260,7 @@ class AppColors extends ThemeExtension<AppColors> {
     avatar: avatar ?? this.avatar,
     track: track ?? this.track,
     segmentOn: segmentOn ?? this.segmentOn,
+    chart: chart ?? this.chart,
   );
 
   @override
@@ -253,6 +281,10 @@ class AppColors extends ThemeExtension<AppColors> {
       avatar: mix(avatar, other.avatar),
       track: mix(track, other.track),
       segmentOn: mix(segmentOn, other.segmentOn),
+      chart: [
+        for (final (index, color) in chart.indexed)
+          mix(color, other.chart.elementAtOrNull(index) ?? color),
+      ],
     );
   }
 
@@ -271,7 +303,8 @@ class AppColors extends ThemeExtension<AppColors> {
       other.sea == sea &&
       other.avatar == avatar &&
       other.track == track &&
-      other.segmentOn == segmentOn;
+      other.segmentOn == segmentOn &&
+      listEquals(other.chart, chart);
 
   @override
   int get hashCode => Object.hash(
@@ -288,6 +321,7 @@ class AppColors extends ThemeExtension<AppColors> {
     avatar,
     track,
     segmentOn,
+    Object.hashAll(chart),
   );
 }
 

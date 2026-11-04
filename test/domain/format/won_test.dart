@@ -14,4 +14,15 @@ void main() {
     expect(won(-500), '-500원');
     expect(won(-1234567), '-1,234,567원');
   });
+
+  test('짧은 금액은 만·억 단위로 줄이고, 10만 아래와 1억 이상은 소수 한 자리까지 적는다', () {
+    expect(wonShort(8000), '8,000원');
+    expect(wonShort(10000), '1만');
+    expect(wonShort(15000), '1.5만');
+    expect(wonShort(99960), '10만');
+    expect(wonShort(5234000), '523만');
+    expect(wonShort(25062000), '2,506만');
+    expect(wonShort(123400000), '1.2억');
+    expect(wonShort(-300000), '-30만');
+  });
 }

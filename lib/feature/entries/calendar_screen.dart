@@ -72,10 +72,15 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
   // 달력을 연 달. 홈·내역 탭이 오가지 않는 달을 보다가 닫으면 이 달로 돌아간다.
   late final YearMonth _openedMonth;
 
+  // 머리말에 보이는 달. 판을 미는 도중 반을 넘으면 바로 바뀌고(삼성 달력처럼), 보는 달([selectedMonthProvider])은
+  // 판이 멈춘 뒤에 바뀐다. 보는 달을 미는 도중에 바꾸면 뒤의 탭과 날짜 목록이 판이 움직이는 동안 다시 그려져 버벅인다.
+  late final _shownMonth = ValueNotifier(ref.read(selectedMonthProvider));
+
   @override
   void initState() {
     super.initState();
     _openedMonth = ref.read(selectedMonthProvider);
+    _pages.addListener(_followPage);
   }
 
   // 닫을 때 보던 달이 홈·내역 탭이 오가지 않는 달이면, 두 탭이 그 빈 달에 남지 않게 연 달로 돌려놓는다.
@@ -91,6 +96,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
   @override
   void dispose() {
     _pages.dispose();
+    _shownMonth.dispose();
     super.dispose();
   }
 
@@ -113,22 +119,26 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
 
   void _goToday() {
     final today = _today;
-    ref.read(selectedMonthProvider.notifier).select(YearMonth.of(today));
     _pick(today);
+    unawaited(_showMonth(YearMonth.of(today)));
   }
 
   Future<void> _pickMonth() async {
-    // 시트가 떠 있는 동안 이 화면이 닫힐 수 있어서, 기다리기 전에 공급자를 잡아 둔다(앱 내내 살아 있음).
-    final selectedMonth = ref.read(selectedMonthProvider.notifier);
     final picked = await showMonthPicker(
       context,
-      selected: ref.read(selectedMonthProvider),
+      selected: _shownMonth.value,
       current: YearMonth.of(_today),
     );
-    if (picked != null) selectedMonth.select(picked);
+    if (picked != null && mounted) unawaited(_showMonth(picked));
   }
 
-  // 판을 밀어 다른 달에 멈추면 그 달을 본다. 미는 도중에는 달을 바꾸지 않는다.
+  // 판이 반을 넘으면 머리말의 달 이름을 바로 바꾼다. 반이 안 되게 밀다 놓으면 원래 달로 돌아온다.
+  void _followPage() {
+    final page = _pages.page?.round();
+    if (page != null) _shownMonth.value = _monthOfPage(page);
+  }
+
+  // 판이 멈추면(손으로 밀었든 달 이름·오늘로 넘겼든) 그 달을 본다.
   bool _settled(ScrollEndNotification notification) {
     final page = _pages.page?.round();
     if (notification.depth != 0 || page == null) return false;
@@ -139,29 +149,33 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     return false;
   }
 
-  // 달 이름·오늘·연월 고르기로 달이 바뀌면 판도 그 달로 넘긴다. 바로 옆 달이면 넘기는 모습을 보이고, 먼 달은 바로 간다.
-  void _showMonth(YearMonth month) {
+  // 판을 [month]로 밀어 넘긴다. 보는 달은 판이 멈춘 뒤에 바뀐다([_settled]). 먼 달은 바로 옆 쪽으로 건너뛴 뒤
+  // 한 쪽만 밀어서, 사이의 달을 지나며 그달 항목을 읽지 않는다. 움직임 줄이기를 켰으면 바로 간다.
+  Future<void> _showMonth(YearMonth month) async {
     final current = _pages.hasClients ? _pages.page?.round() : null;
     final target = _pageOf(month);
     if (current == null || current == target) return;
-    if ((target - current).abs() == 1 &&
-        !MediaQuery.disableAnimationsOf(context)) {
-      unawaited(
-        _pages.animateToPage(
-          target,
-          duration: const Duration(milliseconds: 280),
-          curve: Curves.easeOutCubic,
-        ),
-      );
-    } else {
+    if (MediaQuery.disableAnimationsOf(context)) {
       _pages.jumpToPage(target);
+      return;
     }
+    if ((target - current).abs() > 1) {
+      _pages.jumpToPage(target > current ? target - 1 : target + 1);
+    }
+    await _pages.animateToPage(
+      target,
+      duration: const Duration(milliseconds: 280),
+      curve: Curves.easeOutCubic,
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final month = ref.watch(selectedMonthProvider);
-    ref.listen(selectedMonthProvider, (_, month) => _showMonth(month));
+    ref.listen(
+      selectedMonthProvider,
+      (_, month) => unawaited(_showMonth(month)),
+    );
     ref.listen(entriesNotifierProvider.select((s) => s.failure), (_, failure) {
       if (failure == null) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -171,7 +185,6 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     });
     final ledger = ref.watch(monthLedgerProvider);
     final paymentMethods = ref.watch(paymentMethodsProvider);
-    final selectedMonth = ref.read(selectedMonthProvider.notifier);
     // 새 달 항목을 받는 동안에는 고른 날 목록 자리에 불러오는 중을 둔다. 판의 앞뒤 달은 미리 받아 두어서 보통은 바로 온다.
     // (이전 달 값은 쓰지 않는다. AsyncData일 때만 새 달 값이다.)
     final loaded = switch ((ledger, paymentMethods)) {
@@ -217,13 +230,18 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
         body: SafeArea(
           child: Column(
             children: [
-              _CalendarTopBar(
-                month: month,
-                current: YearMonth.of(_today),
-                onPrevious: selectedMonth.previous,
-                onNext: selectedMonth.next,
-                onPickMonth: _pickMonth,
-                onToday: _goToday,
+              // 판을 미는 동안에는 머리말만 다시 그린다.
+              ValueListenableBuilder(
+                valueListenable: _shownMonth,
+                builder: (context, shown, _) => _CalendarTopBar(
+                  month: shown,
+                  current: YearMonth.of(_today),
+                  onPrevious: () => unawaited(_showMonth(shown.previous)),
+                  onNext: () => unawaited(_showMonth(shown.next)),
+                  onPickMonth: _pickMonth,
+                  today: _today,
+                  onToday: _goToday,
+                ),
               ),
               Expanded(child: body),
             ],
@@ -242,6 +260,7 @@ class _CalendarTopBar extends StatelessWidget {
     required this.onPrevious,
     required this.onNext,
     required this.onPickMonth,
+    required this.today,
     required this.onToday,
   });
 
@@ -250,12 +269,12 @@ class _CalendarTopBar extends StatelessWidget {
   final VoidCallback onPrevious;
   final VoidCallback onNext;
   final VoidCallback onPickMonth;
+  final DateTime today;
   final VoidCallback onToday;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
     // 양옆을 같은 폭으로 둬서 달 이름을 가운데에 둔다.
     const sideWidth = 64.0;
     return Padding(
@@ -266,9 +285,9 @@ class _CalendarTopBar extends StatelessWidget {
             width: sideWidth,
             child: Align(
               alignment: AlignmentDirectional.centerStart,
-              child: BackCircleButton(
-                key: const Key('calendar-back'),
-                background: scheme.surfaceContainerLowest,
+              child: const BackCircleButton(
+                key: Key('calendar-back'),
+                filled: false,
               ),
             ),
           ),
@@ -287,28 +306,53 @@ class _CalendarTopBar extends StatelessWidget {
           ),
           SizedBox(
             width: sideWidth,
-            child: TextButton(
-              key: const Key('calendar-today'),
-              style: TextButton.styleFrom(
-                backgroundColor: scheme.primaryContainer,
-                foregroundColor: scheme.onPrimaryContainer,
-                textStyle: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                ),
-                minimumSize: const Size(0, 36),
-                padding: const EdgeInsets.symmetric(horizontal: 14),
-                shape: const StadiumBorder(),
-              ),
-              onPressed: onToday,
-              // 글자를 키워도 '오/늘'로 줄이 갈리지 않게, 폭이 모자라면 줄여서 한 줄로 둔다.
-              child: const FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Text('오늘', maxLines: 1),
-              ),
+            child: Align(
+              alignment: AlignmentDirectional.centerEnd,
+              child: _TodayButton(day: today.day, onPressed: onToday),
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// 오늘로 가는 단추. 삼성 달력처럼 오늘 날짜 숫자를 담은 작은 달력 모양이다.
+/// 아이콘처럼 크기가 정해져 있어 글자 크기를 따르지 않고, 화면 읽기 도구는 '오늘'로 읽는다.
+class _TodayButton extends StatelessWidget {
+  const _TodayButton({required this.day, required this.onPressed});
+
+  final int day;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = Theme.of(context).colorScheme.onSurface;
+    return IconButton(
+      key: const Key('calendar-today'),
+      tooltip: '오늘',
+      onPressed: onPressed,
+      icon: ExcludeSemantics(
+        child: Container(
+          width: 24,
+          height: 24,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            border: Border.all(color: color, width: 1.8),
+            borderRadius: BorderRadius.circular(7),
+          ),
+          child: Text(
+            '$day',
+            key: const Key('calendar-today-day'),
+            textScaler: TextScaler.noScaling,
+            style: TextStyle(
+              fontSize: 11,
+              height: 1,
+              fontWeight: FontWeight.w800,
+              color: color,
+            ),
+          ),
+        ),
       ),
     );
   }

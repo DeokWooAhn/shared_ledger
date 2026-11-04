@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../domain/budget/month_summary.dart';
 import '../../domain/budget/statistics.dart';
+import '../../domain/budget/stats_period.dart';
 import '../../domain/model/activity.dart';
 import '../../domain/model/auth_user.dart';
 import '../../domain/model/category.dart';
@@ -214,19 +215,35 @@ final monthSummaryProvider = Provider<AsyncValue<MonthSummary>>((ref) {
   return const AsyncLoading();
 });
 
-/// 통계 탭의 값. 보고 있는 달까지 가계부가 있는 모든 달의 항목으로 계산한다(`CalculateStatisticsUseCase`).
+/// 통계 탭의 기간. 앱을 켜면 이번 달로 끝나는 최근 6개월이고, 통계 탭의 기간 단추로 바꾼다.
+/// 다른 탭의 보고 있는 달([selectedMonthProvider])과 따로 움직인다.
+final statsPeriodProvider = NotifierProvider<StatsPeriodNotifier, StatsPeriod>(
+  StatsPeriodNotifier.new,
+);
+
+/// 통계 기간을 바꾼다.
+class StatsPeriodNotifier extends Notifier<StatsPeriod> {
+  @override
+  StatsPeriod build() => StatsPeriod.recent(
+    StatsRange.month6,
+    YearMonth.of(ref.read(clockProvider)()),
+  );
+
+  /// [period]로 바꾼다(조회 기간 시트의 '확인').
+  void select(StatsPeriod period) => state = period;
+}
+
+/// 통계 탭의 값. 통계 기간 안에 가계부가 있는 달의 항목으로 계산한다(`CalculateStatisticsUseCase`).
 ///
 /// 달마다 [monthLedgerOfProvider] 구독을 같이 써서, 처음에는 그 달들의 항목을 다 읽고 그 뒤로는 바뀐 것만 받는다.
-/// 통계 탭을 열어야 읽기 시작한다. 달 목록을 모으지 않은 옛 가계부는 보고 있는 달만 읽는다(모은 돈은 모름).
+/// 기간은 최대 12개월이라 읽는 달도 그만큼이다. 통계 탭을 열어야 읽기 시작한다.
+/// 달 목록을 모으지 않은 옛 가계부는 어느 달에 가계부가 있는지 몰라 기간의 모든 달을 읽는다.
 /// 하나라도 실패하면 실패, 아직 받지 못했으면 불러오는 중이다.
 final statisticsProvider = Provider<AsyncValue<Statistics>>((ref) {
-  final month = ref.watch(selectedMonthProvider);
+  final period = ref.watch(statsPeriodProvider);
   final months = ref.watch(ledgerMonthsProvider);
   final ledgers = {
-    for (final key in {
-      ...?months?.where((m) => m.compareTo(month) <= 0),
-      month,
-    })
+    for (final key in months?.where(period.contains) ?? period.months)
       key: ref.watch(monthLedgerOfProvider(key)),
   };
   final categories = ref.watch(categoriesProvider);
@@ -240,22 +257,20 @@ final statisticsProvider = Provider<AsyncValue<Statistics>>((ref) {
       return AsyncError(error, stackTrace);
     }
   }
-  final history = {
+  final loaded = {
     for (final MapEntry(:key, :value) in ledgers.entries)
       if (value case AsyncData(:final value)) key: value,
   };
-  if ((history[month], categories, paymentMethods) case (
-    final ledger?,
+  if ((categories, paymentMethods) case (
     AsyncData(value: final categories),
     AsyncData(value: final paymentMethods),
-  ) when history.length == ledgers.length) {
+  ) when loaded.length == ledgers.length) {
     return AsyncData(
       ref
           .watch(summaryUseCasesProvider)
           .calculateStatistics(
-            ledger,
-            month: month,
-            history: months == null ? null : history,
+            loaded,
+            period: period,
             categories: categories,
             paymentMethods: paymentMethods,
           ),

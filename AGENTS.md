@@ -177,10 +177,10 @@ Flutter의 `TextEditingController`·`ScrollController`와 헷갈리지 않게 �
 - 긴 목록은 `ListView.builder`로 만들고, 항목에는 안정적인 id로 `ValueKey`를 준다. 인덱스를 키로 쓰지 않는다.
 - **탭:** 홈은 탭 4개(`HomeTab`: 홈·내역·통계·설정)이고 `StatefulShellRoute`가 탭마다 화면 상태를 지킨다(2026-11-02). 탭 화면은 `TabPage`로 감싸고,
   달을 보는 탭은 `MonthHeader`(`11월 ▾`)를 머리말로 쓴다. 달 이름을 누르면 달 고르기 시트가 열리고 좌우로 밀면 옆 달로 간다. 달을 골라도 보던 탭에 머문다.
-  보고 있는 달은 `selectedMonthProvider` 하나를 모든 탭이 같이 읽는다.
+  보고 있는 달은 `selectedMonthProvider` 하나를 홈·내역 탭(과 휴지통·달력)이 같이 읽는다.
   내역 탭은 세 칸(`EntryTab`: 수입·지출·카드 대금)이고, 고정 수입·고정 지출은 따로 된 화면 없이 수입·지출 칸과 입력 화면에서 다룬다. 달력은 내역 탭 머리말의 달력 단추로 연다.
   + 버튼은 내역 탭에서만 탭 막대 위에 떠 있어서, 있든 없든 탭 막대의 폭과 탭 위치가 바뀌지 않는다.
-  홈의 카드는 누르면 내역 탭의 그에 맞는 칸으로 간다(현금 카드는 카드 전체가 누름 자리 하나). 통계 탭은 '통계' 제목과 기간 칩을 머리말로 쓴다(홈과 헷갈리지 않게).
+  홈의 카드는 누르면 내역 탭의 그에 맞는 칸으로 간다(현금 카드는 카드 전체가 누름 자리 하나). 통계 탭은 '통계' 제목과 기간 아이콘을 머리말로 쓰고(홈과 헷갈리지 않게), 보는 달 대신 따로 고른 기간(`statsPeriodProvider`)을 본다.
 - **넓은 화면:** 아이패드와 Mac(아이패드 앱)에서도 쓴다. 폭 600 이상이면 탭 막대가 옆(NavigationRail)으로 간다. 본문은 `ConstrainedBox(maxWidth: …)`로 가운데 두고,
   두 칸 배치는 `LayoutBuilder`로 바꾼다(`docs/plan.md`의 '화면'). 플랫폼 분기는 `defaultTargetPlatform`.
 - **테마:** 색은 `Theme.of(context).colorScheme`과 `context.appColors`, 글자는 `textTheme`에서 꺼낸다(`lib/core/theme/app_theme.dart`, 원본은 `design/app.pen`). 화면 디자인은 `design/app/*.png`.

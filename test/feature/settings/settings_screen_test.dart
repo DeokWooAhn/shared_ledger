@@ -527,10 +527,10 @@ void main() {
 
       // 그달에 쓴 항목이 있어서 통계의 분류 소계에도 남는다.
       await openTab(tester, HomeTab.stats);
-      await tester.ensureVisible(find.byKey(const Key('planned-section')));
+      await tester.ensureVisible(find.byKey(const Key('spending-section')));
       expect(
         find.descendant(
-          of: find.byKey(const Key('planned-section')),
+          of: find.byKey(const Key('spending-section')),
           matching: find.text('소비'),
         ),
         findsOneWidget,
