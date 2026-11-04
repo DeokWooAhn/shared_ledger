@@ -787,8 +787,8 @@ void main() {
       expect(find.byKey(const Key('planned-section')), findsNothing);
 
       await openTab(tester, HomeTab.stats);
-      expect(textOf(tester, const Key('planned-total')), '2,299,000원');
-      final planned = find.byKey(const Key('planned-section'));
+      // 통계 지출 도넛의 범례에 고정 지출 분류별 소계가 있다.
+      final planned = find.byKey(const Key('spending-section'));
       Finder inPlanned(String text) =>
           find.descendant(of: planned, matching: find.text(text));
       expect(inPlanned('800,000원'), findsNWidgets(2));
@@ -809,7 +809,6 @@ void main() {
         ),
         findsOneWidget,
       );
-      expect(find.byKey(const Key('unpriced-planned')), findsNothing);
     });
 
     testWidgets('구성원별 막대는 두 사람의 고정 지출 비율로 나눠 그린다', (tester) async {
@@ -943,7 +942,7 @@ void main() {
       expect(findSentence('받기 전 고정 수입 1건은 현금 유입에서 빠져 있어요'), findsOneWidget);
     });
 
-    testWidgets('금액 미정 고정 지출이 있으면 몇 건이 빠졌는지 알린다', (tester) async {
+    testWidgets('금액 미정 고정 지출은 통계 지출에 0원으로 들어가고 따로 알리지 않는다', (tester) async {
       await pumpSummary(
         tester,
         entries: FakeEntriesRepository({
@@ -959,8 +958,8 @@ void main() {
       expect(find.byKey(const Key('empty-month')), findsNothing);
 
       await openTab(tester, HomeTab.stats);
-      expect(findSentence('금액 미정 1건은 합계에서 빠져 있어요'), findsOneWidget);
-      expect(textOf(tester, const Key('planned-total')), '50,000원');
+      expect(find.textContaining('금액 미정'), findsNothing);
+      expect(textOf(tester, const Key('stats-spending')), '50,000원');
     });
 
     testWidgets('달을 옮기면 그 달의 요약으로 바뀐다', (tester) async {

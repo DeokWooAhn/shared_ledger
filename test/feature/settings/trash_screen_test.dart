@@ -16,7 +16,6 @@ import 'package:shared_ledger/feature/settings/trash_screen.dart';
 
 import '../../../testing/app.dart';
 import '../../../testing/fakes.dart';
-import '../../../testing/provider_container.dart';
 
 const me = AuthUser(uid: 'me');
 const mine = Ledger(
@@ -152,7 +151,7 @@ String? settingValue(WidgetTester tester, Key row) => tester
 
 void main() {
   group('휴지통', () {
-    testWidgets('내역 탭에서 휴지통에 넣은 항목을 휴지통에서 되살리면 내역 탭에 다시 보인다', (tester) async {
+    testWidgets('내역 탭에서 휴지통에 넣은 항목을 휴지통에서 복원하면 내역 탭에 다시 보인다', (tester) async {
       final entries = FakeEntriesRepository({
         october: const MonthLedger(extraExpenses: [lunch]),
       });
@@ -197,13 +196,23 @@ void main() {
       await settleRoute(tester);
 
       expect(inTrash(find.text('점심')), findsOneWidget);
-      expect(inTrash(find.text('추가 지출 · 10/15에 넣음')), findsOneWidget);
-      expect(inTrash(findSentence('30일 뒤 자동으로 지워져요')), findsOneWidget);
+      expect(inTrash(find.text('추가 지출 · 10/15 추가')), findsOneWidget);
+      // 머리말 설명과 자동 삭제 안내는 두지 않는다.
+      expect(inTrash(find.byKey(const Key('trash-note'))), findsNothing);
+      // 안내 문구는 keepAll로 글자 사이에 줄바꿈을 막는 글자가 들어 있어 그것을 빼고 찾는다.
+      expect(
+        find.byWidgetPredicate(
+          (widget) =>
+              widget is Text &&
+              (widget.data ?? '').replaceAll('\u2060', '').contains('자동'),
+        ),
+        findsNothing,
+      );
 
       await tapShown(tester, inTrash(find.byKey(const Key('restore-lunch'))));
 
       expect(entries.restored.single.id, 'lunch');
-      expect(findSentence('되살렸어요. 항목 목록과 합계에 다시 들어가요.'), findsOneWidget);
+      expect(findSentence('복원했어요. 항목 목록과 합계에 다시 들어가요.'), findsOneWidget);
       expect(inTrash(findSentence('10월 휴지통이 비어 있어요.')), findsOneWidget);
 
       await openTab(tester, HomeTab.entries);
@@ -226,11 +235,9 @@ void main() {
       final cardTop = tester.getTopLeft(inTrash(find.text('공용 카드'))).dy;
       expect(lunchTop, lessThan(cardTop));
       expect(inTrash(find.text('500,000원')), findsOneWidget);
-      // 자동 삭제를 넣기 전에 넣은 항목은 안내 없이 넣은 날만 보인다.
-      expect(inTrash(find.byKey(const Key('trash-note'))), findsNothing);
     });
 
-    testWidgets('완전 삭제는 확인 대화상자에서 지운다고 해야 지우고 변경 기록에 남긴다', (tester) async {
+    testWidgets('삭제는 확인 대화상자에서 지운다고 해야 지우고 변경 기록에 남긴다', (tester) async {
       final entries = trashOf([lunch]);
       final activity = FakeActivityRepository();
       await pumpTrashApp(tester, entries: entries, activity: activity);
@@ -239,6 +246,11 @@ void main() {
       await tapShown(tester, inTrash(find.byKey(const Key('purge-lunch'))));
       expect(find.text('완전히 지울까요?'), findsOneWidget);
       expect(find.text('점심 · 12,000원'), findsOneWidget);
+      // 두 문장은 문장 단위로 줄을 바꾼다.
+      expect(
+        findSentence('지우면 되살릴 수 없어요.\n변경 기록에는 지운 사실이 남아요.'),
+        findsOneWidget,
+      );
       await tester.tap(find.byKey(const Key('purge-cancel')));
       await settle(tester);
 
@@ -251,18 +263,18 @@ void main() {
 
       expect(entries.purged.single.id, 'lunch');
       expect(inTrash(find.text('점심')), findsNothing);
-      expect(findSentence('완전히 지웠어요.'), findsOneWidget);
+      expect(findSentence('삭제했어요.'), findsOneWidget);
       expect(activity.logged.single.summary, "10월 추가 지출 '점심' 12,000원");
     });
 
-    testWidgets('반복 설정이 남아 있는 이번 달 고정 지출은 완전 삭제 없이 남겨 둔다고 알린다', (tester) async {
+    testWidgets('반복 설정이 남아 있는 이번 달 고정 지출은 삭제 없이 남겨 둔다고 알린다', (tester) async {
       await pumpTrashApp(tester, entries: trashOf([management]));
       await openTrash(tester);
 
       expect(inTrash(find.text('관리비')), findsOneWidget);
       expect(inTrash(find.text('금액 미정')), findsOneWidget);
       expect(
-        inTrash(findSentence('매달 만드는 고정 지출이라 지우면 다시 생겨요. 휴지통에 남겨 둬요.')),
+        inTrash(findSentence('매달 만드는 고정 지출이라 지우면 다시 생겨요.\n휴지통에 남겨 둬요.')),
         findsOneWidget,
       );
       expect(
@@ -275,7 +287,7 @@ void main() {
       );
     });
 
-    testWidgets('반복 설정 목록을 받지 못하면 고정 지출의 완전 삭제만 막고 되살리기는 된다', (tester) async {
+    testWidgets('반복 설정 목록을 받지 못하면 고정 지출의 삭제만 막고 복원은 된다', (tester) async {
       final entries = trashOf([management]);
       await pumpTrashApp(
         tester,
@@ -319,7 +331,7 @@ void main() {
       );
     });
 
-    testWidgets('연결이 없으면 되살리지 못했다고 알리고 휴지통에 그대로 둔다', (tester) async {
+    testWidgets('연결이 없으면 복원하지 못했다고 알리고 휴지통에 그대로 둔다', (tester) async {
       final entries = trashOf([lunch])..offline = true;
       await pumpTrashApp(tester, entries: entries);
       await openTrash(tester);
@@ -355,20 +367,6 @@ void main() {
 
       expect(find.byType(TrashScreen), findsNothing);
       expect(find.byKey(const Key('open-trash')), findsOneWidget);
-    });
-  });
-
-  group('자동 삭제 안내', () {
-    test('남은 날은 올림해서 세고, 하루가 안 남았으면 곧 지워진다고 한다', () {
-      expect(
-        trashPurgeLabel(DateTime(2026, 11, 13, 10), testNow),
-        '30일 뒤 자동으로 지워져요',
-      );
-      expect(
-        trashPurgeLabel(testNow.add(const Duration(hours: 1)), testNow),
-        '1일 뒤 자동으로 지워져요',
-      );
-      expect(trashPurgeLabel(testNow, testNow), '곧 자동으로 지워져요');
     });
   });
 

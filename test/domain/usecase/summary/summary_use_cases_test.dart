@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_ledger/domain/budget/stats_period.dart';
 import 'package:shared_ledger/domain/model/category.dart';
 import 'package:shared_ledger/domain/model/ledger_entries.dart';
 import 'package:shared_ledger/domain/model/month_ledger.dart';
@@ -47,7 +48,7 @@ void main() {
     expect(summary.isEmpty, isFalse);
   });
 
-  test('보고 있는 달까지의 가계부 달로 통계(그동안 모은 돈)를 계산한다', () {
+  test('고른 기간 안의 가계부 달로 통계(모은 돈)를 계산한다', () {
     const september = YearMonth(2026, 9);
     const october = YearMonth(2026, 10);
     const income = MonthLedger(
@@ -56,14 +57,13 @@ void main() {
       ],
     );
     final stats = const SummaryUseCases().calculateStatistics(
-      income,
-      month: october,
-      history: {september: income, october: income},
+      {september: income, october: income},
+      period: StatsPeriod.recent(StatsRange.month1, october),
       categories: const [living],
       paymentMethods: const [account, card],
     );
 
-    expect(stats.saved, 200000);
-    expect(stats.previous?.month, september);
+    expect(stats.savedMonths.map((m) => m.month), [october]);
+    expect(stats.saved, 100000);
   });
 }

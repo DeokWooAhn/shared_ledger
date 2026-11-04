@@ -77,7 +77,7 @@ Widget _tabScreen(HomeTab tab) => switch (tab) {
     openCalendar: _openCalendar,
     openMonths: _openMonths,
   ),
-  HomeTab.stats => const StatsScreen(openMonths: _openMonths),
+  HomeTab.stats => const StatsScreen(),
   HomeTab.settings => const SettingsScreen(
     openCategories: _openCategories,
     openPaymentMethods: _openPaymentMethods,

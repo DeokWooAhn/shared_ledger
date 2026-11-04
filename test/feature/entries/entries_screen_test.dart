@@ -436,7 +436,7 @@ void main() {
       expect(textIn(tester, const Key('entries-total')), '1,108,000원');
 
       await openTab(tester, HomeTab.stats);
-      expect(textOf(tester, const Key('planned-total')), '1,108,000원');
+      expect(textOf(tester, const Key('stats-spending')), '1,108,000원');
     });
 
     testWidgets('연결이 없으면 고치지 못한다고 알리고 화면에 남는다', (tester) async {

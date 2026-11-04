@@ -19,27 +19,21 @@ import 'trash_notifier.dart';
 
 String trashFailureMessage(TrashFailure failure) => switch (failure) {
   TrashFailure.offline => '인터넷에 연결된 뒤에 다시 시도해 주세요. 휴지통은 연결돼 있을 때만 바꿀 수 있어요.',
-  TrashFailure.gone => '그사이 되살렸거나 지운 항목이에요.',
-  TrashFailure.restore => '되살리지 못했어요. 잠시 후 다시 시도해 주세요.',
+  TrashFailure.gone => '그사이 복원했거나 지운 항목이에요.',
+  TrashFailure.restore => '복원하지 못했어요. 잠시 후 다시 시도해 주세요.',
   TrashFailure.purge => '지우지 못했어요. 잠시 후 다시 시도해 주세요.',
 };
 
 String trashNoticeMessage(TrashNotice notice) => switch (notice) {
-  TrashNotice.restored => '되살렸어요. 항목 목록과 합계에 다시 들어가요.',
-  TrashNotice.purged => '완전히 지웠어요.',
+  TrashNotice.restored => '복원했어요. 항목 목록과 합계에 다시 들어가요.',
+  TrashNotice.purged => '삭제했어요.',
 };
-
-/// 자동 삭제까지 남은 날 안내. 하루가 안 남았으면 '곧'이다. 예: '29일 뒤 자동으로 지워져요'
-String trashPurgeLabel(DateTime purgeAt, DateTime now) {
-  final days = (purgeAt.difference(now).inHours / 24).ceil();
-  return days <= 0 ? '곧 자동으로 지워져요' : '$days일 뒤 자동으로 지워져요';
-}
 
 /// 휴지통 화면. 설정 탭에서 들어온다(탭 막대는 그대로 보인다).
 ///
 /// 보고 있는 달의 휴지통 항목을 최근에 넣은 것부터 보여주고, 달 머리말로 다른 달을 본다. 그달 구독을 홈·내역 탭과
-/// 같이 써서 읽기가 늘지 않는다. 관리자·편집자는 되살리거나 완전히 지우고(확인 후), 보기 전용은 보기만 한다.
-/// 넣은 지 30일이 지나면 자동으로 지워진다. 반복 설정이 남아 있는 이번 달 이후 고정 지출·고정 수입은 남겨 둔다([staysInTrash]).
+/// 같이 써서 읽기가 늘지 않는다. 관리자·편집자는 복원하거나 삭제하고(확인 후), 보기 전용은 보기만 한다.
+/// 넣은 지 30일이 지나면 자동으로 지워진다(화면에는 따로 알리지 않는다). 반복 설정이 남아 있는 이번 달 이후 고정 지출·고정 수입은 남겨 둔다([staysInTrash]).
 class TrashScreen extends ConsumerWidget {
   const TrashScreen({this.openMonths, super.key});
 
@@ -72,10 +66,7 @@ class TrashScreen extends ConsumerWidget {
         notifier.noticeShown();
       });
     return TabPage(
-      header: const SubPageTitle(
-        '휴지통',
-        description: '보고 있는 달의 휴지통이에요. 넣은 지 30일이 지나면 자동으로 지워져요.',
-      ),
+      header: const SubPageTitle('휴지통'),
       children: [
         MonthHeader(openMonths: openMonths),
         const SizedBox(height: 12),
@@ -172,7 +163,6 @@ class _TrashContent extends ConsumerWidget {
                         thisMonth: YearMonth.of(now),
                         templateIds: templateIds,
                       ),
-                  now: now,
                   canWrite: canWrite,
                   busy: state.busy,
                   purgeUnknown: templateIds == null && item.entry.kind.isFixed,
@@ -203,14 +193,13 @@ class _TrashContent extends ConsumerWidget {
   };
 }
 
-/// 휴지통 항목 한 줄: 누구 몫인지, 제목·금액, 종류와 넣은 날, 자동 삭제 안내, 되살리기·완전 삭제 단추.
+/// 휴지통 항목 한 줄: 누구 몫인지, 제목·금액, 종류와 넣은 날, 복원·삭제 단추.
 class _TrashRow extends StatelessWidget {
   const _TrashRow({
     required this.item,
     required this.title,
     required this.member,
     required this.stays,
-    required this.now,
     required this.canWrite,
     required this.busy,
     required this.purgeUnknown,
@@ -225,11 +214,10 @@ class _TrashRow extends StatelessWidget {
 
   /// 반복 설정이 남아 있는 이번 달 이후 고정 지출·고정 수입이라 지우지 않고 남겨 두는지.
   final bool stays;
-  final DateTime now;
   final bool canWrite;
   final bool busy;
 
-  /// 반복 설정 목록을 아직 몰라 완전 삭제를 막는지. 되살리기는 막지 않는다.
+  /// 반복 설정 목록을 아직 몰라 삭제를 막는지. 복원은 막지 않는다.
   final bool purgeUnknown;
   final VoidCallback onRestore;
   final VoidCallback onPurge;
@@ -241,16 +229,13 @@ class _TrashRow extends StatelessWidget {
     final entry = item.entry;
     final amount = entry.amount;
     final deletedAt = item.deletedAt?.toLocal();
-    final purgeAt = item.purgeAt;
     final meta = [
       entryKindLabel(entry.kind),
-      deletedAt == null ? '방금 넣음' : '${deletedAt.month}/${deletedAt.day}에 넣음',
+      deletedAt == null ? '방금 추가' : '${deletedAt.month}/${deletedAt.day} 추가',
     ].join(' · ');
     final note = stays
-        ? '매달 만드는 ${entryKindLabel(entry.kind)}이라 지우면 다시 생겨요. 휴지통에 남겨 둬요.'
-        : purgeAt == null
-        ? null
-        : trashPurgeLabel(purgeAt, now);
+        ? '매달 만드는 ${entryKindLabel(entry.kind)}이라 지우면 다시 생겨요.\n휴지통에 남겨 둬요.'
+        : null;
     final mutedStyle = theme.textTheme.labelSmall?.copyWith(
       color: colors.textMuted,
     );
@@ -310,7 +295,7 @@ class _TrashRow extends StatelessWidget {
                   style: TextButton.styleFrom(minimumSize: const Size(64, 48)),
                   onPressed: busy ? null : onRestore,
                   icon: const Icon(Icons.restore, size: 20),
-                  label: const Text('되살리기'),
+                  label: const Text('복원'),
                 ),
                 if (!stays)
                   TextButton.icon(
@@ -321,7 +306,7 @@ class _TrashRow extends StatelessWidget {
                     ),
                     onPressed: busy || purgeUnknown ? null : onPurge,
                     icon: const Icon(Icons.delete_forever_outlined, size: 20),
-                    label: const Text('완전 삭제'),
+                    label: const Text('삭제'),
                   ),
               ],
             ),
@@ -356,7 +341,7 @@ class _PurgeDialog extends StatelessWidget {
             ),
           ),
           Text(
-            keepAll('지우면 되살릴 수 없어요. 변경 기록에는 지운 사실이 남아요.'),
+            keepAll('지우면 되살릴 수 없어요.\n변경 기록에는 지운 사실이 남아요.'),
             style: theme.textTheme.bodyMedium,
           ),
         ],
@@ -371,7 +356,7 @@ class _PurgeDialog extends StatelessWidget {
           key: const Key('purge-confirm'),
           style: TextButton.styleFrom(foregroundColor: theme.colorScheme.error),
           onPressed: () => Navigator.of(context).pop(true),
-          child: const Text('완전히 지우기'),
+          child: const Text('삭제'),
         ),
       ],
     );

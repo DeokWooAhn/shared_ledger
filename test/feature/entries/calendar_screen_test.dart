@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_ledger/core/providers/providers.dart';
 import 'package:shared_ledger/domain/model/auth_user.dart';
 import 'package:shared_ledger/domain/model/category.dart';
 import 'package:shared_ledger/domain/model/expense_template.dart';
@@ -204,26 +205,32 @@ void main() {
       }
     });
 
-    testWidgets('글자를 두 배로 키워도 오늘 단추의 글자가 한 줄이다', (tester) async {
+    testWidgets('오늘 단추는 오늘 날짜 숫자를 담은 달력 모양이고, 화면 읽기 도구는 오늘로 읽는다', (
+      tester,
+    ) async {
+      final semantics = tester.ensureSemantics();
       tester.platformDispatcher.textScaleFactorTestValue = 2;
       addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
       await openCalendar(tester);
 
-      final today = tester.renderObject<RenderParagraph>(
+      expect(textOf(tester, const Key('calendar-today-day')), '15');
+      // 아이콘처럼 글자를 키워도 칸 안에 그대로 있다.
+      final box = tester.getRect(
         find.descendant(
           of: find.byKey(const Key('calendar-today')),
-          matching: find.text('오늘'),
+          matching: find.byType(Container),
         ),
       );
-      // 두 글자의 줄 위치가 같아야 한다('오/늘'로 갈리지 않음).
-      final lines = today
-          .getBoxesForSelection(
-            const TextSelection(baseOffset: 0, extentOffset: 2),
-          )
-          .map((box) => box.top)
-          .toSet();
-      expect(lines, hasLength(1));
-      expect(today.didExceedMaxLines, isFalse);
+      expect(box.size, const Size(24, 24));
+      expect(
+        tester.getSize(find.byKey(const Key('calendar-today'))).height,
+        greaterThanOrEqualTo(48),
+      );
+      expect(
+        tester.getSemantics(find.byKey(const Key('calendar-today'))),
+        isSemantics(tooltip: '오늘', isButton: true),
+      );
+      semantics.dispose();
     });
 
     testWidgets('머리말의 달 이름은 화면 읽기 도구가 달 고르기 단추로, 달력 단추는 달력으로 읽는다', (
@@ -603,7 +610,7 @@ void main() {
         await gesture.moveBy(Offset(-width * 0.1, 0));
         await tester.pump(const Duration(milliseconds: 16));
       }
-      // 미는 동안에는 10월 30일과 오른쪽에서 들어오는 11월 30일이 같이 보이고, 달은 아직 그대로다.
+      // 미는 동안에는 10월 30일과 오른쪽에서 들어오는 11월 30일이 같이 보이고, 반이 안 됐으니 달은 아직 그대로다.
       expect(day(30), findsNWidgets(2));
       expect(calendarTitle(tester), '10월');
 
@@ -614,6 +621,76 @@ void main() {
       expect(calendarTitle(tester), '10월');
       expect(dayTitle(tester), '10월 15일 목요일');
       expect(day(30), findsOneWidget);
+    });
+
+    testWidgets('판을 반 넘게 밀면 놓기 전에 달 이름이 바로 바뀌고, 다시 돌려 밀면 원래 달로 돌아온다', (
+      tester,
+    ) async {
+      await openCalendar(tester);
+      final grid = find.byKey(const Key('calendar-swipe'));
+      final width = tester.getSize(grid).width;
+
+      final gesture = await tester.startGesture(tester.getCenter(grid));
+      for (var i = 0; i < 6; i++) {
+        await gesture.moveBy(Offset(-width * 0.1, 0));
+        await tester.pump(const Duration(milliseconds: 16));
+      }
+      // 손가락을 댄 채로 달 이름이 바뀌는 짧은 효과만 기다린다.
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(calendarTitle(tester), '11월');
+
+      for (var i = 0; i < 3; i++) {
+        await gesture.moveBy(Offset(width * 0.1, 0));
+        await tester.pump(const Duration(milliseconds: 16));
+      }
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(calendarTitle(tester), '10월');
+      await gesture.up();
+      await settleRoute(tester);
+      expect(calendarTitle(tester), '10월');
+    });
+
+    testWidgets('먼 달에서 오늘을 누르면 사이의 달을 건너 바로 옆 쪽에서 오늘이 있는 달로 밀려 온다', (
+      tester,
+    ) async {
+      await openCalendar(tester);
+      for (var i = 0; i < 2; i++) {
+        await tester.fling(
+          find.byKey(const Key('calendar-month-title')),
+          const Offset(-200, 0),
+          800,
+        );
+        await settle(tester);
+      }
+      expect(calendarTitle(tester), '12월');
+
+      // 보는 달이 바뀌는 차례를 모은다.
+      final container = ProviderScope.containerOf(
+        tester.element(find.byType(CalendarScreen)),
+      );
+      final selected = <YearMonth>[];
+      final subscription = container.listen(
+        selectedMonthProvider,
+        (_, month) => selected.add(month),
+      );
+      addTearDown(subscription.close);
+
+      await tester.tap(find.byKey(const Key('calendar-today')));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+      // 12월에서 11월 쪽으로 건너뛴 뒤 10월로 밀리는 중이다. 판 번호는 0년 1월부터 센 달 수다.
+      final page = tester
+          .widget<PageView>(find.byKey(const Key('calendar-swipe')))
+          .controller!
+          .page!;
+      const octoberPage = 2026 * 12 + 10 - 1;
+      expect(page, greaterThan(octoberPage));
+      expect(page, lessThan(octoberPage + 1));
+      await settle(tester);
+      expect(calendarTitle(tester), '10월');
+      expect(dayTitle(tester), '10월 15일 목요일');
+      // 건너뛴 11월은 보는 달이 되지 않고, 멈춘 10월만 된다.
+      expect(selected, [october]);
     });
 
     testWidgets('앞뒤 달 항목도 미리 받아 두어, 넘기자마자 그달 목록을 보여준다', (tester) async {
