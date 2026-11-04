@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_ledger/core/providers/providers.dart';
 import 'package:shared_ledger/domain/model/auth_user.dart';
 import 'package:shared_ledger/domain/model/category.dart';
 import 'package:shared_ledger/domain/model/expense_template.dart';
@@ -662,20 +664,33 @@ void main() {
       }
       expect(calendarTitle(tester), '12월');
 
+      // 보는 달이 바뀌는 차례를 모은다.
+      final container = ProviderScope.containerOf(
+        tester.element(find.byType(CalendarScreen)),
+      );
+      final selected = <YearMonth>[];
+      final subscription = container.listen(
+        selectedMonthProvider,
+        (_, month) => selected.add(month),
+      );
+      addTearDown(subscription.close);
+
       await tester.tap(find.byKey(const Key('calendar-today')));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 100));
-      // 12월에서 11월 쪽으로 건너뛴 뒤 10월로 밀리는 중이다.
+      // 12월에서 11월 쪽으로 건너뛴 뒤 10월로 밀리는 중이다. 판 번호는 0년 1월부터 센 달 수다.
       final page = tester
           .widget<PageView>(find.byKey(const Key('calendar-swipe')))
           .controller!
           .page!;
-      final october = page.floor();
-      expect(page, greaterThan(october));
-      expect(page, lessThan(october + 1));
+      const octoberPage = 2026 * 12 + 10 - 1;
+      expect(page, greaterThan(octoberPage));
+      expect(page, lessThan(octoberPage + 1));
       await settle(tester);
       expect(calendarTitle(tester), '10월');
       expect(dayTitle(tester), '10월 15일 목요일');
+      // 건너뛴 11월은 보는 달이 되지 않고, 멈춘 10월만 된다.
+      expect(selected, [october]);
     });
 
     testWidgets('앞뒤 달 항목도 미리 받아 두어, 넘기자마자 그달 목록을 보여준다', (tester) async {

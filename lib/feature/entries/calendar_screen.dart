@@ -76,6 +76,9 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
   // 판이 멈춘 뒤에 바뀐다. 보는 달을 미는 도중에 바꾸면 뒤의 탭과 날짜 목록이 판이 움직이는 동안 다시 그려져 버벅인다.
   late final _shownMonth = ValueNotifier(ref.read(selectedMonthProvider));
 
+  // 먼 달로 넘길 때 바로 옆 쪽으로 건너뛰는 중인지. 그 건너뛰기가 끝났다는 알림으로는 달을 바꾸지 않는다.
+  var _jumping = false;
+
   @override
   void initState() {
     super.initState();
@@ -141,7 +144,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
   // 판이 멈추면(손으로 밀었든 달 이름·오늘로 넘겼든) 그 달을 본다.
   bool _settled(ScrollEndNotification notification) {
     final page = _pages.page?.round();
-    if (notification.depth != 0 || page == null) return false;
+    if (_jumping || notification.depth != 0 || page == null) return false;
     final month = _monthOfPage(page);
     if (month != ref.read(selectedMonthProvider)) {
       ref.read(selectedMonthProvider.notifier).select(month);
@@ -160,7 +163,10 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
       return;
     }
     if ((target - current).abs() > 1) {
+      // 건너뛰기는 그 자리에서 끝났다는 알림을 보내서, 사이의 달을 보지 않게 그동안은 따르지 않는다.
+      _jumping = true;
       _pages.jumpToPage(target > current ? target - 1 : target + 1);
+      _jumping = false;
     }
     await _pages.animateToPage(
       target,

@@ -199,7 +199,15 @@ void main() {
       expect(inTrash(find.text('추가 지출 · 10/15 추가')), findsOneWidget);
       // 머리말 설명과 자동 삭제 안내는 두지 않는다.
       expect(inTrash(find.byKey(const Key('trash-note'))), findsNothing);
-      expect(find.textContaining('자동'), findsNothing);
+      // 안내 문구는 keepAll로 글자 사이에 줄바꿈을 막는 글자가 들어 있어 그것을 빼고 찾는다.
+      expect(
+        find.byWidgetPredicate(
+          (widget) =>
+              widget is Text &&
+              (widget.data ?? '').replaceAll('\u2060', '').contains('자동'),
+        ),
+        findsNothing,
+      );
 
       await tapShown(tester, inTrash(find.byKey(const Key('restore-lunch'))));
 
