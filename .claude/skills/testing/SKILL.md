@@ -106,6 +106,8 @@ test('…', () async {
 ## 가짜 저장소 (`testing/fakes.dart`)
 
 - 실제 인터페이스를 `implements`한다. 인터페이스가 바뀌면 컴파일 에러로 드러나야 한다.
+- 예상 밖 실패(네트워크 오류 흉내)는 `FakeFailure`(Exception)로 던진다. `StateError`는 프로그래밍 오류라 Notifier가 잡지 않는다(2026-11-06).
+  테스트 컨테이너(`createContainer`)와 `pumpApp`은 Riverpod 재시도를 끈다(`noRetry`). 실제 앱은 공급자가 `Exception`으로 실패하면 최대 10번 다시 시도한다.
 - **실제 구현의 약속을 지킨다.** 다르면 테스트가 거짓으로 통과한다(PR #3에서 실제로 겪음).
   - 로그아웃 상태면 빈 목록, 로그인 창을 닫으면 `false`
   - 두 명이 찬 가계부·이미 구성원이면 참여를 `JoinFailure.unavailable`로 거부

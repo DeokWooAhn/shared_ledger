@@ -111,7 +111,7 @@ void main() {
       await useCasesOf(entries).saveEntry(
         ledger: mine,
         month: october,
-        id: 'x-lunch',
+        original: lunch,
         draft: snack,
         uid: 'me',
       );
@@ -155,7 +155,7 @@ void main() {
         useCasesOf(entries).saveEntry(
           ledger: mine,
           month: october,
-          id: 'x-lunch',
+          original: lunch,
           draft: snack,
           uid: 'me',
         ),

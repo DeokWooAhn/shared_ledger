@@ -1,4 +1,5 @@
 import 'dart:async';
+import '../model/entry_edit.dart';
 import '../model/expense_template.dart';
 import '../model/ledger_entries.dart';
 import '../model/month_ledger.dart';
@@ -57,12 +58,18 @@ abstract interface class EntriesRepository {
   Stream<RejectedEntry> get rejectedAdds;
 
   /// [month]의 [id] 항목을 [draft]로 고친다. 종류([EntryDraft.kind])는 바꿀 수 없다. 온라인에서만 된다.
+  ///
+  /// [base]는 고치기 화면을 열 때의 값이다. 서버의 지금 값과 칸마다 견주어([mergeEntryEdit]) 내가 바꾼 칸만 쓰고,
+  /// 그사이 상대가 바꾼 칸은 지킨다. 같은 칸을 둘이 다르게 바꿨으면 [choice]대로 고르고, [choice]가 없으면
+  /// 쓰지 않고 [EntryEditConflict]를 던진다.
   Future<void> update({
     required String ledgerId,
     required YearMonth month,
     required String id,
+    required EntryDraft base,
     required EntryDraft draft,
     required String uid,
+    EditConflictChoice? choice,
   });
 
   /// 항목을 휴지통에 넣는다. 목록과 합계에서 빠진다. 온라인에서만 된다.

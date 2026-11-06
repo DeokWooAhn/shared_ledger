@@ -139,7 +139,7 @@ class XxxNotifier extends Notifier<XxxState> {
     } on SomeDomainException catch (e) {            // 처리할 실패만 골라서
       if (!ref.mounted) return;
       state = XxxState(failure: failureFrom(e.reason));
-    } catch (e) {                                   // 예상 못 한 실패는 스낵바
+    } on Exception catch (e) {                      // 예상 못 한 실패(FirebaseException 등)는 스낵바. Error는 잡지 않는다
       debugPrint('… 실패: $e');
       if (!ref.mounted) return;
       state = const XxxState(failure: XxxFailure.something);

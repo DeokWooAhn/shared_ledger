@@ -187,6 +187,35 @@ void main() {
       expect(entries.recordedMonths, isEmpty);
     });
 
+    test('화면을 연 뒤 지금 가계부가 다른 가계부로 바뀌면 그 가계부에 저장하지 않고 알린다', () async {
+      final ledgers = FakeLedgerRepository([mine]);
+      final entries = FakeEntriesRepository();
+      final container = createContainer(
+        auth: FakeAuthRepository(signedIn: me),
+        ledgers: ledgers,
+        entries: entries,
+      );
+      await loadSignedInUser(container);
+      container.listen(myLedgersProvider, (_, _) {});
+      await container.read(myLedgersProvider.future);
+      final provider = entryFormNotifierProvider(add(EntryKind.extra));
+      container.listen(provider, (_, _) {});
+
+      // 화면을 연 가계부(l1)가 빠지고 다른 가계부(l2)가 지금 가계부가 됐다.
+      ledgers.replaceAll([
+        const Ledger(id: 'l2', name: '다른 가계부', ownerUid: 'me'),
+      ]);
+      await Future<void>.delayed(Duration.zero);
+      expect(container.read(currentLedgerProvider)?.id, 'l2');
+
+      await container
+          .read(provider.notifier)
+          .save(amount: '5,000', title: '간식', memo: '');
+
+      expect(entries.added, isEmpty);
+      expect(container.read(provider).failure, EntryFormFailure.ledgerChanged);
+    });
+
     test('연결이 없어도 새 항목은 저장된다', () async {
       final entries = FakeEntriesRepository()..offline = true;
       final container = await ready(entries: entries);

@@ -66,7 +66,7 @@ class LedgerStartNotifier extends Notifier<LedgerStartState> {
           .createLedger(name: name, owner: user, firstMonth: firstMonth);
       if (!ref.mounted) return;
       state = LedgerStartState(codeProblem: state.codeProblem);
-    } catch (e) {
+    } on Exception catch (e) {
       debugPrint('가계부 만들기 실패: $e');
       if (!ref.mounted) return;
       state = LedgerStartState(
@@ -95,7 +95,7 @@ class LedgerStartNotifier extends Notifier<LedgerStartState> {
           .joinLedger(input: input, uid: uid);
       if (!ref.mounted) return;
       state = LedgerStartState(codeProblem: refused);
-    } catch (e) {
+    } on Exception catch (e) {
       debugPrint('가계부 참여 실패: $e');
       if (!ref.mounted) return;
       state = const LedgerStartState(failure: LedgerStartFailure.join);

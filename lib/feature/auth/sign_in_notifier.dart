@@ -54,7 +54,7 @@ class SignInNotifier extends Notifier<SignInState> {
       };
       if (!ref.mounted) return;
       state = const SignInState();
-    } catch (e) {
+    } on Exception catch (e) {
       debugPrint('로그인 실패: $e');
       if (!ref.mounted) return;
       state = const SignInState(failed: true);

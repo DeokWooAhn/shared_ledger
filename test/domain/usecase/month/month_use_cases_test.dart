@@ -179,6 +179,36 @@ void main() {
     expect(entries.recordedMonths, [november]);
   });
 
+  test('캐시에 남은 목록이어도 그사이 그만한 반복 설정은 채우지 않고, 고친 반복 설정은 지금 값으로 채운다', () async {
+    // 다른 기기가 통신비를 그만하고(지움) 관리비 금액을 고친 뒤다. 이 기기의 목록은 그 전 것이다.
+    final entries = FakeEntriesRepository()
+      ..templateSource = FakeTemplatesRepository([
+        const ExpenseTemplate(
+          id: 'template-rent',
+          title: '관리비',
+          amount: 170000,
+          categoryId: 'c-living',
+          paymentMethodId: 'p-account',
+          memberId: 'owner',
+          dueDay: 25,
+        ),
+      ]);
+
+    final created = await useCasesOf(entries: entries).fillMonthFromTemplates(
+      const PlannedFill(
+        ledgerId: 'l1',
+        month: november,
+        templates: [rent, phone],
+        recordMonth: false,
+      ),
+      uid: 'me',
+    );
+
+    expect(created, 1);
+    expect(entries.monthOf(november).plannedIds, {'template-rent'});
+    expect(entries.monthOf(november).plannedExpenses.single.amount, 170000);
+  });
+
   group('달력에서 그달 만들기', () {
     test('이번 달 이후면 고정 지출을 읽어 채우고 그달을 달 목록에 더한다', () async {
       final entries = FakeEntriesRepository();

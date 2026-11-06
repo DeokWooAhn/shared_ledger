@@ -44,7 +44,7 @@ class FirestoreLedgerRepository implements LedgerRepository {
     required String ownerName,
     required YearMonth firstMonth,
   }) async {
-    final ref = _ledgers.doc();
+    final ref = _ledgers.doc(newLedgerId(ownerUid, _ledgers.doc().id));
     final batch = _firestore.batch()
       ..set(
         ref,
@@ -171,6 +171,12 @@ class FirestoreLedgerRepository implements LedgerRepository {
     return a.id.compareTo(b.id);
   }
 }
+
+/// 새 가계부 ID. 만든 사람 uid로 시작한다('uid_무작위', [randomId]는 Firestore 자동 ID).
+///
+/// 보안 규칙이 이 모양만 받는다. 옛 가계부의 무작위 ID나 남의 uid로 시작하는 ID로는 만들 수 없게 해서,
+/// 예전 규칙으로 지워져 하위 문서만 남은 ID를 다른 사람이 다시 만들어 남은 내역을 읽지 못하게 한다(`docs/firestore.md`).
+String newLedgerId(String ownerUid, String randomId) => '${ownerUid}_$randomId';
 
 /// 가계부를 만들 때 쓰는 문서. `firestore.rules`의 ledgers create 규칙과 필드가 같아야 한다.
 Map<String, Object> newLedgerData({

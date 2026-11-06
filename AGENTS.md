@@ -145,6 +145,8 @@ feature가 저장소 자리(`repositories.dart`)를 import하면 `test/architect
   `StreamSubscription`과 Notifier는 닫는 곳이 있어야 한다.
 - **오류:** 빈 `catch`를 쓰지 않는다. 처리할 예외만 `on XxxException`으로 잡고 나머지는 다시 던진다.
   `Error`(StateError, TypeError 같은 프로그래머 오류)를 잡아 숨기지 않는다. 사용자가 취소한 것은 실패가 아니다(로그인은 false를 돌려준다).
+  Notifier의 마지막 처리도 `catch (e)`가 아니라 `on Exception catch (e)`다(2026-11-06). 가짜 저장소는 예상 밖 실패를 `FakeFailure`(Exception)로 흉내 낸다.
+  Riverpod은 공급자가 `Exception`으로 실패하면 최대 10번 다시 시도하고 `Error`는 다시 시도하지 않는다. 테스트는 `noRetry`로 끈다(`testing/provider_container.dart`).
 - **실패는 문구가 아니라 값으로:** 저장소는 도메인 실패(`JoinFailure`)를, UseCase와 domain 검사는 입력 문제(`InviteCodeProblem`, `NameProblem`)를,
   Notifier는 화면용 실패(`LedgerStartFailure`)를 enum으로 넘긴다.
   화면 문구로 바꾸는 것은 View다(CalcMoney의 "UI 문자열 변환은 presentation에서"와 같다).
@@ -209,6 +211,10 @@ Flutter의 `TextEditingController`·`ScrollController`와 헷갈리지 않게 �
 - **읽기는 곧 비용이다**(Firestore는 지출 한도 대상이 아님). 필요한 문서만 구독하고, 계속 늘어나는 목록(항목, 변경 기록)에는 `limit`이나 달 단위 범위를 두고,
   같은 쿼리는 공급자 하나를 여러 화면이 같이 읽는다.
 - 오프라인에서는 보기와 새 항목 추가만 된다. 수정·삭제는 온라인에서만 한다(`docs/plan.md`).
+- **고치기는 통째로 덮어쓰지 않는다.** 화면을 열 때의 값과 트랜잭션에서 읽은 서버 값을 칸마다 견주어(`mergeEntryEdit`) 내가 바꾼 칸만 쓰고,
+  같은 칸이 겹치면 `EntryEditConflict`로 묻는다. 캐시에서 온 목록(반복 설정 등)으로 쓰기를 정하면 트랜잭션에서 원본을 다시 읽는다(`fillPlanned`).
+- 가계부 문서는 지우지 않는다(규칙도 막는다). 하위 컬렉션이 남아 같은 ID로 다시 만들면 읽힌다(`docs/firestore.md`).
+  같은 까닭으로 새 가계부 ID는 만든 사람 uid로 시작한다(`newLedgerId`, 규칙이 이 모양만 받는다).
 - **공급자**(`lib/core/providers/providers.dart`): 다른 공급자는 `ref.watch`로 의존하고, 구독은 UseCase 홀더의 `watch…`로 연다. 로그인하지 않았으면 빈 값을 내보낸다.
   공급자 본문에서 쓰기 같은 부수효과를 일으키지 않는다.
 

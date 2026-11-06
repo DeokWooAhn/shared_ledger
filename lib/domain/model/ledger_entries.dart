@@ -1,3 +1,5 @@
+import 'member.dart';
+
 // 한 달 가계부를 이루는 다섯 가지 항목. 금액 단위는 원이다.
 
 /// 항목 종류. Firestore 컬렉션(`incomes`·`fixedIncomes`·`planned`·`extras`·`cardBills`)과 하나씩 맞는다.
@@ -347,6 +349,8 @@ class EntryDraft {
 
 /// 저장 전에 입력란 아래에 보여 줄 문제.
 enum EntryProblem {
+  /// 누구 몫인지가 이름표 자리(`owner`·`partner`)가 아니다(보안 규칙과 같다).
+  memberInvalid,
   amountMissing,
 
   /// 금액은 0원부터다(보안 규칙과 같다).
@@ -366,22 +370,27 @@ enum EntryProblem {
 ///
 /// 금액은 고정 지출만 비울 수 있고(금액 미정), 적으면 0원부터다. 제목은 카드 대금 말고 꼭 적는다.
 /// 길이는 보안 규칙처럼 UTF-16 단위로 센다(`entryTitleMaxLength`).
+/// 누가는 이름표 자리(`owner`·`partner`)여야 하고, 분류·결제수단·카드는 빈 id면 고르지 않은 것으로 본다.
+/// 입력 화면은 고르기 칸이라 대개 막히지만, UseCase를 다른 곳에서 불러도 보안 규칙이 늦게 거부하지 않게 여기서 막는다.
 Set<EntryProblem> entryProblemsOf(EntryDraft draft) {
   final kind = draft.kind;
   final title = draft.title.trim();
+  bool missing(String? id) => id == null || id.trim().isEmpty;
   return {
+    if (!MemberSlot.values.any((slot) => slot.name == draft.memberId))
+      EntryProblem.memberInvalid,
     if (draft.amount == null && kind != EntryKind.planned)
       EntryProblem.amountMissing,
     if ((draft.amount ?? 0) < 0) EntryProblem.amountNegative,
     if (kind != EntryKind.cardBill && title.isEmpty) EntryProblem.titleMissing,
     if (kind != EntryKind.cardBill && title.length > entryTitleMaxLength)
       EntryProblem.titleTooLong,
-    if (kind == EntryKind.planned && draft.categoryId == null)
+    if (kind == EntryKind.planned && missing(draft.categoryId))
       EntryProblem.categoryMissing,
     if ((kind == EntryKind.planned || kind == EntryKind.extra) &&
-        draft.paymentMethodId == null)
+        missing(draft.paymentMethodId))
       EntryProblem.paymentMethodMissing,
-    if (kind == EntryKind.cardBill && draft.cardId == null)
+    if (kind == EntryKind.cardBill && missing(draft.cardId))
       EntryProblem.cardMissing,
     if ((draft.memo?.trim().length ?? 0) > entryMemoMaxLength)
       EntryProblem.memoTooLong,

@@ -80,7 +80,7 @@ class MonthFillNotifier extends Notifier<bool> {
           .fillMonthFromTemplates(fill, uid: uid);
     } on EntryWriteException catch (e) {
       debugPrint('그달 고정 지출을 채우지 못해 다음에 다시 열 때 채움: ${e.reason}');
-    } catch (e) {
+    } on Exception catch (e) {
       debugPrint('그달 고정 지출 채우기 실패: $e');
     }
   }

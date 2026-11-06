@@ -5,6 +5,13 @@ import 'package:shared_ledger/domain/model/ledger.dart';
 import 'package:shared_ledger/domain/model/year_month.dart';
 
 void main() {
+  test('새 가계부 ID는 만든 사람 uid로 시작한다(보안 규칙이 이 모양만 받는다)', () {
+    expect(
+      newLedgerId('me', 'aB3dE5gH7jK9mN1pQ3sT'),
+      'me_aB3dE5gH7jK9mN1pQ3sT',
+    );
+  });
+
   test('새 가계부 문서는 보안 규칙이 받는 필드만, 나를 관리자로 담는다', () {
     final data = newLedgerData(
       name: '우리 가계부',

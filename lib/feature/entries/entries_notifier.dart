@@ -90,7 +90,7 @@ class EntriesNotifier extends Notifier<EntriesState> {
           EntryWriteFailure.notFound => EntriesFailure.restoreGone,
         },
       );
-    } catch (e) {
+    } on Exception catch (e) {
       debugPrint('항목 꺼내기 실패: $e');
       if (!ref.mounted) return;
       state = const EntriesState(failure: EntriesFailure.restore);
@@ -126,7 +126,7 @@ class EntriesNotifier extends Notifier<EntriesState> {
           TemplateWriteFailure.notFound => EntriesFailure.restoreGone,
         },
       );
-    } catch (e) {
+    } on Exception catch (e) {
       debugPrint('반복 설정 되살리기 실패: $e');
       if (!ref.mounted) return;
       state = const EntriesState(failure: EntriesFailure.restore);
@@ -166,7 +166,7 @@ class EntriesNotifier extends Notifier<EntriesState> {
         },
       );
       return false;
-    } catch (e) {
+    } on Exception catch (e) {
       debugPrint('그달 가계부 만들기 실패: $e');
       if (!ref.mounted) return false;
       state = const EntriesState(failure: EntriesFailure.addMonth);

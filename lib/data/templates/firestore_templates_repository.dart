@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../domain/model/entry_edit.dart';
 import '../../domain/model/activity.dart';
 import '../../domain/model/expense_template.dart';
 import '../../domain/model/ledger_entries.dart';
@@ -84,9 +85,12 @@ class FirestoreTemplatesRepository implements TemplatesRepository {
     required String id,
     required YearMonth month,
     required TemplateDraft draft,
+    required EntryDraft base,
     required EntryDraft entry,
     required List<YearMonth> laterMonths,
     required String uid,
+    bool amountForLater = false,
+    EditConflictChoice? choice,
   }) {
     final doc = _templates(ledgerId).doc(id);
     // 반복 설정의 종류는 바꿀 수 없어서(규칙의 keepsKind) 고칠 값의 종류로 항목 문서를 찾는다.
@@ -104,31 +108,52 @@ class FirestoreTemplatesRepository implements TemplatesRepository {
         laterMonths,
       );
       final beforeDraft = before == null ? null : TemplateDraft.of(before);
-      final amountChanged = beforeDraft?.amount != draft.amount;
-      transaction.update(doc, templateUpdateData(draft, uid: uid));
-      transaction.update(current, entryUpdateData(entry, uid: uid));
-      for (final (month, laterDoc) in later) {
-        transaction.update(
-          laterDoc,
-          laterEntryUpdate(draft, month, uid: uid, withAmount: amountChanged),
-        );
-      }
       final entryBeforeDraft = entryBefore == null
           ? null
           : EntryDraft.of(entryBefore);
+      // 그달 항목은 화면을 연 뒤 상대가 바꾼 칸을 지키고 내가 바꾼 칸만 쓴다. 같은 칸이 겹치면 쓰지 않고 묻는다.
+      final theirs = entryBeforeDraft ?? base;
+      final (:merged, :conflicts) = mergeEntryEdit(
+        base: base,
+        mine: entry,
+        theirs: theirs,
+        choice: choice,
+      );
+      if (conflicts.isNotEmpty) {
+        throw EntryEditConflict(fields: conflicts, theirs: theirs, mine: entry);
+      }
+      // 반복 설정이 따르는 칸(제목·분류·결제수단·누가)도 합친 그달 항목에 맞춘다.
+      final next = TemplateDraft(
+        kind: draft.kind,
+        memberId: merged.memberId,
+        title: merged.title.trim(),
+        amount: amountForLater ? merged.amount : draft.amount,
+        categoryId: merged.categoryId,
+        paymentMethodId: merged.paymentMethodId,
+        dueDay: draft.dueDay,
+      );
+      final amountChanged = beforeDraft?.amount != next.amount;
+      transaction.update(doc, templateUpdateData(next, uid: uid));
+      transaction.update(current, entryUpdateData(merged, uid: uid));
+      for (final (month, laterDoc) in later) {
+        transaction.update(
+          laterDoc,
+          laterEntryUpdate(next, month, uid: uid, withAmount: amountChanged),
+        );
+      }
       return [
-        if (beforeDraft != draft)
+        if (beforeDraft != next)
           templateActivity(
             ActivityAction.templateUpdate,
-            draft,
+            next,
             before: beforeDraft,
           ),
-        if (entryBeforeDraft != entry)
+        if (entryBeforeDraft != merged)
           entryActivity(
             ActivityAction.entryUpdate,
             month: month,
             kind: kind,
-            entry: entry,
+            entry: merged,
             before: entryBeforeDraft,
           ),
       ];

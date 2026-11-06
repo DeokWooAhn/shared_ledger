@@ -68,7 +68,7 @@ class InviteNotifier extends Notifier<InviteState> {
           .createInvite(ledgerId: ledgerId, role: role, createdBy: createdBy);
       if (!ref.mounted) return;
       state = InviteState(role: role, invite: invite);
-    } catch (e) {
+    } on Exception catch (e) {
       debugPrint('초대 코드 만들기 실패: $e');
       if (!ref.mounted) return;
       state = InviteState(role: role, failed: true);

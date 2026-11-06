@@ -2,6 +2,9 @@ import 'ledger_entries.dart';
 import 'trashed_entry.dart';
 
 /// 한 달치 가계부 데이터.
+///
+/// 넘긴 목록을 복사하지 않고 그대로 갖는다(테스트가 `const`로 만들 수 있게). 그래서 만든 뒤 목록을 고치면 값이 바뀌므로,
+/// 바꿀 수 없는 목록(`const`나 `List.unmodifiable`)을 넘긴다. 앱에서 만드는 곳(Firestore 변환 `monthLedgerFromFirestore`)이 그렇게 한다.
 class MonthLedger {
   const MonthLedger({
     this.incomes = const [],

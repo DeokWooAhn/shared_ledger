@@ -1,3 +1,4 @@
+import '../model/entry_edit.dart';
 import '../model/expense_template.dart';
 import '../model/ledger_entries.dart';
 import '../model/year_month.dart';
@@ -46,14 +47,22 @@ abstract interface class TemplatesRepository {
   /// [id] 고정 지출·고정 수입을 고친다. [month]의 항목은 [entry]로, 반복 설정은 [draft]로 바꾼다.
   /// [laterMonths]의 지급 전·받기 전 항목은 반복 설정과 같은 칸(제목·분류·결제수단·누가·예정일)을 맞추고,
   /// 금액은 반복 설정의 금액이 바뀌었을 때만 맞춘다. 반복 설정이나 [month]의 항목이 그사이 없어졌으면 notFound로 실패한다.
+  ///
+  /// [base]는 고치기 화면을 열 때의 그달 항목 값이다. 그달 항목은 서버의 지금 값과 칸마다 견주어([mergeEntryEdit])
+  /// 내가 바꾼 칸만 쓰고, 반복 설정과 뒤 달이 따르는 칸(제목·분류·결제수단·누가)도 합친 값으로 맞춘다.
+  /// 반복 설정의 금액은 [amountForLater]면 합친 그달 금액, 아니면 [draft]의 금액이다.
+  /// 같은 칸을 둘이 다르게 바꿨으면 [choice]대로 고르고, 없으면 쓰지 않고 [EntryEditConflict]를 던진다.
   Future<void> update({
     required String ledgerId,
     required String id,
     required YearMonth month,
     required TemplateDraft draft,
+    required EntryDraft base,
     required EntryDraft entry,
     required List<YearMonth> laterMonths,
     required String uid,
+    bool amountForLater = false,
+    EditConflictChoice? choice,
   });
 
   /// [id] 고정 지출·고정 수입을 그만한다. 반복 설정을 지우고 [month]와 [laterMonths]의 지급 전·받기 전 항목을

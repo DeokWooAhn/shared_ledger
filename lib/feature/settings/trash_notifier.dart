@@ -138,7 +138,7 @@ class TrashNotifier extends Notifier<TrashState> {
           EntryWriteFailure.notFound => TrashFailure.gone,
         },
       );
-    } catch (e) {
+    } on Exception catch (e) {
       debugPrint('휴지통 ${action.name} 실패: $e');
       if (!ref.mounted) return;
       state = TrashState(

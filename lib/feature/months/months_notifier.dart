@@ -75,7 +75,7 @@ class MonthsNotifier extends Notifier<MonthsState> {
         },
       );
       return false;
-    } catch (e) {
+    } on Exception catch (e) {
       debugPrint('달 추가 실패: $e');
       if (!ref.mounted) return false;
       state = const MonthsState(failure: MonthsFailure.add);

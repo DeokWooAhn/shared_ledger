@@ -11,6 +11,7 @@ import 'package:shared_ledger/domain/repository/templates_repository.dart';
 import 'package:shared_ledger/domain/model/activity.dart';
 import 'package:shared_ledger/domain/model/auth_user.dart';
 import 'package:shared_ledger/domain/model/category.dart';
+import 'package:shared_ledger/domain/model/entry_edit.dart';
 import 'package:shared_ledger/domain/model/expense_template.dart';
 import 'package:shared_ledger/domain/model/holidays.dart';
 import 'package:shared_ledger/domain/model/invite.dart';
@@ -74,7 +75,7 @@ class FakeAuthRepository implements AuthRepository {
   Future<bool> _signIn() async {
     if (failNextSignIn) {
       failNextSignIn = false;
-      throw StateError('sign-in failed');
+      throw FakeFailure('sign-in failed');
     }
     if (cancelNextSignIn) return false;
     _set(signInAs);
@@ -86,7 +87,7 @@ class FakeAuthRepository implements AuthRepository {
     signOutCalls++;
     if (failNextSignOut) {
       failNextSignOut = false;
-      throw StateError('sign-out failed');
+      throw FakeFailure('sign-out failed');
     }
     _set(null);
   }
@@ -95,6 +96,17 @@ class FakeAuthRepository implements AuthRepository {
     _user = user;
     _changes.add(user);
   }
+}
+
+/// 가짜 저장소가 흉내 내는 예상 밖 실패(네트워크 오류 등). 실제 저장소의 `FirebaseException`처럼 [Exception]이라
+/// Notifier가 화면용 실패로 바꾼다. 프로그래밍 오류(`StateError` 같은 [Error])와 섞이지 않게 따로 둔다.
+class FakeFailure implements Exception {
+  const FakeFailure(this.message);
+
+  final String message;
+
+  @override
+  String toString() => 'FakeFailure($message)';
 }
 
 /// 화면 테스트용 가짜 가계부 저장소.
@@ -131,7 +143,15 @@ class FakeLedgerRepository with LogsActivity implements LedgerRepository {
   /// true면 다음 이름 바꾸기가 [SettingsWriteException]이 아닌 오류로 실패한다.
   bool failNextRename = false;
 
-  static Never _fail(String what) => throw StateError('$what failed');
+  static Never _fail(String what) => throw FakeFailure('$what failed');
+
+  /// 그사이 가계부 목록이 바뀐 것처럼(나간 가계부가 빠지거나 다른 가계부가 앞에 오거나) 목록을 [ledgers]로 바꾼다.
+  void replaceAll(List<Ledger> ledgers) {
+    _ledgers
+      ..clear()
+      ..addAll(ledgers);
+    _changes.add(null);
+  }
 
   // 실제 가계부처럼 같은 id의 문서를 바꾼다.
   static Ledger _copy(
@@ -283,7 +303,7 @@ class FakeLedgerRepository with LogsActivity implements LedgerRepository {
     required String ledgerId,
     required Iterable<YearMonth> months,
   }) async {
-    if (offline) throw StateError('recordMonths offline');
+    if (offline) throw FakeFailure('recordMonths offline');
     final index = _ledgers.indexWhere((l) => l.id == ledgerId);
     if (index < 0) return;
     recordedMonths.add((ledgerId: ledgerId, months: {...months}));
@@ -616,7 +636,7 @@ class FakeSettingsRepository with LogsActivity implements SettingsRepository {
   void _checkOnline() {
     if (failNextWrite) {
       failNextWrite = false;
-      throw StateError('write failed');
+      throw FakeFailure('write failed');
     }
     if (offline) {
       throw const SettingsWriteException(SettingsWriteFailure.offline);
@@ -718,7 +738,7 @@ class FakeEntriesRepository with LogsActivity implements EntriesRepository {
         watched.add((ledgerId: ledgerId, month: month));
         if (failNextWatch) {
           failNextWatch = false;
-          controller.addError(StateError('watchMonth failed'));
+          controller.addError(FakeFailure('watchMonth failed'));
           return;
         }
         changes = _changes.stream.listen((_) => controller.add(monthOf(month)));
@@ -737,6 +757,9 @@ class FakeEntriesRepository with LogsActivity implements EntriesRepository {
 
   /// 달 목록을 같이 고칠 가짜 가계부 저장소. [linkActivity]가 잇는다.
   FakeLedgerRepository? ledgers;
+
+  /// 자동 채우기가 지금 값을 다시 읽을 가짜 반복 설정 저장소. [linkActivity]가 잇는다.
+  FakeTemplatesRepository? templateSource;
 
   void _recordMonth(String ledgerId, YearMonth month) {
     recordedMonths.add(month);
@@ -785,16 +808,29 @@ class FakeEntriesRepository with LogsActivity implements EntriesRepository {
     required String ledgerId,
     required YearMonth month,
     required String id,
+    required EntryDraft base,
     required EntryDraft draft,
     required String uid,
+    EditConflictChoice? choice,
   }) async {
     _checkOnline();
     final before = _live(month, draft.kind, id);
+    // 실제처럼 지금 값과 칸마다 견주어 내가 바꾼 칸만 쓰고, 같은 칸이 겹치면 쓰지 않는다.
+    final theirs = EntryDraft.of(before);
+    final (:merged, :conflicts) = mergeEntryEdit(
+      base: base,
+      mine: draft,
+      theirs: theirs,
+      choice: choice,
+    );
+    if (conflicts.isNotEmpty) {
+      throw EntryEditConflict(fields: conflicts, theirs: theirs, mine: draft);
+    }
     updated.add((
       ledgerId: ledgerId,
       month: month,
       id: id,
-      draft: draft,
+      draft: merged,
       uid: uid,
     ));
     _edit(
@@ -802,7 +838,7 @@ class FakeEntriesRepository with LogsActivity implements EntriesRepository {
       draft.kind,
       (entries) => [
         for (final entry in entries)
-          entry.id == id ? _entryOf(id, draft) : entry,
+          entry.id == id ? _entryOf(id, merged) : entry,
       ],
     );
     logActivity(
@@ -810,8 +846,8 @@ class FakeEntriesRepository with LogsActivity implements EntriesRepository {
         ActivityAction.entryUpdate,
         month: month,
         kind: draft.kind,
-        entry: draft,
-        before: EntryDraft.of(before),
+        entry: merged,
+        before: theirs,
       ),
       uid,
     );
@@ -938,7 +974,18 @@ class FakeEntriesRepository with LogsActivity implements EntriesRepository {
     bool recordMonth = false,
   }) async {
     _checkOnline();
-    final missing = templatesMissingIn(monthOf(month), templates);
+    // 실제처럼 넘겨받은 목록 대신 잇는 가짜 반복 설정 저장소([templateSource])의 지금 값으로 채운다.
+    // 그사이 그만한(지운) 반복 설정은 건너뛴다.
+    final source = templateSource;
+    final current = source == null
+        ? templates
+        : [
+            for (final template in templates)
+              ?source.templates
+                  .where((saved) => saved.id == template.id)
+                  .firstOrNull,
+          ];
+    final missing = templatesMissingIn(monthOf(month), current);
     filled.add((
       ledgerId: ledgerId,
       month: month,
@@ -977,7 +1024,7 @@ class FakeEntriesRepository with LogsActivity implements EntriesRepository {
   void _failIfAsked() {
     if (failNextWrite) {
       failNextWrite = false;
-      throw StateError('write failed');
+      throw FakeFailure('write failed');
     }
   }
 
@@ -1232,14 +1279,38 @@ class FakeTemplatesRepository with LogsActivity implements TemplatesRepository {
     required String id,
     required YearMonth month,
     required TemplateDraft draft,
+    required EntryDraft base,
     required EntryDraft entry,
     required List<YearMonth> laterMonths,
     required String uid,
+    bool amountForLater = false,
+    EditConflictChoice? choice,
   }) async {
     _checkOnline();
     final before = _existing(id);
     final kind = draft.kind;
     final entryBefore = _liveEntry(month, kind, id);
+    // 실제처럼 그달 항목은 지금 값과 칸마다 견주어 합치고, 반복 설정이 따르는 칸도 합친 값으로 맞춘다.
+    final theirs = entryBefore == null ? base : EntryDraft.of(entryBefore);
+    final (merged: mergedEntry, :conflicts) = mergeEntryEdit(
+      base: base,
+      mine: entry,
+      theirs: theirs,
+      choice: choice,
+    );
+    if (conflicts.isNotEmpty) {
+      throw EntryEditConflict(fields: conflicts, theirs: theirs, mine: entry);
+    }
+    draft = TemplateDraft(
+      kind: draft.kind,
+      memberId: mergedEntry.memberId,
+      title: mergedEntry.title.trim(),
+      amount: amountForLater ? mergedEntry.amount : draft.amount,
+      categoryId: mergedEntry.categoryId,
+      paymentMethodId: mergedEntry.paymentMethodId,
+      dueDay: draft.dueDay,
+    );
+    entry = mergedEntry;
     updated.add((
       ledgerId: ledgerId,
       id: id,
@@ -1371,7 +1442,7 @@ class FakeTemplatesRepository with LogsActivity implements TemplatesRepository {
   void _checkOnline() {
     if (failNextWrite) {
       failNextWrite = false;
-      throw StateError('write failed');
+      throw FakeFailure('write failed');
     }
     if (offline) {
       throw const TemplateWriteException(TemplateWriteFailure.offline);
@@ -1493,7 +1564,7 @@ class FakeActivityRepository implements ActivityRepository {
     watched.add(ledgerId);
     if (failNextWatch) {
       failNextWatch = false;
-      return Stream.error(StateError('watchRecent failed'));
+      return Stream.error(FakeFailure('watchRecent failed'));
     }
     return Stream.multi((controller) {
       controller.add([..._newestFirst.take(limit)]);
@@ -1513,7 +1584,7 @@ class FakeActivityRepository implements ActivityRepository {
     loads.add((ledgerId: ledgerId, before: before, limit: limit));
     if (failNextLoad) {
       failNextLoad = false;
-      throw StateError('loadOlder failed');
+      throw FakeFailure('loadOlder failed');
     }
     return [
       ..._newestFirst
