@@ -214,6 +214,7 @@ Flutter의 `TextEditingController`·`ScrollController`와 헷갈리지 않게 �
 - **고치기는 통째로 덮어쓰지 않는다.** 화면을 열 때의 값과 트랜잭션에서 읽은 서버 값을 칸마다 견주어(`mergeEntryEdit`) 내가 바꾼 칸만 쓰고,
   같은 칸이 겹치면 `EntryEditConflict`로 묻는다. 캐시에서 온 목록(반복 설정 등)으로 쓰기를 정하면 트랜잭션에서 원본을 다시 읽는다(`fillPlanned`).
 - 가계부 문서는 지우지 않는다(규칙도 막는다). 하위 컬렉션이 남아 같은 ID로 다시 만들면 읽힌다(`docs/firestore.md`).
+  같은 까닭으로 새 가계부 ID는 만든 사람 uid로 시작한다(`newLedgerId`, 규칙이 이 모양만 받는다).
 - **공급자**(`lib/core/providers/providers.dart`): 다른 공급자는 `ref.watch`로 의존하고, 구독은 UseCase 홀더의 `watch…`로 연다. 로그인하지 않았으면 빈 값을 내보낸다.
   공급자 본문에서 쓰기 같은 부수효과를 일으키지 않는다.
 

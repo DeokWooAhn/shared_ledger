@@ -187,24 +187,24 @@ function joinUpdate(uid, role, code) {
 
 describe('가계부 만들기와 읽기', () => {
   test('로그인하면 자기를 관리자로 하는 가계부를 만들 수 있다', async () => {
-    await assertSucceeds(setDoc(ledgerRef(firestoreAs(NEWCOMER), 'new-ledger'), newLedger(NEWCOMER)));
+    await assertSucceeds(setDoc(ledgerRef(firestoreAs(NEWCOMER), `${NEWCOMER}_ledger1`), newLedger(NEWCOMER)));
   });
 
   test('다른 사람을 관리자로 하거나 구성원을 미리 넣어서 만들 수 없다', async () => {
     const db = firestoreAs(NEWCOMER);
     await assertFails(
-      setDoc(ledgerRef(db, 'l-a'), newLedger(NEWCOMER, { ownerUid: OUTSIDER, memberUids: [OUTSIDER] })),
+      setDoc(ledgerRef(db, `${NEWCOMER}_a`), newLedger(NEWCOMER, { ownerUid: OUTSIDER, memberUids: [OUTSIDER] })),
     );
     await assertFails(
       setDoc(
-        ledgerRef(db, 'l-b'),
+        ledgerRef(db, `${NEWCOMER}_b`),
         newLedger(NEWCOMER, { roles: { [OUTSIDER]: 'editor' }, memberUids: [NEWCOMER, OUTSIDER] }),
       ),
     );
   });
 
   test('로그인하지 않으면 가계부를 만들 수 없다', async () => {
-    await assertFails(setDoc(ledgerRef(firestoreAs(null), 'l-anon'), newLedger('anon')));
+    await assertFails(setDoc(ledgerRef(firestoreAs(null), 'anon_ledger'), newLedger('anon')));
   });
 
   test('구성원은 가계부를 읽을 수 있고, 구성원이 아니면 읽을 수 없다', async () => {
@@ -302,19 +302,29 @@ describe('구성원 관리', () => {
     await assertFails(deleteDoc(ledgerRef(firestoreAs(OWNER))));
   });
 
-  test('하위 문서가 남은 ID로는 새 가계부를 만들 수 없어 남은 내역을 읽지 못한다', async () => {
+  test('만든 사람 uid로 시작하는 ID(uid_무작위)로만 가계부를 만들 수 있다', async () => {
+    const db = firestoreAs(NEWCOMER);
+    await assertFails(setDoc(ledgerRef(db, 'aB3dE5gH7jK9mN1pQ3sT'), newLedger(NEWCOMER)));
+    await assertFails(setDoc(ledgerRef(db, `${OUTSIDER}_ledger`), newLedger(NEWCOMER)));
+    await assertFails(setDoc(ledgerRef(db, NEWCOMER), newLedger(NEWCOMER)));
+    await assertFails(setDoc(ledgerRef(db, `${NEWCOMER}_a_b`), newLedger(NEWCOMER)));
+    await assertSucceeds(setDoc(ledgerRef(db, `${NEWCOMER}_aB3dE5gH7jK9mN1pQ3sT`), newLedger(NEWCOMER)));
+  });
+
+  test('예전 규칙으로 지워져 하위 문서만 남은 옛 ID는 이름표가 없어도 다시 만들 수 없어 남은 내역을 읽지 못한다', async () => {
+    // 이름표(members/owner)가 생기기 전에 만든 옛 가계부가 지워져 항목만 남은 경우.
     await seed(async (db) => {
-      await setDoc(doc(db, 'ledgers', 'reused', 'members', 'owner'), { name: '예전 관리자' });
-      await setDoc(entryRef(db, { ledger: 'reused' }), newEntry(OWNER));
+      await setDoc(entryRef(db, { ledger: 'oldRandomId20charsXy' }), newEntry(OWNER));
     });
 
     const db = firestoreAs(OUTSIDER);
-    await assertFails(setDoc(ledgerRef(db, 'reused'), newLedger(OUTSIDER)));
-    await assertFails(getDoc(entryRef(db, { ledger: 'reused' })));
-    // 처음 쓰는 ID는 지금처럼 관리자 이름표와 함께 만들 수 있다.
+    await assertFails(setDoc(ledgerRef(db, 'oldRandomId20charsXy'), newLedger(OUTSIDER)));
+    await assertFails(getDoc(entryRef(db, { ledger: 'oldRandomId20charsXy' })));
+    // 내 uid로 시작하는 새 ID는 지금처럼 관리자 이름표와 함께 만들 수 있다.
+    const fresh = `${OUTSIDER}_fresh`;
     const batch = writeBatch(db);
-    batch.set(ledgerRef(db, 'fresh'), newLedger(OUTSIDER));
-    batch.set(doc(db, 'ledgers', 'fresh', 'members', 'owner'), {
+    batch.set(ledgerRef(db, fresh), newLedger(OUTSIDER));
+    batch.set(doc(db, 'ledgers', fresh, 'members', 'owner'), {
       name: '새 관리자',
       createdBy: OUTSIDER,
       updatedBy: OUTSIDER,
@@ -1074,16 +1084,17 @@ describe('가계부 설정', () => {
 
   test('가계부를 만들면서 이름표·분류·결제수단을 한 번의 일괄 쓰기로 넣을 수 있다', async () => {
     const db = firestoreAs(NEWCOMER);
+    const LEDGER_ID = `${NEWCOMER}_ledger2`;
     const batch = writeBatch(db);
-    batch.set(ledgerRef(db, 'new-ledger'), newLedger(NEWCOMER));
-    batch.set(settingRef(db, 'new-ledger', 'members', 'owner'), setting(NEWCOMER, { name: '하늘' }));
-    batch.set(settingRef(db, 'new-ledger', 'members', 'partner'), setting(NEWCOMER, { name: '상대' }));
+    batch.set(ledgerRef(db, LEDGER_ID), newLedger(NEWCOMER));
+    batch.set(settingRef(db, LEDGER_ID, 'members', 'owner'), setting(NEWCOMER, { name: '하늘' }));
+    batch.set(settingRef(db, LEDGER_ID, 'members', 'partner'), setting(NEWCOMER, { name: '상대' }));
     batch.set(
-      settingRef(db, 'new-ledger', 'categories', 'c1'),
+      settingRef(db, LEDGER_ID, 'categories', 'c1'),
       setting(NEWCOMER, { name: '소비', countsAsSaving: false, order: 0 }),
     );
     batch.set(
-      settingRef(db, 'new-ledger', 'paymentMethods', 'p1'),
+      settingRef(db, LEDGER_ID, 'paymentMethods', 'p1'),
       setting(NEWCOMER, { name: '공동 통장', kind: 'account', order: 0 }),
     );
     await assertSucceeds(batch.commit());
@@ -1300,13 +1311,13 @@ describe('항목 있는 달 목록 (months)', () => {
   // 앱은 그달에 처음 항목을 넣을 때 arrayUnion으로 더하고, 목록이 없던 가계부는 처음 열 때 한 번 모아 적는다.
   test('새 가계부는 빈 목록이나 처음 고른 달 하나로 만들 수 있고, 그 밖의 달 목록으로는 만들 수 없다', async () => {
     const db = firestoreAs(NEWCOMER);
-    await assertSucceeds(setDoc(ledgerRef(db, 'l-months'), newLedger(NEWCOMER, { months: [] })));
+    await assertSucceeds(setDoc(ledgerRef(db, `${NEWCOMER}_m1`), newLedger(NEWCOMER, { months: [] })));
     // 가계부를 만들 때 고른 첫 달 하나는 같이 받는다(2026-10-29).
-    await assertSucceeds(setDoc(ledgerRef(db, 'l-months-2'), newLedger(NEWCOMER, { months: [MONTH] })));
-    await assertFails(setDoc(ledgerRef(db, 'l-months-3'), newLedger(NEWCOMER, { months: [MONTH, '2026-11'] })));
-    await assertFails(setDoc(ledgerRef(db, 'l-months-4'), newLedger(NEWCOMER, { months: ['2026-13'] })));
-    await assertFails(setDoc(ledgerRef(db, 'l-months-5'), newLedger(NEWCOMER, { months: [202610] })));
-    await assertFails(setDoc(ledgerRef(db, 'l-months-6'), newLedger(NEWCOMER, { months: MONTH })));
+    await assertSucceeds(setDoc(ledgerRef(db, `${NEWCOMER}_m2`), newLedger(NEWCOMER, { months: [MONTH] })));
+    await assertFails(setDoc(ledgerRef(db, `${NEWCOMER}_m3`), newLedger(NEWCOMER, { months: [MONTH, '2026-11'] })));
+    await assertFails(setDoc(ledgerRef(db, `${NEWCOMER}_m4`), newLedger(NEWCOMER, { months: ['2026-13'] })));
+    await assertFails(setDoc(ledgerRef(db, `${NEWCOMER}_m5`), newLedger(NEWCOMER, { months: [202610] })));
+    await assertFails(setDoc(ledgerRef(db, `${NEWCOMER}_m6`), newLedger(NEWCOMER, { months: MONTH })));
   });
 
   test('관리자와 편집자는 달을 더할 수 있고, 보기 전용과 구성원이 아닌 사람은 못 한다', async () => {
