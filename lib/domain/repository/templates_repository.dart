@@ -44,23 +44,25 @@ abstract interface class TemplatesRepository {
     bool recordMonth = false,
   });
 
-  /// [id] 고정 지출·고정 수입을 고친다. [month]의 항목은 [entry]로, 반복 설정은 [draft]로 바꾼다.
-  /// [laterMonths]의 지급 전·받기 전 항목은 반복 설정과 같은 칸(제목·분류·결제수단·누가·예정일)을 맞추고,
-  /// 금액은 반복 설정의 금액이 바뀌었을 때만 맞춘다. 반복 설정이나 [month]의 항목이 그사이 없어졌으면 notFound로 실패한다.
+  /// [id] 고정 지출·고정 수입을 고친다. [month]의 항목은 [entry]로 고치고, 반복 설정에는 이번에 내가 바꾼 칸만 얹는다.
+  /// 반복 설정이나 [month]의 항목이 그사이 없어졌으면 notFound로 실패한다.
   ///
   /// [base]는 고치기 화면을 열 때의 그달 항목 값이다. 그달 항목은 서버의 지금 값과 칸마다 견주어([mergeEntryEdit])
-  /// 내가 바꾼 칸만 쓰고, 반복 설정과 뒤 달이 따르는 칸(제목·분류·결제수단·누가)도 합친 값으로 맞춘다.
-  /// 반복 설정의 금액은 [amountForLater]면 합친 그달 금액, 아니면 [draft]의 금액이다.
-  /// 같은 칸을 둘이 다르게 바꿨으면 [choice]대로 고르고, 없으면 쓰지 않고 [EntryEditConflict]를 던진다.
+  /// 내가 바꾼 칸만 쓴다. 같은 칸을 둘이 다르게 바꿨으면 [choice]대로 고르고, 없으면 쓰지 않고 [EntryEditConflict]를 던진다.
+  /// 반복 설정은 서버의 지금 값에 [templateAfterEdit]로 내가 바꾼 칸(합친 결과에 남은 것)만 얹는다. [dueDay]는 새로 고른
+  /// 매달 예정일이고 고르지 않았으면 null이다. [amountForLater]면 금액도 합친 그달 금액으로 바꾼다.
+  /// 서버의 반복 설정 모양이 잘못돼 읽지 못하면 화면이 알던 반복 설정 [template]에 얹는다.
+  /// [laterMonths]의 지급 전·받기 전 항목은 반복 설정에서 바뀐 칸만 맞춘다(뒤 달에서 따로 바뀐 다른 칸은 덮지 않는다).
   Future<void> update({
     required String ledgerId,
     required String id,
     required YearMonth month,
-    required TemplateDraft draft,
+    required TemplateDraft template,
     required EntryDraft base,
     required EntryDraft entry,
     required List<YearMonth> laterMonths,
     required String uid,
+    int? dueDay,
     bool amountForLater = false,
     EditConflictChoice? choice,
   });

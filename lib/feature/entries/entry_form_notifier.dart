@@ -126,7 +126,7 @@ class EntryFormState {
   final DateTime? date;
 
   /// 고정 지출·고정 수입의 매달 예정일(1~31, 31은 말일). 고치는 항목에서 아직 고르지 않았으면 null이고,
-  /// 그때는 반복 설정의 예정일을 쓴다([EntryFormNotifier.templateOf]).
+  /// 그때는 반복 설정의 예정일을 보여 주며([EntryFormNotifier.templateOf]) 저장해도 예정일을 바꾸지 않는다.
   final int? dueDay;
 
   /// 고치는 고정 지출·고정 수입의 금액을 다음 달부터도 쓸지('다음 달부터도 이 금액으로'). 끄면 그달만 바뀐다.
@@ -516,7 +516,8 @@ class EntryFormNotifier extends Notifier<EntryFormState> {
             template: template,
             original: original,
             entry: draft,
-            dueDay: dueDay,
+            // 고치기에는 새로 고른 예정일만 넘긴다. 고르지 않았으면 반복 설정과 그달 예정일을 그대로 둔다.
+            dueDay: state.dueDay,
             amountForLater: state.amountForLater,
             uid: uid,
             choice: choice,
