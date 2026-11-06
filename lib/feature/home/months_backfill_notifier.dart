@@ -50,7 +50,7 @@ class MonthsBackfillNotifier extends Notifier<bool> {
       await ref.read(monthUseCasesProvider).backfillMonths(backfill);
     } on EntryWriteException catch (e) {
       debugPrint('항목 있는 달을 모으지 못해 다음에 다시 모음: ${e.reason}');
-    } catch (e) {
+    } on Exception catch (e) {
       debugPrint('항목 있는 달 모으기 실패: $e');
     } finally {
       if (ref.mounted) state = false;

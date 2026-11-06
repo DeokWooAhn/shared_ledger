@@ -143,7 +143,7 @@ class RenameNotifier extends Notifier<RenameState> {
     } on SettingsWriteException catch (e) {
       if (!ref.mounted) return;
       state = RenameState(failure: settingFormFailureOf(e.reason));
-    } catch (e) {
+    } on Exception catch (e) {
       debugPrint('이름 바꾸기 실패: $e');
       if (!ref.mounted) return;
       state = const RenameState(failure: SettingFormFailure.save);

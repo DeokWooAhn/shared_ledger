@@ -1,9 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/providers/providers.dart';
 import '../../core/widget/entry_kind_label.dart';
 import '../../domain/model/category.dart';
+import '../../domain/model/entry_edit.dart';
 import '../../domain/model/ledger_entries.dart';
 import '../../domain/model/member.dart';
 import '../../domain/model/payment_method.dart';
@@ -12,11 +15,13 @@ import '../../core/widget/keep_all.dart';
 import '../../core/widget/labeled_field.dart';
 import '../../core/widget/won_input.dart';
 import 'due_day_sheet.dart';
+import 'edit_conflict_dialog.dart';
 import 'entry_form_notifier.dart';
 import 'entry_kind_sheet.dart';
 
 /// 입력란 아래에 보여 줄 문구.
 String entryProblemMessage(EntryProblem problem) => switch (problem) {
+  EntryProblem.memberInvalid => '누구 몫인지 골라 주세요.',
   EntryProblem.amountMissing => '금액을 입력해 주세요.',
   EntryProblem.amountNegative => '금액은 0원부터 적을 수 있어요.',
   EntryProblem.titleMissing => '내용을 입력해 주세요.',
@@ -32,6 +37,7 @@ String entryFormFailureMessage(EntryFormFailure failure) => switch (failure) {
   EntryFormFailure.offline =>
     '인터넷에 연결된 뒤에 다시 시도해 주세요. 고정 지출·고정 수입과 고치기·휴지통은 연결돼 있을 때만 돼요.',
   EntryFormFailure.gone => '그사이 휴지통에 들어갔거나 지워진 항목이에요.',
+  EntryFormFailure.ledgerChanged => '가계부가 바뀌어 저장하지 않았어요.\n입력을 다시 열어 주세요.',
   EntryFormFailure.save => '저장하지 못했어요. 잠시 후 다시 시도해 주세요.',
   EntryFormFailure.trash => '휴지통에 넣지 못했어요. 잠시 후 다시 시도해 주세요.',
   EntryFormFailure.stop => '그만하지 못했어요. 잠시 후 다시 시도해 주세요.',
@@ -103,9 +109,20 @@ class _EntryFormScreenState extends ConsumerState<EntryFormScreen> {
     super.dispose();
   }
 
-  void _save() => ref
+  void _save({EditConflictChoice? choice}) => ref
       .read(entryFormNotifierProvider(widget.args).notifier)
-      .save(amount: _amount.text, title: _title.text, memo: _memo.text);
+      .save(
+        amount: _amount.text,
+        title: _title.text,
+        memo: _memo.text,
+        choice: choice,
+      );
+
+  // 상대와 같은 칸이 겹쳐 저장하지 않았으면 어느 값을 남길지 묻고, 고르면 그대로 다시 저장한다.
+  Future<void> _resolve(EntryEditConflict conflict) async {
+    final choice = await showEditConflictDialog(context, conflict);
+    if (choice != null && mounted) _save(choice: choice);
+  }
 
   Future<void> _pickKind(EntryKind selected) async {
     final picked = await showEntryKindSheet(context, selected: selected);
@@ -163,6 +180,18 @@ class _EntryFormScreenState extends ConsumerState<EntryFormScreen> {
         SnackBar(content: Text(keepAll(entryFormFailureMessage(failure)))),
       );
       notifier.failureShown();
+    });
+    ref.listen(provider.select((s) => s.conflict), (_, conflict) {
+      if (conflict == null) return;
+      notifier.conflictShown();
+      unawaited(_resolve(conflict));
+    });
+    // 쓰던 가계부가 다른 가계부로 바뀌면, 다른 가계부에 저장되지 않게 알리고 닫는다.
+    ref.listen(currentLedgerProvider.select((ledger) => ledger?.id), (_, _) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(keepAll('가계부가 바뀌어 입력을 닫았어요.'))));
+      unawaited(Navigator.of(context).maybePop());
     });
     ref.listen(provider.select((s) => s.outcome), (_, outcome) {
       if (outcome != null) Navigator.of(context).pop(outcome);
@@ -254,6 +283,7 @@ class _EntryFormScreenState extends ConsumerState<EntryFormScreen> {
         ),
       ChoiceGroup(
         label: '누가',
+        errorText: errorOf({EntryProblem.memberInvalid}),
         children: [
           for (final slot in MemberSlot.values)
             ChoicePill(

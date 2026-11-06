@@ -11,7 +11,7 @@ Future<void> signOutWithFeedback(BuildContext context, WidgetRef ref) async {
   final messenger = ScaffoldMessenger.of(context);
   try {
     await ref.read(authUseCasesProvider).signOut();
-  } catch (e) {
+  } on Exception catch (e) {
     messenger.showSnackBar(
       SnackBar(content: Text(keepAll('로그아웃하지 못했어요. 잠시 후 다시 시도해 주세요.'))),
     );

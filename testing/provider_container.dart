@@ -10,6 +10,12 @@ import 'fakes.dart';
 /// 테스트의 '지금'. 날짜에 따라 결과가 흔들리지 않게 고정한다.
 final testNow = DateTime(2026, 10, 15, 9);
 
+/// 테스트에서는 실패한 공급자를 다시 시도하지 않는다. 실패 화면을 바로 보려는 것이다.
+///
+/// 실제 앱은 Riverpod 기본값대로 [Exception](Firestore의 `FirebaseException`, 가짜의 [FakeFailure])이면
+/// 최대 10번까지 간격을 늘려 가며 다시 시도하고, [Error](프로그래밍 오류)는 다시 시도하지 않는다.
+Duration? noRetry(int retryCount, Object error) => null;
+
 /// 쓰기를 하는 가짜 저장소들이 같은 변경 기록 저장소에 기록을 남기게 잇는다. 넘기지 않은 것은 새로 만든다.
 ({
   FakeSettingsRepository settings,
@@ -42,6 +48,8 @@ linkActivity({
   linked.entries.ledgers ??= ledgers;
   // 고정 지출을 더하거나 그만하면 그달 항목도 같이 바뀐다(실제는 같은 트랜잭션).
   linked.templates.entries ??= linked.entries;
+  // 자동 채우기는 반복 설정을 같은 트랜잭션에서 다시 읽는다.
+  linked.entries.templateSource ??= linked.templates;
   return linked;
 }
 
@@ -65,6 +73,7 @@ ProviderContainer createContainer({
     activity: activity,
   );
   final container = ProviderContainer(
+    retry: noRetry,
     overrides: [
       authRepositoryProvider.overrideWithValue(auth ?? FakeAuthRepository()),
       ledgerRepositoryProvider.overrideWithValue(ledgerFake),

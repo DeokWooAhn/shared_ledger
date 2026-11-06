@@ -330,7 +330,10 @@ void main() {
       final container = await signedIn(
         FakeEntriesRepository()..failNextWatch = true,
       );
-      await expectLater(selectedMonthLedger(container), throwsStateError);
+      await expectLater(
+        selectedMonthLedger(container),
+        throwsA(isA<FakeFailure>()),
+      );
 
       expect(container.read(monthSummaryProvider).hasError, isTrue);
     });

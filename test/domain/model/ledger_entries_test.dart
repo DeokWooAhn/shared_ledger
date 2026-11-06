@@ -39,5 +39,41 @@ void main() {
       expect(entryProblemsOf(draft(0)), isEmpty);
       expect(entryProblemsOf(draft(-1)), {EntryProblem.amountNegative});
     });
+
+    test('누가는 이름표 자리여야 하고, 분류·결제수단·카드는 빈 id면 고르지 않은 것으로 본다', () {
+      EntryDraft planned({
+        String memberId = 'owner',
+        String? categoryId = 'c1',
+        String? paymentMethodId = 'p1',
+      }) => EntryDraft(
+        kind: EntryKind.planned,
+        memberId: memberId,
+        amount: 1000,
+        title: '관리비',
+        categoryId: categoryId,
+        paymentMethodId: paymentMethodId,
+      );
+
+      expect(entryProblemsOf(planned()), isEmpty);
+      expect(entryProblemsOf(planned(memberId: 'partner')), isEmpty);
+      expect(entryProblemsOf(planned(memberId: 'someone')), {
+        EntryProblem.memberInvalid,
+      });
+      expect(entryProblemsOf(planned(categoryId: ' ', paymentMethodId: '')), {
+        EntryProblem.categoryMissing,
+        EntryProblem.paymentMethodMissing,
+      });
+      expect(
+        entryProblemsOf(
+          const EntryDraft(
+            kind: EntryKind.cardBill,
+            memberId: 'owner',
+            amount: 1000,
+            cardId: '',
+          ),
+        ),
+        {EntryProblem.cardMissing},
+      );
+    });
   });
 }

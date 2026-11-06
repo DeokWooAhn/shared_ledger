@@ -587,6 +587,21 @@ void main() {
       expect(ledger.cardBills.map((e) => e.id), ['b1']);
     });
 
+    test('만든 한 달 항목의 목록은 바꿀 수 없어, 받은 쪽이 고쳐 알림 없이 값이 바뀌지 않는다', () {
+      final ledger = monthLedgerFromFirestore(
+        incomes: [
+          doc('i1', {'memberId': 'owner', 'amount': 1000}),
+        ],
+        planned: const [],
+        extras: const [],
+        cardBills: const [],
+      );
+
+      expect(() => ledger.incomes.clear(), throwsUnsupportedError);
+      expect(() => ledger.trashed.clear(), throwsUnsupportedError);
+      expect(() => ledger.cardBills.clear(), throwsUnsupportedError);
+    });
+
     test('고정 지출 문서 id는 휴지통 항목과 읽을 수 없는 문서까지 모은다', () {
       // 고정 지출로 채울 때 이 id의 문서를 다시 만들지 않는다.
       const planned = {

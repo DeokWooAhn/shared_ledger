@@ -127,7 +127,7 @@ void main() {
 
       await expectLater(
         useCases.joinLedger(input: 'ABCDEFGH23', uid: 'me'),
-        throwsStateError,
+        throwsA(isA<FakeFailure>()),
       );
     });
   });

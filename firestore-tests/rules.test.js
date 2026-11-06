@@ -296,9 +296,32 @@ describe('구성원 관리', () => {
     await assertFails(rename(''));
   });
 
-  test('관리자만 가계부를 삭제할 수 있다', async () => {
+  // 가계부 문서만 지우면 하위 내역이 남아, 같은 ID로 새로 만든 사람이 읽을 수 있었다.
+  test('관리자도 가계부 문서를 지울 수 없다', async () => {
     await assertFails(deleteDoc(ledgerRef(firestoreAs(EDITOR))));
-    await assertSucceeds(deleteDoc(ledgerRef(firestoreAs(OWNER))));
+    await assertFails(deleteDoc(ledgerRef(firestoreAs(OWNER))));
+  });
+
+  test('하위 문서가 남은 ID로는 새 가계부를 만들 수 없어 남은 내역을 읽지 못한다', async () => {
+    await seed(async (db) => {
+      await setDoc(doc(db, 'ledgers', 'reused', 'members', 'owner'), { name: '예전 관리자' });
+      await setDoc(entryRef(db, { ledger: 'reused' }), newEntry(OWNER));
+    });
+
+    const db = firestoreAs(OUTSIDER);
+    await assertFails(setDoc(ledgerRef(db, 'reused'), newLedger(OUTSIDER)));
+    await assertFails(getDoc(entryRef(db, { ledger: 'reused' })));
+    // 처음 쓰는 ID는 지금처럼 관리자 이름표와 함께 만들 수 있다.
+    const batch = writeBatch(db);
+    batch.set(ledgerRef(db, 'fresh'), newLedger(OUTSIDER));
+    batch.set(doc(db, 'ledgers', 'fresh', 'members', 'owner'), {
+      name: '새 관리자',
+      createdBy: OUTSIDER,
+      updatedBy: OUTSIDER,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+    await assertSucceeds(batch.commit());
   });
 });
 

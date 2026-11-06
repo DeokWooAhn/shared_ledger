@@ -95,7 +95,10 @@ service cloud.firestore {
         && request.resource.data.roles == {}
         && request.resource.data.memberUids == [uid()]
         && request.resource.data.createdAt == request.time
-        && request.resource.data.updatedAt == request.time;
+        && request.resource.data.updatedAt == request.time
+        // 가계부 문서가 없어도 하위 문서(설정·항목)가 남은 ID로는 만들 수 없다. 남은 내역이 새 관리자에게 읽히지 않게 한다.
+        // 관리자 이름표(members/owner)는 가계부와 같은 일괄 쓰기로 생기고 지울 수 없어서, 하위 문서가 남았는지 알려준다.
+        && !exists(/databases/$(database)/documents/ledgers/$(ledgerId)/members/owner);
 
       // 관리자: 이름 변경, 역할 변경, 내보내기. 구성원을 직접 추가할 수는 없다(초대로만).
       function ownerManages() {
@@ -160,7 +163,8 @@ service cloud.firestore {
       }
 
       allow update: if ownerManages() || leavesSelf() || joinsWithInvite() || recordsMonths();
-      allow delete: if signedIn() && resource.data.ownerUid == uid();
+      // 가계부 문서만 지우면 하위 컬렉션(설정·항목·변경 기록)이 남는다. 앱에서는 지우지 않고, 탈퇴는 서버에서 하위까지 지운다(docs/plan.md).
+      allow delete: if false;
 
       // ---------- 가계부 설정: 구성원 이름표, 분류, 결제수단, 고정 지출 템플릿 ----------
 

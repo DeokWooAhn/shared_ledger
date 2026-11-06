@@ -36,6 +36,6 @@ void main() {
   test('로그인 오류는 그대로 던진다(취소와 다르다)', () async {
     final useCases = AuthUseCases(FakeAuthRepository()..failNextSignIn = true);
 
-    await expectLater(useCases.signInWithGoogle(), throwsStateError);
+    await expectLater(useCases.signInWithGoogle(), throwsA(isA<FakeFailure>()));
   });
 }

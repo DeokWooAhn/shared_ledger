@@ -42,6 +42,7 @@ Future<void> pumpApp(
   );
   await tester.pumpWidget(
     ProviderScope(
+      retry: noRetry,
       overrides: [
         authRepositoryProvider.overrideWithValue(auth),
         ledgerRepositoryProvider.overrideWithValue(ledgers),

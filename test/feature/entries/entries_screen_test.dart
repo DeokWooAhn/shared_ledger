@@ -439,6 +439,42 @@ void main() {
       expect(textOf(tester, const Key('stats-spending')), '1,108,000원');
     });
 
+    testWidgets('고치기 화면을 연 사이 상대가 지급 완료를 저장해도, 메모만 고쳐 저장하면 지급 완료가 남는다', (
+      tester,
+    ) async {
+      final entries = FakeEntriesRepository({october: plannedMonth});
+      await pumpEntries(tester, entries: entries);
+      await tester.tap(find.text('관리비'));
+      await settleRoute(tester);
+
+      // 상대 기기에서 금액을 채우고 지급 완료로 저장했다.
+      entries.putFixed(
+        october,
+        'rent',
+        EntryDraft(
+          kind: EntryKind.planned,
+          memberId: 'partner',
+          title: '관리비',
+          categoryId: 'c-living',
+          paymentMethodId: 'p-account',
+          amount: 210000,
+          date: DateTime(2026, 10, 25),
+        ),
+      );
+      await enterInForm(tester, const Key('entry-memo'), '난방비 포함');
+      await tapInForm(tester, const Key('entry-save'));
+      await settleRoute(tester);
+
+      final rent = entries
+          .monthOf(october)
+          .plannedExpenses
+          .singleWhere((e) => e.id == 'rent');
+      expect(rent.memo, '난방비 포함');
+      expect(rent.paidOn, DateTime(2026, 10, 25));
+      expect(rent.amount, 210000);
+      expect(find.byKey(const Key('edit-conflict')), findsNothing);
+    });
+
     testWidgets('연결이 없으면 고치지 못한다고 알리고 화면에 남는다', (tester) async {
       final entries = FakeEntriesRepository({october: plannedMonth})
         ..offline = true;
@@ -559,6 +595,110 @@ void main() {
       await settleRoute(tester);
 
       expect(templates.updated.last.draft.amount, 230000);
+    });
+
+    // 상대 기기에서 그달 관리비를 [amount]·[paidOn]으로 저장했다.
+    void partnerSaves(
+      FakeEntriesRepository entries, {
+      int amount = 200000,
+      DateTime? paidOn,
+    }) => entries.putFixed(
+      october,
+      rentTemplate.id,
+      EntryDraft(
+        kind: EntryKind.planned,
+        memberId: rentTemplate.memberId,
+        title: rentTemplate.title,
+        categoryId: rentTemplate.categoryId,
+        paymentMethodId: rentTemplate.paymentMethodId,
+        amount: amount,
+        date: paidOn,
+        dueOn: DateTime(2026, 10, 25),
+      ),
+    );
+
+    testWidgets(
+      '고치기 화면을 연 사이 상대가 지급 완료를 저장해도, 제목만 고치면 지급 완료가 남고 반복 설정 제목만 바뀐다',
+      (tester) async {
+        final templates = FakeTemplatesRepository(const [rentTemplate]);
+        final entries = FakeEntriesRepository({october: rentMonth()});
+        await pumpEntries(tester, entries: entries, templates: templates);
+        await tester.tap(find.text('관리비'));
+        await settleRoute(tester);
+
+        partnerSaves(entries, paidOn: DateTime(2026, 10, 25));
+        await enterInForm(tester, const Key('entry-title'), '관리비(난방)');
+        await tapInForm(tester, const Key('entry-save'));
+        await settleRoute(tester);
+
+        final rent = entries.monthOf(october).plannedExpenses.single;
+        expect(rent.title, '관리비(난방)');
+        expect(rent.paidOn, DateTime(2026, 10, 25));
+        expect(templates.templates.single.title, '관리비(난방)');
+      },
+    );
+
+    testWidgets('같은 칸을 상대와 다르게 바꾸면 저장하지 않고 두 값을 보여주며, 고른 값으로 저장한다', (
+      tester,
+    ) async {
+      final templates = FakeTemplatesRepository(const [rentTemplate]);
+      final entries = FakeEntriesRepository({october: rentMonth()});
+      await pumpEntries(tester, entries: entries, templates: templates);
+      await tester.tap(find.text('관리비'));
+      await settleRoute(tester);
+
+      partnerSaves(entries, amount: 210000, paidOn: DateTime(2026, 10, 25));
+      await enterInForm(tester, const Key('entry-amount'), '230000');
+      await enterInForm(tester, const Key('entry-memo'), '난방비 포함');
+      await tapInForm(tester, const Key('entry-save'));
+      await settle(tester);
+
+      expect(find.byKey(const Key('edit-conflict')), findsOneWidget);
+      expect(templates.updated, isEmpty);
+      expect(find.byKey(const ValueKey('conflict-date')), findsNothing);
+      expect(
+        textOf(tester, const ValueKey('conflict-amount-theirs')),
+        '상대 · 210,000원',
+      );
+      expect(
+        textOf(tester, const ValueKey('conflict-amount-mine')),
+        '나 · 230,000원',
+      );
+
+      // 취소하면 저장하지 않고 고치기 화면에 남는다.
+      await tester.tap(find.byKey(const Key('conflict-cancel')));
+      await settle(tester);
+      expect(find.byType(EntryFormScreen), findsOneWidget);
+      expect(entries.monthOf(october).plannedExpenses.single.amount, 210000);
+
+      // 상대 값을 남기면 겹친 금액은 상대 값, 내 메모와 상대의 지급 완료는 그대로 합쳐진다.
+      await tapInForm(tester, const Key('entry-save'));
+      await settle(tester);
+      await tester.tap(find.byKey(const Key('conflict-theirs')));
+      await settleRoute(tester);
+
+      final rent = entries.monthOf(october).plannedExpenses.single;
+      expect(rent.amount, 210000);
+      expect(rent.memo, '난방비 포함');
+      expect(rent.paidOn, DateTime(2026, 10, 25));
+      expect(find.byType(EntryFormScreen), findsNothing);
+    });
+
+    testWidgets('겹친 칸을 내 값으로 저장하면 내 금액이 들어간다', (tester) async {
+      final templates = FakeTemplatesRepository(const [rentTemplate]);
+      final entries = FakeEntriesRepository({october: rentMonth()});
+      await pumpEntries(tester, entries: entries, templates: templates);
+      await tester.tap(find.text('관리비'));
+      await settleRoute(tester);
+
+      partnerSaves(entries, amount: 210000);
+      await enterInForm(tester, const Key('entry-amount'), '230000');
+      await tapInForm(tester, const Key('entry-save'));
+      await settle(tester);
+      await tester.tap(find.byKey(const Key('conflict-mine')));
+      await settleRoute(tester);
+
+      expect(entries.monthOf(october).plannedExpenses.single.amount, 230000);
     });
 
     testWidgets('그만하면 목록에서 빠지고, 되돌리기로 반복 설정과 항목이 돌아온다', (tester) async {

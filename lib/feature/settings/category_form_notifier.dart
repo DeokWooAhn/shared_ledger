@@ -185,7 +185,7 @@ class CategoryFormNotifier extends Notifier<CategoryFormState> {
     } on SettingsWriteException catch (e) {
       if (!ref.mounted) return;
       state = state.next(failure: settingFormFailureOf(e.reason));
-    } catch (e) {
+    } on Exception catch (e) {
       debugPrint('분류 저장 실패: $e');
       if (!ref.mounted) return;
       state = state.next(failure: SettingFormFailure.save);

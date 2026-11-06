@@ -5,7 +5,9 @@ import '../../domain/repository/entries_repository.dart';
 import '../../domain/repository/templates_repository.dart';
 import '../../core/providers/providers.dart';
 import '../../core/providers/usecases.dart';
+import '../../domain/model/entry_edit.dart';
 import '../../domain/model/expense_template.dart';
+import '../../domain/model/ledger.dart';
 import '../../domain/model/ledger_entries.dart';
 import '../../domain/model/member.dart';
 import '../../domain/model/year_month.dart';
@@ -58,6 +60,9 @@ enum EntryFormFailure {
 
   /// 그사이 상대가 휴지통에 넣었거나 지웠다.
   gone,
+
+  /// 화면을 연 뒤 지금 가계부가 다른 가계부로 바뀌었다(다른 가계부에 저장되지 않게 막는다).
+  ledgerChanged,
   save,
   trash,
   stop,
@@ -105,6 +110,7 @@ class EntryFormState {
     this.problems = const {},
     this.pending,
     this.failure,
+    this.conflict,
     this.outcome,
   });
 
@@ -134,6 +140,10 @@ class EntryFormState {
 
   /// 스낵바로 알릴 실패. 화면이 알린 뒤 [EntryFormNotifier.failureShown]으로 끈다.
   final EntryFormFailure? failure;
+
+  /// 고치기 화면을 연 사이 상대가 같은 칸을 다르게 고쳐서 저장하지 않았을 때. 화면이 어느 값을 남길지 묻는 창을 띄우고
+  /// [EntryFormNotifier.conflictShown]으로 끈다. 고른 값으로 다시 저장한다([EntryFormNotifier.save]의 choice).
+  final EntryEditConflict? conflict;
 
   /// 저장하거나 휴지통에 넣어 화면을 닫을 때. 화면이 이 값으로 닫힌다.
   final EntryFormOutcome? outcome;
@@ -165,6 +175,7 @@ class EntryFormState {
     problems: problems ?? this.problems,
     pending: pending,
     failure: failure,
+    conflict: conflict,
     outcome: outcome,
   );
 
@@ -181,13 +192,15 @@ class EntryFormState {
     problems: problems,
     pending: pending,
     failure: failure,
+    conflict: conflict,
     outcome: outcome,
   );
 
-  /// 진행 상태(진행 중인 동작·실패·결과)를 한꺼번에 바꾼다. 넘기지 않은 것은 비운다.
+  /// 진행 상태(진행 중인 동작·실패·겹침·결과)를 한꺼번에 바꾼다. 넘기지 않은 것은 비운다.
   EntryFormState withStatus({
     EntryFormAction? pending,
     EntryFormFailure? failure,
+    EntryEditConflict? conflict,
     EntryFormOutcome? outcome,
   }) => EntryFormState(
     kind: kind,
@@ -201,6 +214,7 @@ class EntryFormState {
     problems: problems,
     pending: pending,
     failure: failure,
+    conflict: conflict,
     outcome: outcome,
   );
 
@@ -218,6 +232,7 @@ class EntryFormState {
       setEquals(other.problems, problems) &&
       other.pending == pending &&
       other.failure == failure &&
+      other.conflict == conflict &&
       other.outcome == outcome;
 
   @override
@@ -233,6 +248,7 @@ class EntryFormState {
     Object.hashAllUnordered(problems),
     pending,
     failure,
+    conflict,
     outcome,
   );
 }
@@ -244,6 +260,9 @@ final entryFormNotifierProvider = NotifierProvider.autoDispose
 
 /// 항목 입력·수정 화면의 Notifier. 새 항목을 더하거나, 있는 항목을 고치거나 휴지통에 넣는다.
 ///
+/// 화면을 연 가계부를 붙잡아 두고 그 가계부에만 쓴다. 그사이 지금 가계부가 바뀌면 쓰지 않고
+/// [EntryFormFailure.ledgerChanged]로 알린다(화면도 닫힌다).
+///
 /// 고정 지출·고정 수입은 반복 설정과 함께 더하고 고치며, 지우는 대신 그만한다(`TemplateUseCases`). 반복 설정이 없는
 /// 옛 고정 지출과 그만한 뒤 남은 항목은 다른 항목처럼 고치고 휴지통에 넣는다. 새 항목은 오프라인에서도 더할 수 있고,
 /// 반복 설정 쓰기와 고치기·휴지통은
@@ -253,8 +272,12 @@ class EntryFormNotifier extends Notifier<EntryFormState> {
 
   final EntryFormArgs args;
 
+  // 화면을 연 가계부. 저장·휴지통·그만하기는 이 가계부에만 한다.
+  String? _ledgerId;
+
   @override
   EntryFormState build() {
+    _ledgerId = ref.read(currentLedgerProvider)?.id;
     final entry = args.entry;
     if (entry != null) {
       final draft = EntryDraft.of(entry);
@@ -276,6 +299,12 @@ class EntryFormNotifier extends Notifier<EntryFormState> {
       memberId: (mine ?? MemberSlot.owner).name,
       date: _defaultDate(args.kind),
     );
+  }
+
+  // 화면을 연 가계부. 그사이 지금 가계부가 다른 가계부로 바뀌었거나 없어졌으면 null이다.
+  Ledger? _openedLedger() {
+    final ledger = ref.read(currentLedgerProvider);
+    return ledger != null && ledger.id == _ledgerId ? ledger : null;
   }
 
   DateTime get _today {
@@ -416,14 +445,22 @@ class EntryFormNotifier extends Notifier<EntryFormState> {
   /// [fixedEntryProblemsOf]). 새 고정 지출·고정 수입은 반복 설정과 함께 더하고, 반복 설정이 있는 것은 반복 설정과 함께
   /// 고친다. 둘 다 온라인에서만 된다. 다른 새 항목은 서버를 기다리지 않아 오프라인에서도 바로 끝나고,
   /// 고치기는 온라인에서만 된다(`SaveEntryUseCase`).
+  ///
+  /// 고치기는 화면을 열 때의 값과 견주어 내가 바꾼 칸만 쓰고, 그사이 상대가 바꾼 칸은 지킨다. 같은 칸을 둘이 다르게
+  /// 바꿨으면 저장하지 않고 [EntryFormState.conflict]로 알린다. 화면이 묻고 고른 값([choice])으로 다시 부른다.
   Future<void> save({
     required String amount,
     required String title,
     required String memo,
+    EditConflictChoice? choice,
   }) async {
     final uid = ref.read(authUserProvider).value?.uid;
-    final ledger = ref.read(currentLedgerProvider);
-    if (state.busy || uid == null || ledger == null) return;
+    if (state.busy || uid == null) return;
+    final ledger = _openedLedger();
+    if (ledger == null) {
+      state = state.withStatus(failure: EntryFormFailure.ledgerChanged);
+      return;
+    }
     final entry = args.entry;
     // 고치는 고정 지출·고정 수입은 반복 설정이 있는지 봐야 한다. 목록을 아직 받지 않았으면 받아 온다.
     var templates = ref.read(templatesProvider).value;
@@ -431,7 +468,7 @@ class EntryFormNotifier extends Notifier<EntryFormState> {
       state = state.withStatus(pending: EntryFormAction.save);
       try {
         templates = await _templates();
-      } catch (e) {
+      } on Exception catch (e) {
         debugPrint('반복 설정 읽기 실패: $e');
         if (ref.mounted) {
           state = state.withStatus(failure: EntryFormFailure.save);
@@ -471,45 +508,52 @@ class EntryFormNotifier extends Notifier<EntryFormState> {
     state = state.withStatus(pending: EntryFormAction.save);
     final templateUseCases = ref.read(templateUseCasesProvider);
     try {
-      final refused = switch ((fixed, template)) {
-        (true, null) => await templateUseCases.addFixedEntry(
+      final refused = switch ((fixed, template, entry)) {
+        (true, final template?, final original?) =>
+          await templateUseCases.updateFixedEntry(
+            ledger: ledger,
+            month: args.month,
+            template: template,
+            original: original,
+            entry: draft,
+            dueDay: dueDay,
+            amountForLater: state.amountForLater,
+            uid: uid,
+            choice: choice,
+          ),
+        (true, _, _) => await templateUseCases.addFixedEntry(
           ledger: ledger,
           month: args.month,
           entry: draft,
           dueDay: dueDay,
           uid: uid,
         ),
-        (true, final template?) => await templateUseCases.updateFixedEntry(
-          ledger: ledger,
-          month: args.month,
-          template: template,
-          entry: draft,
-          dueDay: dueDay,
-          amountForLater: state.amountForLater,
-          uid: uid,
-        ),
-        (false, _) =>
+        (false, _, _) =>
           await ref
               .read(entryUseCasesProvider)
               .saveEntry(
                 ledger: ledger,
                 month: args.month,
-                id: entry?.id,
+                original: entry,
                 draft: draft,
                 uid: uid,
+                choice: choice,
               ),
       };
       if (!ref.mounted) return;
       state = refused.isEmpty
           ? state.withStatus(outcome: EntryFormOutcome.saved)
           : state.withStatus().copyWith(problems: refused);
+    } on EntryEditConflict catch (e) {
+      if (!ref.mounted) return;
+      state = state.withStatus(conflict: e);
     } on EntryWriteException catch (e) {
       if (!ref.mounted) return;
       state = state.withStatus(failure: _failureOf(e.reason));
     } on TemplateWriteException catch (e) {
       if (!ref.mounted) return;
       state = state.withStatus(failure: _templateFailureOf(e.reason));
-    } catch (e) {
+    } on Exception catch (e) {
       debugPrint('항목 저장 실패: $e');
       if (!ref.mounted) return;
       state = state.withStatus(failure: EntryFormFailure.save);
@@ -523,8 +567,12 @@ class EntryFormNotifier extends Notifier<EntryFormState> {
   Future<void> trash() async {
     final entry = args.entry;
     final uid = ref.read(authUserProvider).value?.uid;
-    final ledgerId = ref.read(currentLedgerProvider)?.id;
-    if (entry == null || state.busy || uid == null || ledgerId == null) return;
+    if (entry == null || state.busy || uid == null) return;
+    final ledgerId = _openedLedger()?.id;
+    if (ledgerId == null) {
+      state = state.withStatus(failure: EntryFormFailure.ledgerChanged);
+      return;
+    }
     state = state.withStatus(pending: EntryFormAction.trash);
     try {
       final templates = await _templates();
@@ -547,7 +595,7 @@ class EntryFormNotifier extends Notifier<EntryFormState> {
     } on EntryWriteException catch (e) {
       if (!ref.mounted) return;
       state = state.withStatus(failure: _failureOf(e.reason));
-    } catch (e) {
+    } on Exception catch (e) {
       debugPrint('항목 휴지통 넣기 실패: $e');
       if (!ref.mounted) return;
       state = state.withStatus(failure: EntryFormFailure.trash);
@@ -559,8 +607,12 @@ class EntryFormNotifier extends Notifier<EntryFormState> {
   /// 온라인에서만 된다. 끝나면 되돌리기에 쓸 값을 [FixedEntryStopped]로 남긴다.
   Future<void> stop() async {
     final uid = ref.read(authUserProvider).value?.uid;
-    final ledger = ref.read(currentLedgerProvider);
-    if (state.busy || uid == null || ledger == null) return;
+    if (state.busy || uid == null) return;
+    final ledger = _openedLedger();
+    if (ledger == null) {
+      state = state.withStatus(failure: EntryFormFailure.ledgerChanged);
+      return;
+    }
     state = state.withStatus(pending: EntryFormAction.stop);
     try {
       // 그사이 상대가 그만했으면 반복 설정이 없다.
@@ -583,7 +635,7 @@ class EntryFormNotifier extends Notifier<EntryFormState> {
     } on TemplateWriteException catch (e) {
       if (!ref.mounted) return;
       state = state.withStatus(failure: _templateFailureOf(e.reason));
-    } catch (e) {
+    } on Exception catch (e) {
       debugPrint('반복 설정 그만하기 실패: $e');
       if (!ref.mounted) return;
       state = state.withStatus(failure: EntryFormFailure.stop);
@@ -602,6 +654,10 @@ class EntryFormNotifier extends Notifier<EntryFormState> {
 
   /// 화면이 실패를 알린 뒤 부른다.
   void failureShown() =>
+      state = state.withStatus(pending: state.pending, outcome: state.outcome);
+
+  /// 화면이 겹침을 묻는 창을 띄웠다. 다시 띄우지 않게 끈다.
+  void conflictShown() =>
       state = state.withStatus(pending: state.pending, outcome: state.outcome);
 
   static EntryFormFailure _failureOf(EntryWriteFailure reason) =>

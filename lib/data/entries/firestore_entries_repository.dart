@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../domain/model/activity.dart';
+import '../../domain/model/entry_edit.dart';
 import '../../domain/model/expense_template.dart';
 import '../../domain/model/ledger_entries.dart';
 import '../../domain/model/month_ledger.dart';
@@ -9,6 +10,7 @@ import '../../domain/model/year_month.dart';
 import '../activity/firestore_activity_repository.dart';
 import '../../domain/activity/activity_summary.dart';
 import '../ledger/firestore_ledger_repository.dart';
+import '../templates/firestore_templates_repository.dart';
 import '../../domain/repository/entries_repository.dart';
 
 class FirestoreEntriesRepository implements EntriesRepository {
@@ -116,8 +118,10 @@ class FirestoreEntriesRepository implements EntriesRepository {
     required String ledgerId,
     required YearMonth month,
     required String id,
+    required EntryDraft base,
     required EntryDraft draft,
     required String uid,
+    EditConflictChoice? choice,
   }) => _writeOnline(
     ledgerId,
     month,
@@ -126,13 +130,24 @@ class FirestoreEntriesRepository implements EntriesRepository {
     uid: uid,
     trashed: false,
     write: (transaction, doc, before) {
-      transaction.update(doc, entryUpdateData(draft, uid: uid));
+      // 화면을 연 뒤 상대가 바꾼 칸은 지키고 내가 바꾼 칸만 쓴다. 같은 칸이 겹치면 쓰지 않고 묻는다.
+      final theirs = before == null ? base : EntryDraft.of(before);
+      final (:merged, :conflicts) = mergeEntryEdit(
+        base: base,
+        mine: draft,
+        theirs: theirs,
+        choice: choice,
+      );
+      if (conflicts.isNotEmpty) {
+        throw EntryEditConflict(fields: conflicts, theirs: theirs, mine: draft);
+      }
+      transaction.update(doc, entryUpdateData(merged, uid: uid));
       return entryActivity(
         ActivityAction.entryUpdate,
         month: month,
         kind: draft.kind,
-        entry: draft,
-        before: before == null ? null : EntryDraft.of(before),
+        entry: merged,
+        before: before == null ? null : theirs,
       );
     },
   );
@@ -233,9 +248,19 @@ class FirestoreEntriesRepository implements EntriesRepository {
         final missing =
             <(ExpenseTemplate, DocumentReference<Map<String, dynamic>>)>[];
         for (final template in templates) {
-          final doc = _entries(ledgerId, month, template.kind).doc(template.id);
+          // 넘겨받은 목록은 기기에 남은 캐시일 수 있다. 그사이 상대가 그만한(지운) 반복 설정으로 다시 만들지 않게,
+          // 서버의 반복 설정을 같은 트랜잭션에서 읽어 없으면 건너뛰고 있으면 그 최신 값으로 채운다.
+          final saved = await transaction.get(
+            _ledger(ledgerId).collection('templates').doc(template.id),
+          );
+          final current = switch (saved.data()) {
+            final data? => templateFromFirestore(saved.id, data),
+            null => null,
+          };
+          if (current == null) continue;
+          final doc = _entries(ledgerId, month, current.kind).doc(current.id);
           if (!(await transaction.get(doc)).exists) {
-            missing.add((template, doc));
+            missing.add((current, doc));
           }
         }
         for (final (template, doc) in missing) {
@@ -442,20 +467,21 @@ MonthLedger monthLedgerFromFirestore({
 }) {
   bool trashed(EntryDoc doc) =>
       entryIsTrashed(doc.data, hasPendingWrites: doc.hasPendingWrites);
+  // 공급자가 나눠 쓰는 값이라, 받은 쪽이 목록을 고쳐 알림 없이 값이 바뀌지 않게 모두 바꿀 수 없는 목록으로 만든다.
   List<T> live<T extends Object>(
     List<EntryDoc> docs,
     T? Function(String id, Map<String, dynamic> data) from,
-  ) => [
+  ) => List.unmodifiable([
     for (final doc in docs)
       if (!trashed(doc)) ?from(doc.id, doc.data),
-  ];
+  ]);
   return MonthLedger(
     incomes: live(incomes, incomeFromFirestore),
     fixedIncomes: live(fixedIncomes, fixedIncomeFromFirestore),
     plannedExpenses: live(planned, plannedExpenseFromFirestore),
     extraExpenses: live(extras, extraExpenseFromFirestore),
     cardBills: live(cardBills, cardBillFromFirestore),
-    trashed: [
+    trashed: List.unmodifiable([
       for (final (kind, docs) in [
         (EntryKind.income, incomes),
         (EntryKind.fixedIncome, fixedIncomes),
@@ -471,9 +497,9 @@ MonthLedger monthLedgerFromFirestore({
                 deletedAt: _time(doc.data['deletedAt']),
                 purgeAt: _time(doc.data['purgeAt']),
               ),
-    ],
-    plannedIds: {for (final doc in planned) doc.id},
-    fixedIncomeIds: {for (final doc in fixedIncomes) doc.id},
+    ]),
+    plannedIds: Set.unmodifiable({for (final doc in planned) doc.id}),
+    fixedIncomeIds: Set.unmodifiable({for (final doc in fixedIncomes) doc.id}),
   );
 }
 

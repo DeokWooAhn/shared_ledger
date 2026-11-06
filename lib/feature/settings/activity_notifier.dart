@@ -177,7 +177,7 @@ class ActivityNotifier extends Notifier<ActivityState> {
         loadedOlder: true,
         hasMore: older.length >= activityPageSize,
       );
-    } catch (e) {
+    } on Exception catch (e) {
       debugPrint('변경 기록 더 읽기 실패: $e');
       if (!ref.mounted) return;
       state = state

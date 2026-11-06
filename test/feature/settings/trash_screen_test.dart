@@ -120,7 +120,7 @@ Future<void> pumpTrashApp(
 class BrokenTemplatesRepository extends FakeTemplatesRepository {
   @override
   Stream<List<ExpenseTemplate>> watchTemplates(String ledgerId) =>
-      Stream.error(StateError('templates failed'));
+      Stream.error(const FakeFailure('templates failed'));
 }
 
 Finder inTrash(Finder finder) =>
