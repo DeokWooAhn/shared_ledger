@@ -793,6 +793,8 @@ class _DayPanel extends ConsumerWidget {
         .value
         ?.nameOf(date);
     final rows = <LedgerEntry>[...day.entries, ...day.scheduled];
+    final unsent =
+        ref.watch(monthLedgerOfProvider(month)).value?.unsentIds ?? const {};
     final counts = [
       if (day.entries.isNotEmpty) '항목 ${day.entries.length}건',
       if (day.scheduled.isNotEmpty) '예정 ${day.scheduled.length}건',
@@ -900,6 +902,7 @@ class _DayPanel extends ConsumerWidget {
                   member: memberIn(members, entryMemberSlot(entry.memberId)),
                   methods: methods,
                   showKind: true,
+                  unsent: unsent.contains(entry.id),
                   onTap: canWrite
                       ? () => editEntryWithUndo(context, openForm, entry, month)
                       : null,

@@ -16,7 +16,10 @@ import 'firebase_options.dart';
 /// 저장소 인터페이스(domain)에 Firebase 구현(data)을 넣는다. 앱에서 data를 아는 곳은 여기와 시작점뿐이다.
 ///
 /// 구현은 처음 쓸 때 만든다. Firebase를 초기화한 뒤 [ProviderScope]의 overrides로 넘긴다(main.dart).
-List<Override> repositoryOverrides() => [
+/// 항목 저장소([entries])는 앱을 켤 때 다른 Firestore 작업보다 먼저 확인할 것이 있어 시작점이 만들어 넘긴다.
+List<Override> repositoryOverrides({
+  required FirestoreEntriesRepository entries,
+}) => [
   authRepositoryProvider.overrideWith(
     (ref) => FirebaseAuthRepository(
       auth: FirebaseAuth.instance,
@@ -31,9 +34,7 @@ List<Override> repositoryOverrides() => [
   settingsRepositoryProvider.overrideWith(
     (ref) => FirestoreSettingsRepository(FirebaseFirestore.instance),
   ),
-  entriesRepositoryProvider.overrideWith(
-    (ref) => FirestoreEntriesRepository(FirebaseFirestore.instance),
-  ),
+  entriesRepositoryProvider.overrideWithValue(entries),
   templatesRepositoryProvider.overrideWith(
     (ref) => FirestoreTemplatesRepository(FirebaseFirestore.instance),
   ),

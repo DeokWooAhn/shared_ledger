@@ -352,6 +352,32 @@ void main() {
       );
     });
 
+    testWidgets('아직 서버에 올라가지 않은 항목은 고른 날 목록에서도 전송 대기로 보인다', (tester) async {
+      final entries = await openCalendar(tester);
+      final ledger = octoberLedger();
+      entries.put(
+        october,
+        MonthLedger(
+          incomes: ledger.incomes,
+          extraExpenses: ledger.extraExpenses,
+          plannedExpenses: ledger.plannedExpenses,
+          unsentIds: const {'mart'},
+        ),
+      );
+
+      await tester.tap(day(18));
+      await settle(tester);
+
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('calendar-entry-mart')),
+          matching: find.byKey(const ValueKey('unsent-mart')),
+        ),
+        findsOneWidget,
+      );
+      expect(find.byKey(const ValueKey('unsent-dinner')), findsNothing);
+    });
+
     testWidgets('예정만 있는 날은 지급 전 표시와 지급 완료 안내를 보여준다', (tester) async {
       await openCalendar(tester);
 

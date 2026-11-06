@@ -19,10 +19,80 @@ class FirestoreEntriesRepository implements EntriesRepository {
 
   final FirebaseFirestore _firestore;
   final DateTime Function() _now;
-  final _rejectedAdds = StreamController<RejectedEntry>.broadcast();
+  final _rejections = RejectionNotices();
 
   @override
-  Stream<RejectedEntry> get rejectedAdds => _rejectedAdds.stream;
+  Stream<RejectedEntry> get rejectedAdds => _rejections.stream;
+
+  /// 지난 실행에서 오프라인으로 더해 아직 서버에 올라가지 않은 새 항목을 찾아, 서버가 거부했으면 [rejectedAdds]로 알린다.
+  ///
+  /// [add]는 일괄 쓰기의 오류로 거부를 알지만, 그 Future는 그 실행 안에만 있다. 오프라인에서 더하고 앱을 다시 켜면
+  /// Firestore가 밀린 쓰기를 올리다 거부돼도 항목이 캐시에서 조용히 빠질 뿐이다.
+  /// Firestore는 처음 쓰일 때 밀린 쓰기를 바로 보내서, 화면이 그달을 구독하기 전에 거부가 끝날 수 있다(기기에서 확인).
+  /// 그래서 다른 Firestore 작업보다 먼저 부른다(main.dart, 끝나기를 기다리지 않는다).
+  ///
+  /// 네트워크를 잠깐 끄고 기기 캐시만 훑어 서버를 기다리는 항목 문서를 모은 뒤 다시 켠다. 밀린 쓰기가 끝나면
+  /// (서버가 받든 거부하든) 그 문서가 서버에 있는지 보고, 없으면 거부로 알린다. 거부된 문서는 캐시에서 빠져 다음 실행에서
+  /// 다시 찾을 수 없으니, 그사이 연결이 끊겨도 건너뛰지 않고 서버가 답할 때까지 기다린다([existsOnServer]).
+  /// 캐시 훑기는 서버를 읽지 않고, 기다리던 문서가 있을 때만 문서마다 서버 읽기가 한 번 든다.
+  /// 그사이 가계부에서 나가 읽을 수 없는 문서는 알리지 않는다.
+  Future<void> checkUnsentFromLastRun() async {
+    try {
+      final List<QueryDocumentSnapshot<Map<String, dynamic>>> waiting = [];
+      await _firestore.disableNetwork();
+      try {
+        for (final kind in EntryKind.values) {
+          final cached = await _firestore
+              .collectionGroup(entryCollection(kind))
+              .get(const GetOptions(source: Source.cache));
+          waiting.addAll(
+            cached.docs.where((doc) => doc.metadata.hasPendingWrites),
+          );
+        }
+      } finally {
+        await _firestore.enableNetwork();
+      }
+      if (waiting.isEmpty) return;
+      await _firestore.waitForPendingWrites();
+      // 한 항목의 답이 늦어도 다른 항목의 확인을 막지 않게 한꺼번에 기다린다.
+      await Future.wait([for (final doc in waiting) _reportIfRejected(doc)]);
+    } on FirebaseException {
+      // 기다리는 동안 로그아웃하는 등 확인을 끝낼 수 없다. 알릴 것이 없는 것으로 둔다.
+    }
+  }
+
+  // 밀린 쓰기가 끝난 뒤 [doc]이 서버에 없으면 거부로 알린다. 서버가 답할 때까지 기다린다([existsOnServer]).
+  Future<void> _reportIfRejected(
+    QueryDocumentSnapshot<Map<String, dynamic>> doc,
+  ) async {
+    final place = entryPlaceOf(doc.reference.path);
+    if (place == null) return;
+    final bool? exists;
+    try {
+      exists = await existsOnServer(
+        doc.reference
+            .snapshots(includeMetadataChanges: true)
+            .map(
+              (snapshot) => (
+                exists: snapshot.exists,
+                fromCache: snapshot.metadata.isFromCache,
+              ),
+            ),
+      );
+    } on FirebaseException {
+      // 권한·연결 문제가 아닌 드문 오류라 확인을 끝낼 수 없다. 알릴 것이 없는 것으로 둔다.
+      return;
+    }
+    if (exists == false) {
+      _rejections.report(
+        rejectedEntryOf(
+          (id: doc.id, data: doc.data(), hasPendingWrites: true),
+          month: place.month,
+          kind: place.kind,
+        ),
+      );
+    }
+  }
 
   DocumentReference<Map<String, dynamic>> _ledger(String ledgerId) =>
       _firestore.collection('ledgers').doc(ledgerId);
@@ -44,31 +114,39 @@ class FirestoreEntriesRepository implements EntriesRepository {
 
   @override
   Stream<MonthLedger> watchMonth(String ledgerId, YearMonth month) {
-    Stream<List<EntryDoc>> watch(EntryKind kind) =>
-        _entries(ledgerId, month, kind).snapshots().map(
-          (snapshot) => [
-            for (final doc in snapshot.docs)
-              (
-                id: doc.id,
-                data: doc.data(),
-                hasPendingWrites: doc.metadata.hasPendingWrites,
+    // 메타데이터 변경까지 들어야, 새 항목을 서버가 받아 '전송 대기'가 풀린 것과 연결이 끊겨 캐시로만 보이게 된 것을 안다.
+    Stream<EntrySnapshot> watch(EntryKind kind) =>
+        _entries(ledgerId, month, kind)
+            .snapshots(includeMetadataChanges: true)
+            .map(
+              (snapshot) => (
+                docs: [
+                  for (final doc in snapshot.docs)
+                    (
+                      id: doc.id,
+                      data: doc.data(),
+                      hasPendingWrites: doc.metadata.hasPendingWrites,
+                    ),
+                ],
+                fromCache: snapshot.metadata.isFromCache,
               ),
-          ],
-        );
+            );
+
     return combineLatest([
       watch(EntryKind.income),
       watch(EntryKind.fixedIncome),
       watch(EntryKind.planned),
       watch(EntryKind.extra),
       watch(EntryKind.cardBill),
-    ]).map((docs) {
-      final [incomes, fixedIncomes, planned, extras, cardBills] = docs;
+    ]).map((snapshots) {
+      final [incomes, fixedIncomes, planned, extras, cardBills] = snapshots;
       return monthLedgerFromFirestore(
-        incomes: incomes,
-        fixedIncomes: fixedIncomes,
-        planned: planned,
-        extras: extras,
-        cardBills: cardBills,
+        incomes: incomes.docs,
+        fixedIncomes: fixedIncomes.docs,
+        planned: planned.docs,
+        extras: extras.docs,
+        cardBills: cardBills.docs,
+        unsentIds: unsentEntryIds(snapshots),
       );
     });
   }
@@ -104,7 +182,13 @@ class FirestoreEntriesRepository implements EntriesRepository {
     unawaited(
       batch.commit().catchError((Object error, StackTrace stackTrace) {
         if (error is FirebaseException && error.code == 'permission-denied') {
-          _rejectedAdds.add((id: doc.id, month: month, kind: draft.kind));
+          _rejections.report((
+            id: doc.id,
+            month: month,
+            kind: draft.kind,
+            title: draft.title.trim(),
+            amount: draft.amount,
+          ));
           return;
         }
         Error.throwWithStackTrace(error, stackTrace);
@@ -453,6 +537,102 @@ typedef EntryDoc = ({
   bool hasPendingWrites,
 });
 
+/// 한 컬렉션의 스냅숏. [fromCache]는 서버와 이어지지 않아 기기 캐시로만 만든 스냅숏인지다.
+typedef EntrySnapshot = ({List<EntryDoc> docs, bool fromCache});
+
+/// 연결이 끊긴 채 더해 아직 서버에 올라가지 않은 항목 id([MonthLedger.unsentIds]).
+///
+/// 서버와 이어진 스냅숏의 대기 문서는 방금 저장해 응답을 기다리는 잠깐이라 넣지 않는다. 그래야 저장할 때마다 표시가 깜빡이지 않는다.
+/// 고치기·휴지통·채우기는 트랜잭션이라 서버에 닿은 뒤에야 보이므로, 대기 문서는 새로 더한 항목뿐이다.
+Set<String> unsentEntryIds(Iterable<EntrySnapshot> snapshots) => {
+  for (final snapshot in snapshots)
+    if (snapshot.fromCache)
+      for (final doc in snapshot.docs)
+        if (doc.hasPendingWrites) doc.id,
+};
+
+/// 거부된 새 항목 알림을 [stream]으로 낸다. 같은 항목은 한 번만 알리고, 듣는 쪽이 없을 때 온 알림은
+/// 모아 뒀다가 처음 듣는 쪽에 넘긴다(앱을 켤 때의 확인이 홈 화면보다 먼저 끝날 수 있다).
+class RejectionNotices {
+  late final _controller = StreamController<RejectedEntry>.broadcast(
+    onListen: _flush,
+  );
+  final _reported = <String>{};
+  final _unheard = <RejectedEntry>[];
+
+  Stream<RejectedEntry> get stream => _controller.stream;
+
+  void report(RejectedEntry entry) {
+    if (!_reported.add(entry.id)) return;
+    if (_controller.hasListener) {
+      _controller.add(entry);
+    } else {
+      _unheard.add(entry);
+    }
+  }
+
+  void _flush() {
+    for (final entry in _unheard) {
+      _controller.add(entry);
+    }
+    _unheard.clear();
+  }
+}
+
+/// 앱을 켤 때의 거부 확인에서 문서가 서버에 있는지. [snapshots]는 그 문서의 구독(메타데이터 변경 포함)을 옮긴 값이다.
+///
+/// 캐시가 아닌(서버가 답한) 첫 값으로 본다. 연결이 끊겨 있으면 Firestore 구독이 다시 이을 때까지 기다려서,
+/// 한 번 읽기(`Source.server`)처럼 통신 오류로 확인 대상을 잃지 않는다.
+/// 읽을 권한이 없으면(그사이 가계부에서 나감) null이다. 서버 답 없이 구독이 끝나도 null이다. 다른 오류는 그대로 던진다.
+Future<bool?> existsOnServer(
+  Stream<({bool exists, bool fromCache})> snapshots,
+) async {
+  try {
+    await for (final snapshot in snapshots) {
+      if (!snapshot.fromCache) return snapshot.exists;
+    }
+    return null;
+  } on FirebaseException catch (e) {
+    if (e.code == 'permission-denied') return null;
+    rethrow;
+  }
+}
+
+/// 항목 문서 경로(`ledgers/{가계부}/months/{yyyy-MM}/{종류 컬렉션}/{id}`)에서 달과 종류를 읽는다. 항목 문서가 아니면 null.
+({YearMonth month, EntryKind kind})? entryPlaceOf(String path) {
+  if (path.split('/') case [
+    'ledgers',
+    _,
+    'months',
+    final monthId,
+    final collection,
+    _,
+  ]) {
+    final month = YearMonth.tryParse(monthId);
+    final kind = EntryKind.values
+        .where((kind) => entryCollection(kind) == collection)
+        .firstOrNull;
+    if (month != null && kind != null) return (month: month, kind: kind);
+  }
+  return null;
+}
+
+/// 거부된 새 항목 문서를 알림 값으로 바꾼다. 제목이 없는 종류(카드 대금)는 빈 제목이다.
+RejectedEntry rejectedEntryOf(
+  EntryDoc doc, {
+  required YearMonth month,
+  required EntryKind kind,
+}) => (
+  id: doc.id,
+  month: month,
+  kind: kind,
+  title: switch (doc.data['title']) {
+    final String title => title.trim(),
+    _ => '',
+  },
+  amount: _won(doc.data['amount']),
+);
+
 /// 그달 다섯 컬렉션의 문서로 [MonthLedger]를 만든다. 휴지통 항목은 [MonthLedger.trashed]에 따로 모으고,
 /// 읽을 수 없는 문서는 뺀다.
 ///
@@ -464,6 +644,7 @@ MonthLedger monthLedgerFromFirestore({
   required List<EntryDoc> planned,
   required List<EntryDoc> extras,
   required List<EntryDoc> cardBills,
+  Set<String> unsentIds = const {},
 }) {
   bool trashed(EntryDoc doc) =>
       entryIsTrashed(doc.data, hasPendingWrites: doc.hasPendingWrites);
@@ -500,6 +681,7 @@ MonthLedger monthLedgerFromFirestore({
     ]),
     plannedIds: Set.unmodifiable({for (final doc in planned) doc.id}),
     fixedIncomeIds: Set.unmodifiable({for (final doc in fixedIncomes) doc.id}),
+    unsentIds: Set.unmodifiable(unsentIds),
   );
 }
 

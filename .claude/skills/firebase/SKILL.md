@@ -50,9 +50,11 @@ Firebase 패키지는 4.x 세대에 고정했다(firebase_core 4.15, firebase_au
 
 ## 보안 규칙 배포
 
-저장소의 `firestore.rules`가 실제 프로젝트에 배포돼 있다. 마지막 배포는 2026-11-02, PR #30의 고정 수입 규칙
-(`fixedIncomes` 컬렉션, 반복 설정의 `kind: 'income'`, 템플릿에도 `keepsKind`)과 `fixedIncomes`의 `purgeAt` TTL 정책이다(TTL 정책은 6개가 됐다).
-그 전에는 2026-10-29에 PR #29의 가계부 만들기 첫 달 규칙(`createsMonths`), 2026-10-26에 PR #23의 항목 있는 달 목록(`months`) 규칙과
+저장소의 `firestore.rules`가 실제 프로젝트에 배포돼 있다. 마지막 배포는 2026-11-06, PR #34의 가계부 삭제 금지와
+새 가계부 ID 모양(`isOwnLedgerId`, 만든 사람 uid + '_' + 자동 ID)이다. 이 규칙부터 옛 앱(ID를 자동 ID로 만듦)은 새 가계부를 만들지 못해서,
+앱을 먼저 깔고 배포했다. 그 전에는 2026-11-02에 PR #30의 고정 수입 규칙
+(`fixedIncomes` 컬렉션, 반복 설정의 `kind: 'income'`, 템플릿에도 `keepsKind`)과 `fixedIncomes`의 `purgeAt` TTL 정책(TTL 정책은 6개가 됐다),
+2026-10-29에 PR #29의 가계부 만들기 첫 달 규칙(`createsMonths`), 2026-10-26에 PR #23의 항목 있는 달 목록(`months`) 규칙과
 PR #21의 공휴일(`holidays`) 읽기 규칙을 배포했다. TTL 정책 5개(`firestore:indexes`)는 2026-10-23 PR #15 때 배포했다.
 
 새 컬렉션을 읽는 앱은 규칙보다 먼저 운영 데이터로 돌리지 않는다. PR #30 때 규칙을 배포하기 전 디버그 빌드가 `fixedIncomes`를 읽지 못해(permission-denied)

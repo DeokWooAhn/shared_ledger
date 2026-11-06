@@ -71,7 +71,15 @@ void main() {
     );
     await pumpEventQueue();
 
-    expect(rejected, [(id: 'entry-1', month: october, kind: EntryKind.extra)]);
+    expect(rejected, [
+      (
+        id: 'entry-1',
+        month: october,
+        kind: EntryKind.extra,
+        title: '간식',
+        amount: 3000,
+      ),
+    ]);
   });
 
   group('저장', () {
