@@ -199,7 +199,8 @@ Flutter의 `TextEditingController`·`ScrollController`와 헷갈리지 않게 �
   Firestore 구현(`FirestoreXxxRepository`)과 변환 함수는 `lib/data/<영역>/`에 둔다.
   Firestore 타입(`DocumentSnapshot`, `Timestamp`)은 data 밖으로 내보내지 않고 모델로 바꿔 돌려준다.
 - **조립:** core의 저장소 공급자(`lib/core/providers/repositories.dart`)는 구현을 모르는 자리다. 앱 시작점이
-  `ProviderScope(overrides: repositoryOverrides())`로 Firebase 구현을 넣고(`lib/di.dart`), 테스트는 가짜를 넣는다.
+  `ProviderScope(overrides: repositoryOverrides(entries: entries))`로 Firebase 구현을 넣고(`lib/di.dart`), 테스트는 가짜를 넣는다.
+  항목 저장소(`entries`)만 시작점(`main.dart`)이 먼저 만들어 `checkUnsentFromLastRun`을 시작한 뒤 넘긴다.
   새 저장소를 만들면 인터페이스(domain) → 구현(data) → 자리 공급자(core) → `di.dart` → 가짜(`testing/fakes.dart`) → UseCase·홀더(domain) → 홀더 공급자(`usecases.dart`) 순서로 배선한다.
 - 문서 ↔ 모델 변환은 최상위 순수 함수로 빼서 Firebase 없이 테스트한다(`newLedgerData`, `ledgerFromFirestore`, `joinLedgerUpdate`). 모르는 값은 앱을 죽이지 말고 건너뛴다.
 - **쓰는 필드 = 보안 규칙이 받는 필드.** 필드·컬렉션을 바꿀 때 같이 고칠 파일은 flutter-screen 스킬의 체크리스트를 따른다.

@@ -213,7 +213,7 @@ Widget build(BuildContext context) {
    검사 함수는 그 모델 파일(`lib/domain/model/`)에 둔다.
 5. **공급자** — `lib/core/providers/repositories.dart`에 저장소 자리(구현을 모름), `lib/core/providers/usecases.dart`에 홀더 공급자,
    `lib/core/providers/providers.dart`에 구독 `StreamProvider`(홀더의 `watch…`를 부른다).
-   로그인하지 않았으면 빈 값(`myLedgersProvider`). 구현은 `lib/di.dart`의 `repositoryOverrides()`에 넣는다.
+   로그인하지 않았으면 빈 값(`myLedgersProvider`). 구현은 `lib/di.dart`의 `repositoryOverrides`에 넣는다.
 6. **Notifier·View** — 위 뼈대대로.
 7. **경로** — `lib/router.dart`의 `Routes`에 경로를 더하고 `GoRoute`를 등록한다. 탭이면 위 '탭 화면'을 따른다.
    로그인·가계부 상태에 따라 반드시 거쳐야 하는 화면이면 `AppGate`·`redirectFor`를 고치고 `test/router_test.dart`에 경우를 더한다.
