@@ -597,6 +597,36 @@ void main() {
       expect(templates.updated.last.draft.amount, 230000);
     });
 
+    testWidgets('반복 설정이 그 뒤에 바뀐 달에서 메모만 고치면 반복 설정과 그달 예정일은 그대로다', (
+      tester,
+    ) async {
+      // 다음 달에서 제목을 '관리비(난방)', 예정일을 10일로 바꿨다. 10월 항목은 옛 값이다.
+      const retitled = ExpenseTemplate(
+        id: 'rent',
+        title: '관리비(난방)',
+        amount: 200000,
+        categoryId: 'c-living',
+        paymentMethodId: 'p-account',
+        memberId: 'partner',
+        dueDay: 10,
+      );
+      final templates = FakeTemplatesRepository(const [retitled]);
+      final entries = FakeEntriesRepository({october: rentMonth()});
+      await pumpEntries(tester, entries: entries, templates: templates);
+
+      await tester.tap(find.text('관리비'));
+      await settleRoute(tester);
+      await enterInForm(tester, const Key('entry-memo'), '난방비 포함');
+      await tapInForm(tester, const Key('entry-save'));
+      await settleRoute(tester);
+
+      expect(templates.templates.single, retitled);
+      final rent = entries.monthOf(october).plannedExpenses.single;
+      expect(rent.memo, '난방비 포함');
+      expect(rent.title, '관리비');
+      expect(rent.dueOn, DateTime(2026, 10, 25));
+    });
+
     // 상대 기기에서 그달 관리비를 [amount]·[paidOn]으로 저장했다.
     void partnerSaves(
       FakeEntriesRepository entries, {

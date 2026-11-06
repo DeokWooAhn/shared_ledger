@@ -171,17 +171,55 @@ DateTime dueDateIn(YearMonth month, int dueDay) {
 
 /// [month]에 넣을 고정 지출·고정 수입 항목. [entry]에 매달 [dueDay]일의 그달 예정일을 붙인다.
 EntryDraft fixedEntryIn(EntryDraft entry, YearMonth month, int dueDay) =>
-    EntryDraft(
-      kind: entry.kind,
-      memberId: entry.memberId,
-      amount: entry.amount,
-      title: entry.title,
-      categoryId: entry.categoryId,
-      paymentMethodId: entry.paymentMethodId,
-      date: entry.date,
-      dueOn: dueDateIn(month, dueDay),
-      memo: entry.memo,
-    );
+    fixedEntryDueOn(entry, dueDateIn(month, dueDay));
+
+/// 고정 지출·고정 수입 항목 [entry]의 예정일을 [dueOn]으로 바꾼 값.
+EntryDraft fixedEntryDueOn(EntryDraft entry, DateTime? dueOn) => EntryDraft(
+  kind: entry.kind,
+  memberId: entry.memberId,
+  amount: entry.amount,
+  title: entry.title,
+  categoryId: entry.categoryId,
+  paymentMethodId: entry.paymentMethodId,
+  date: entry.date,
+  dueOn: dueOn,
+  memo: entry.memo,
+);
+
+/// 고정 지출·고정 수입을 고친 뒤의 반복 설정. 지금 반복 설정 [current]에 이번 고치기에서 내가 바꾼 칸만 얹는다.
+///
+/// - 제목·분류·결제수단·누가는 고치기 화면을 열 때의 그달 항목 [base]와 다르게 바꿨고([mine]), 합친 그달 항목
+///   [merged]에도 내 값이 남은 칸만 바꾼다. 지난달을 고쳐도 그 뒤에 바뀐 반복 설정이 그달의 옛 값으로 돌아가지 않는다.
+/// - 매달 예정일은 새로 골랐고([dueDay]) 그달 예정일도 내 값으로 합쳐졌을 때만 바꾼다. 겹침에서 상대 값을 고르면
+///   반복 설정도 그대로 둔다.
+/// - 금액은 [amountForLater]('다음 달부터도 이 금액으로')일 때만 합친 그달 금액으로 바꾼다.
+///
+/// 그사이 상대가 다른 달에서 같은 칸을 바꿨어도 묻지 않고 내 값이다(겹침은 그달 항목에서만 묻는다).
+TemplateDraft templateAfterEdit(
+  TemplateDraft current, {
+  required EntryDraft base,
+  required EntryDraft mine,
+  required EntryDraft merged,
+  required int? dueDay,
+  required bool amountForLater,
+}) {
+  T follow<T>(T now, T Function(EntryDraft draft) of) {
+    final my = of(mine);
+    return my != of(base) && of(merged) == my ? my : now;
+  }
+
+  return TemplateDraft(
+    kind: current.kind,
+    memberId: follow(current.memberId, (d) => d.memberId),
+    title: follow(current.title, (d) => d.title.trim()),
+    amount: amountForLater ? merged.amount : current.amount,
+    categoryId: follow(current.categoryId, (d) => d.categoryId),
+    paymentMethodId: follow(current.paymentMethodId, (d) => d.paymentMethodId),
+    dueDay: dueDay != null && merged.dueOn == mine.dueOn
+        ? dueDay
+        : current.dueDay,
+  );
+}
 
 /// 고정 지출·고정 수입 입력값을 검사한다. 항목 검사([entryProblemsOf])에 매달 예정일(1일~말일, 보안 규칙과 같다)을 더한다.
 Set<EntryProblem> fixedEntryProblemsOf(
