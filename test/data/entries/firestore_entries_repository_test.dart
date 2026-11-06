@@ -799,6 +799,81 @@ void main() {
       expect(entryPlaceOf('ledgers/l1/months/2026-10/unknown/e1'), isNull);
     });
 
+    group('서버에 있는지 기다리기', () {
+      const cached = (exists: false, fromCache: true);
+
+      test('캐시 값은 건너뛰고 서버가 답한 첫 값으로 본다', () async {
+        expect(
+          await existsOnServer(
+            Stream.fromIterable([
+              cached,
+              (exists: true, fromCache: false),
+              (exists: false, fromCache: false),
+            ]),
+          ),
+          isTrue,
+        );
+        expect(
+          await existsOnServer(
+            Stream.fromIterable([cached, (exists: false, fromCache: false)]),
+          ),
+          isFalse,
+        );
+      });
+
+      test('연결이 끊겨 캐시 값만 오는 동안은 건너뛰지 않고, 다시 이어져 서버가 답할 때까지 기다린다', () async {
+        final snapshots = StreamController<({bool exists, bool fromCache})>();
+        addTearDown(snapshots.close);
+        bool? answer;
+        var done = false;
+        unawaited(
+          existsOnServer(snapshots.stream).then((exists) {
+            answer = exists;
+            done = true;
+          }),
+        );
+
+        snapshots
+          ..add(cached)
+          ..add(cached);
+        await pumpEventQueue();
+        expect(done, isFalse);
+
+        snapshots.add((exists: false, fromCache: false));
+        await pumpEventQueue();
+        expect(done, isTrue);
+        expect(answer, isFalse);
+      });
+
+      test('읽을 권한이 없으면(그사이 가계부에서 나감) 알리지 않게 null이다', () async {
+        expect(
+          await existsOnServer(
+            Stream.error(
+              FirebaseException(
+                plugin: 'cloud_firestore',
+                code: 'permission-denied',
+              ),
+            ),
+          ),
+          isNull,
+        );
+      });
+
+      test('다른 오류는 그대로 던지고, 서버 답 없이 구독이 끝나면 null이다', () async {
+        await expectLater(
+          existsOnServer(
+            Stream.error(
+              FirebaseException(plugin: 'cloud_firestore', code: 'internal'),
+            ),
+          ),
+          throwsA(
+            isA<FirebaseException>().having((e) => e.code, 'code', 'internal'),
+          ),
+        );
+        expect(await existsOnServer(Stream.fromIterable([cached])), isNull);
+      });
+    });
+
     group('거부 알림 모으기', () {
       RejectedEntry rejected(String id) => (
         id: id,

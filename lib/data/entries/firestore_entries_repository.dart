@@ -32,8 +32,10 @@ class FirestoreEntriesRepository implements EntriesRepository {
   /// 그래서 다른 Firestore 작업보다 먼저 부른다(main.dart, 끝나기를 기다리지 않는다).
   ///
   /// 네트워크를 잠깐 끄고 기기 캐시만 훑어 서버를 기다리는 항목 문서를 모은 뒤 다시 켠다. 밀린 쓰기가 끝나면
-  /// (서버가 받든 거부하든) 그 문서가 서버에 있는지 보고, 없으면 거부로 알린다. 캐시 훑기는 서버를 읽지 않고,
-  /// 기다리던 문서가 있을 때만 문서마다 서버 읽기가 한 번 든다. 그사이 가계부에서 나가 읽을 수 없는 문서는 알리지 않는다.
+  /// (서버가 받든 거부하든) 그 문서가 서버에 있는지 보고, 없으면 거부로 알린다. 거부된 문서는 캐시에서 빠져 다음 실행에서
+  /// 다시 찾을 수 없으니, 그사이 연결이 끊겨도 건너뛰지 않고 서버가 답할 때까지 기다린다([existsOnServer]).
+  /// 캐시 훑기는 서버를 읽지 않고, 기다리던 문서가 있을 때만 문서마다 서버 읽기가 한 번 든다.
+  /// 그사이 가계부에서 나가 읽을 수 없는 문서는 알리지 않는다.
   Future<void> checkUnsentFromLastRun() async {
     try {
       final List<QueryDocumentSnapshot<Map<String, dynamic>>> waiting = [];
@@ -52,29 +54,43 @@ class FirestoreEntriesRepository implements EntriesRepository {
       }
       if (waiting.isEmpty) return;
       await _firestore.waitForPendingWrites();
-      for (final doc in waiting) {
-        final place = entryPlaceOf(doc.reference.path);
-        if (place == null) continue;
-        final DocumentSnapshot<Map<String, dynamic>> onServer;
-        try {
-          onServer = await doc.reference.get(
-            const GetOptions(source: Source.server),
-          );
-        } on FirebaseException {
-          continue;
-        }
-        if (!onServer.exists) {
-          _rejections.report(
-            rejectedEntryOf(
-              (id: doc.id, data: doc.data(), hasPendingWrites: true),
-              month: place.month,
-              kind: place.kind,
-            ),
-          );
-        }
-      }
+      // 한 항목의 답이 늦어도 다른 항목의 확인을 막지 않게 한꺼번에 기다린다.
+      await Future.wait([for (final doc in waiting) _reportIfRejected(doc)]);
     } on FirebaseException {
       // 기다리는 동안 로그아웃하는 등 확인을 끝낼 수 없다. 알릴 것이 없는 것으로 둔다.
+    }
+  }
+
+  // 밀린 쓰기가 끝난 뒤 [doc]이 서버에 없으면 거부로 알린다. 서버가 답할 때까지 기다린다([existsOnServer]).
+  Future<void> _reportIfRejected(
+    QueryDocumentSnapshot<Map<String, dynamic>> doc,
+  ) async {
+    final place = entryPlaceOf(doc.reference.path);
+    if (place == null) return;
+    final bool? exists;
+    try {
+      exists = await existsOnServer(
+        doc.reference
+            .snapshots(includeMetadataChanges: true)
+            .map(
+              (snapshot) => (
+                exists: snapshot.exists,
+                fromCache: snapshot.metadata.isFromCache,
+              ),
+            ),
+      );
+    } on FirebaseException {
+      // 권한·연결 문제가 아닌 드문 오류라 확인을 끝낼 수 없다. 알릴 것이 없는 것으로 둔다.
+      return;
+    }
+    if (exists == false) {
+      _rejections.report(
+        rejectedEntryOf(
+          (id: doc.id, data: doc.data(), hasPendingWrites: true),
+          month: place.month,
+          kind: place.kind,
+        ),
+      );
     }
   }
 
@@ -560,6 +576,25 @@ class RejectionNotices {
       _controller.add(entry);
     }
     _unheard.clear();
+  }
+}
+
+/// 앱을 켤 때의 거부 확인에서 문서가 서버에 있는지. [snapshots]는 그 문서의 구독(메타데이터 변경 포함)을 옮긴 값이다.
+///
+/// 캐시가 아닌(서버가 답한) 첫 값으로 본다. 연결이 끊겨 있으면 Firestore 구독이 다시 이을 때까지 기다려서,
+/// 한 번 읽기(`Source.server`)처럼 통신 오류로 확인 대상을 잃지 않는다.
+/// 읽을 권한이 없으면(그사이 가계부에서 나감) null이다. 서버 답 없이 구독이 끝나도 null이다. 다른 오류는 그대로 던진다.
+Future<bool?> existsOnServer(
+  Stream<({bool exists, bool fromCache})> snapshots,
+) async {
+  try {
+    await for (final snapshot in snapshots) {
+      if (!snapshot.fromCache) return snapshot.exists;
+    }
+    return null;
+  } on FirebaseException catch (e) {
+    if (e.code == 'permission-denied') return null;
+    rethrow;
   }
 }
 
