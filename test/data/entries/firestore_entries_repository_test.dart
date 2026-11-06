@@ -6,6 +6,7 @@ import 'package:shared_ledger/data/entries/firestore_entries_repository.dart';
 import 'package:shared_ledger/domain/model/expense_template.dart';
 import 'package:shared_ledger/domain/model/ledger_entries.dart';
 import 'package:shared_ledger/domain/model/year_month.dart';
+import 'package:shared_ledger/domain/repository/entries_repository.dart';
 
 EntryDoc doc(
   String id,
@@ -723,6 +724,136 @@ void main() {
       );
       // 추가 지출은 결제수단이 있어야 해서 카드 대금 문서로는 읽지 못한다.
       expect(entryFromFirestore(EntryKind.extra, 'b1', data), isNull);
+    });
+  });
+
+  group('전송 대기와 거부 찾기', () {
+    const october = YearMonth(2026, 10);
+    const lunch = {
+      'memberId': 'owner',
+      'title': ' 점심 ',
+      'amount': 12000,
+      'paymentMethodId': 'p-account',
+    };
+
+    test('연결이 끊겨 캐시로 만든 스냅숏의 대기 문서만 전송 대기다', () {
+      final ids = unsentEntryIds([
+        (
+          docs: [
+            doc('offline-add', lunch, hasPendingWrites: true),
+            doc('on-server', lunch),
+          ],
+          fromCache: true,
+        ),
+        // 서버와 이어진 채 응답을 기다리는 잠깐은 넣지 않는다.
+        (
+          docs: [doc('just-saved', lunch, hasPendingWrites: true)],
+          fromCache: false,
+        ),
+      ]);
+
+      expect(ids, {'offline-add'});
+    });
+
+    test('달 항목에 전송 대기 id를 바꿀 수 없게 담는다', () {
+      final month = monthLedgerFromFirestore(
+        incomes: const [],
+        planned: const [],
+        extras: [doc('offline-add', lunch, hasPendingWrites: true)],
+        cardBills: const [],
+        unsentIds: {'offline-add'},
+      );
+
+      expect(month.unsentIds, {'offline-add'});
+      expect(() => month.unsentIds.add('x'), throwsUnsupportedError);
+    });
+
+    test('거부 알림은 문서의 제목(앞뒤 공백 없이)과 금액을 담는다', () {
+      expect(
+        rejectedEntryOf(
+          doc('offline-add', lunch, hasPendingWrites: true),
+          month: october,
+          kind: EntryKind.extra,
+        ),
+        (
+          id: 'offline-add',
+          month: october,
+          kind: EntryKind.extra,
+          title: '점심',
+          amount: 12000,
+        ),
+      );
+    });
+
+    test('항목 문서 경로에서 달과 종류를 읽고, 항목 문서가 아니면 null이다', () {
+      expect(entryPlaceOf('ledgers/l1/months/2026-10/extras/e1'), (
+        month: october,
+        kind: EntryKind.extra,
+      ));
+      expect(entryPlaceOf('ledgers/l1/months/2026-10/fixedIncomes/t1'), (
+        month: october,
+        kind: EntryKind.fixedIncome,
+      ));
+      expect(entryPlaceOf('ledgers/l1/activity/a1'), isNull);
+      expect(entryPlaceOf('ledgers/l1/months/2026-13/extras/e1'), isNull);
+      expect(entryPlaceOf('ledgers/l1/months/2026-10/unknown/e1'), isNull);
+    });
+
+    group('거부 알림 모으기', () {
+      RejectedEntry rejected(String id) => (
+        id: id,
+        month: october,
+        kind: EntryKind.extra,
+        title: '점심',
+        amount: 12000,
+      );
+
+      test('듣는 쪽이 없을 때 온 알림은 모아 뒀다가 처음 듣는 쪽에 넘긴다(앱을 켤 때의 확인이 먼저 끝남)', () async {
+        final notices = RejectionNotices()
+          ..report(rejected('a'))
+          ..report(rejected('b'));
+        final heard = <String>[];
+        final subscription = notices.stream.listen((e) => heard.add(e.id));
+        addTearDown(subscription.cancel);
+        await pumpEventQueue();
+
+        expect(heard, ['a', 'b']);
+
+        notices.report(rejected('c'));
+        await pumpEventQueue();
+        expect(heard, ['a', 'b', 'c']);
+      });
+
+      test('같은 항목은 한 번만 알린다(일괄 쓰기 오류와 켤 때 확인이 겹침)', () async {
+        final notices = RejectionNotices();
+        final heard = <String>[];
+        final subscription = notices.stream.listen((e) => heard.add(e.id));
+        addTearDown(subscription.cancel);
+
+        notices
+          ..report(rejected('a'))
+          ..report(rejected('a'));
+        await pumpEventQueue();
+
+        expect(heard, ['a']);
+      });
+    });
+
+    test('제목이 없는 카드 대금은 빈 제목으로 알린다', () {
+      expect(
+        rejectedEntryOf(
+          doc('b1', {'amount': 300000, 'cardId': 'p-card'}),
+          month: october,
+          kind: EntryKind.cardBill,
+        ),
+        (
+          id: 'b1',
+          month: october,
+          kind: EntryKind.cardBill,
+          title: '',
+          amount: 300000,
+        ),
+      );
     });
   });
 

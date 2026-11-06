@@ -211,6 +211,9 @@ Flutter의 `TextEditingController`·`ScrollController`와 헷갈리지 않게 �
 - **읽기는 곧 비용이다**(Firestore는 지출 한도 대상이 아님). 필요한 문서만 구독하고, 계속 늘어나는 목록(항목, 변경 기록)에는 `limit`이나 달 단위 범위를 두고,
   같은 쿼리는 공급자 하나를 여러 화면이 같이 읽는다.
 - 오프라인에서는 보기와 새 항목 추가만 된다. 수정·삭제는 온라인에서만 한다(`docs/plan.md`).
+  새 항목은 서버를 기다리지 않아서, 올라가기 전에는 줄에 '전송 대기'(`MonthLedger.unsentIds`)를 보이고 거부는 `rejectedAdds`로 알린다.
+  **`main.dart`의 `checkUnsentFromLastRun`이 Firestore의 첫 작업이어야 한다.** Firestore는 처음 쓰일 때 밀린 쓰기를 보내서,
+  그보다 앞에 Firestore를 쓰면 다시 켠 뒤의 거부를 놓친다(`docs/firestore.md`).
 - **고치기는 통째로 덮어쓰지 않는다.** 화면을 열 때의 값과 트랜잭션에서 읽은 서버 값을 칸마다 견주어(`mergeEntryEdit`) 내가 바꾼 칸만 쓰고,
   같은 칸이 겹치면 `EntryEditConflict`로 묻는다. 캐시에서 온 목록(반복 설정 등)으로 쓰기를 정하면 트랜잭션에서 원본을 다시 읽는다(`fillPlanned`).
 - 가계부 문서는 지우지 않는다(규칙도 막는다). 하위 컬렉션이 남아 같은 ID로 다시 만들면 읽힌다(`docs/firestore.md`).

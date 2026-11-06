@@ -173,6 +173,7 @@ class _EntriesContent extends ConsumerWidget {
                         entryMemberSlot(entry.memberId),
                       ),
                       methods: methods,
+                      unsent: ledger.unsentIds.contains(entry.id),
                       onTap: canWrite
                           ? () => editEntryWithUndo(
                               context,

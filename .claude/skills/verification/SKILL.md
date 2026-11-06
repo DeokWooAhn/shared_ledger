@@ -53,6 +53,11 @@ JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home" firebase
   4. 규칙을 거치지 않고 시험 데이터 넣기: REST(`/v1/projects/simple-shared-ledger/databases/(default)/documents/...`)에
      `Authorization: Bearer owner` 헤더. 상대 계정이 없을 때 '상대가 만든 가계부와 초대 코드'를 넣어 참여를 확인하는 데 쓴다
   - 에뮬레이터용으로 설치한 앱은 에뮬레이터가 꺼지면 불러오는 중 화면에 멈춘다. 확인이 끝나면 일반 빌드로 다시 설치한다.
+  - 에뮬레이터와 운영은 기기의 Firestore 캐시를 같이 쓴다. 에뮬레이터에서 만든 가계부가 캐시에 남아 일반 빌드가 운영에 그 id를 물으면
+    권한 오류로 '불러오지 못했어요'가 뜬다. 일반 빌드로 되돌리기 전에 앱을 끄고 캐시 파일만 지운다(로그인은 남는다):
+    `adb shell run-as com.ahn.sharedledger rm -f 'databases/firestore.%5BDEFAULT%5D.simple-shared-ledger.%28default%29'` (`-journal`도)
+  - 오프라인은 비행기 모드로 흉내 낼 수 없다(에뮬레이터는 USB로 이어진다). `adb reverse --remove-all` 뒤 `adb kill-server`로 열린 연결까지 끊고,
+    `adb reverse tcp:8080 tcp:8080`으로 다시 잇는다. Firestore의 재연결 간격 때문에 올라가기까지 30초쯤 걸린다
 - 실제 Google·Apple 로그인과 Firestore 쓰기는 사용자의 계정이 필요하다. 시스템 로그인 창이 뜨는 것까지 확인하고,
   그 뒤는 사용자에게 확인을 부탁한다. 계정 정보를 대신 입력하지 않는다.
 

@@ -244,8 +244,61 @@ void main() {
       expect(find.byKey(const Key('entries-empty')), findsOneWidget);
       expect(find.byKey(const Key('entry-rejected')), findsOneWidget);
       expect(
-        findSentence('저장한 항목을 서버가 받지 않아 목록에서 빠졌어요. 쓰기 권한이 있는지 확인해 주세요.'),
+        findSentence(
+          '서버가 받지 않아 목록에서 빠졌어요.\n월급 · 3,000,000원\n쓰기 권한이 있는지 확인해 주세요.',
+        ),
         findsOneWidget,
+      );
+    });
+
+    testWidgets('연결이 없을 때 더한 항목은 전송 대기로 보이고, 연결되어 서버가 받으면 표시가 사라진다', (
+      tester,
+    ) async {
+      final entries = FakeEntriesRepository()..offline = true;
+      await pumpEntries(tester, entries: entries);
+      await tester.tap(inList(find.byKey(const Key('entry-tab-income'))));
+      await settle(tester);
+
+      await openAddForm(tester);
+      await enterInForm(tester, const Key('entry-amount'), '50000');
+      await enterInForm(tester, const Key('entry-title'), '용돈');
+      await tapInForm(tester, const Key('entry-save'));
+      await settleRoute(tester);
+
+      // 입력 화면은 기기에 받아 두면 닫히고, 목록이 아직 서버에 올라가지 않았다고 알린다.
+      expect(find.byType(EntryFormScreen), findsNothing);
+      expect(find.text('용돈'), findsOneWidget);
+      expect(find.byKey(const ValueKey('unsent-entry-1')), findsOneWidget);
+      expect(find.text('전송 대기'), findsOneWidget);
+
+      entries.reconnect();
+      await settle(tester);
+
+      expect(find.text('용돈'), findsOneWidget);
+      expect(find.byKey(const ValueKey('unsent-entry-1')), findsNothing);
+    });
+
+    test('거부 알림은 제목이 없으면 종류를, 금액이 없으면 이름만 보여준다', () {
+      const october = YearMonth(2026, 10);
+      expect(
+        rejectedEntryMessage((
+          id: 'b1',
+          month: october,
+          kind: EntryKind.cardBill,
+          title: '',
+          amount: 300000,
+        )),
+        '서버가 받지 않아 목록에서 빠졌어요.\n카드 대금 · 300,000원\n쓰기 권한이 있는지 확인해 주세요.',
+      );
+      expect(
+        rejectedEntryMessage((
+          id: 'p1',
+          month: october,
+          kind: EntryKind.planned,
+          title: '관리비',
+          amount: null,
+        )),
+        '서버가 받지 않아 목록에서 빠졌어요.\n관리비\n쓰기 권한이 있는지 확인해 주세요.',
       );
     });
 

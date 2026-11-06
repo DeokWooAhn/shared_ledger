@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../domain/model/ledger_entries.dart';
 import '../../domain/model/member.dart';
+import '../../domain/model/month_ledger.dart';
 import '../../domain/model/payment_method.dart';
 import '../../domain/model/year_month.dart';
 import '../../core/theme/app_theme.dart';
@@ -98,7 +99,7 @@ Future<void> editEntryWithUndo(
   unawaited(snackBar.closed.whenComplete(keepController.close));
 }
 
-/// 항목 한 줄: 누구 몫인지, 제목과 결제수단·날짜, 금액과 지급 전·받기 전 표시.
+/// 항목 한 줄: 누구 몫인지, 제목과 결제수단·날짜, 금액과 지급 전·받기 전·전송 대기 표시.
 ///
 /// [showKind]면 제목 아래 줄 앞에 종류를 붙인다(종류가 섞인 달력의 날 목록).
 class EntryRow extends StatelessWidget {
@@ -108,6 +109,7 @@ class EntryRow extends StatelessWidget {
     required this.methods,
     required this.onTap,
     this.showKind = false,
+    this.unsent = false,
     super.key,
   });
 
@@ -118,6 +120,9 @@ class EntryRow extends StatelessWidget {
   /// null이면 누를 수 없다(보기 전용).
   final VoidCallback? onTap;
   final bool showKind;
+
+  /// 연결이 끊긴 채 더해 아직 서버에 올라가지 않았다([MonthLedger.unsentIds]). 상대에게는 아직 보이지 않는다.
+  final bool unsent;
 
   String _methodName(String id) => methods[id]?.name ?? '결제수단 없음';
 
@@ -227,6 +232,7 @@ class EntryRow extends StatelessWidget {
                     ),
                   ),
                 if (pending != null) StatusPill(pending),
+                if (unsent) UnsentPill(key: ValueKey('unsent-${entry.id}')),
               ],
             ),
           ],
@@ -258,6 +264,40 @@ class StatusPill extends StatelessWidget {
           fontWeight: FontWeight.w700,
           color: scheme.onTertiary,
         ),
+      ),
+    );
+  }
+}
+
+/// 아직 서버에 올라가지 않은 항목의 표시('전송 대기'). 연결되어 서버가 받으면 사라진다.
+///
+/// 할 일이 남았다는 '지급 전'·'받기 전'과 섞이지 않게 색을 채우지 않고, 테두리와 흐린 글자로 그린다.
+class UnsentPill extends StatelessWidget {
+  const UnsentPill({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.appColors;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 1),
+      decoration: BoxDecoration(
+        border: Border.all(color: Theme.of(context).colorScheme.outline),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        spacing: 3,
+        children: [
+          Icon(Icons.cloud_upload_outlined, size: 12, color: colors.textMuted),
+          Text(
+            '전송 대기',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: colors.textMuted,
+            ),
+          ),
+        ],
       ),
     );
   }

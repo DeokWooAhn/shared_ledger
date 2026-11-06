@@ -15,6 +15,7 @@ class MonthLedger {
     this.trashed = const [],
     Set<String> plannedIds = const {},
     Set<String> fixedIncomeIds = const {},
+    this.unsentIds = const {},
   }) : _plannedIds = plannedIds,
        _fixedIncomeIds = fixedIncomeIds;
 
@@ -29,6 +30,12 @@ class MonthLedger {
 
   /// 휴지통에 넣은 항목. 위 목록과 합계에는 들어가지 않는다.
   final List<TrashedEntry> trashed;
+
+  /// 연결이 끊긴 채 더해 아직 서버에 올라가지 않은 항목 id. 상대에게는 아직 보이지 않는다.
+  ///
+  /// 연결되어 서버가 받으면 빠지고, 서버가 거부하면 항목째 목록에서 빠진다(`EntriesRepository.rejectedAdds`).
+  /// 연결된 채 서버 응답을 기다리는 잠깐은 넣지 않아, 저장할 때마다 표시가 깜빡이지 않는다.
+  final Set<String> unsentIds;
   final Set<String> _plannedIds;
   final Set<String> _fixedIncomeIds;
 
