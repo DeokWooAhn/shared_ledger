@@ -76,5 +76,6 @@ class LeaveLedgerNotifier extends Notifier<LeaveLedgerState> {
     return null;
   }
 
+  /// 화면이 실패를 알린 뒤 실패 표시를 끈다. 나가는 중인지는 그대로 둔다.
   void failureShown() => state = LeaveLedgerState(leaving: state.leaving);
 }

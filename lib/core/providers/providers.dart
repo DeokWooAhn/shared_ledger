@@ -43,8 +43,10 @@ class DeletingAccountNotifier extends Notifier<bool> {
     return false;
   }
 
+  /// 탈퇴 중 표시를 켠다. 그동안 화면 이동 규칙은 가계부가 없어진 것으로 화면을 옮기지 않는다.
   void start() => state = true;
 
+  /// 탈퇴 중 표시를 끈다. 미뤄 둔 화면 이동이 있으면 그때 한다.
   void end() => state = false;
 }
 

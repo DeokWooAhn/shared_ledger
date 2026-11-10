@@ -92,5 +92,6 @@ class AccountNotifier extends Notifier<AccountState> {
     return false;
   }
 
+  /// 화면이 실패를 알린 뒤 실패 표시를 끈다. 탈퇴 중인지는 그대로 둔다.
   void failureShown() => state = AccountState(deleting: state.deleting);
 }
