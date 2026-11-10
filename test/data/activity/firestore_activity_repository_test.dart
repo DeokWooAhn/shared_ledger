@@ -4,6 +4,7 @@ import 'package:shared_ledger/data/activity/firestore_activity_repository.dart';
 import 'package:shared_ledger/domain/activity/activity_summary.dart';
 import 'package:shared_ledger/domain/model/activity.dart';
 import 'package:shared_ledger/domain/model/expense_template.dart';
+import 'package:shared_ledger/domain/model/ledger.dart';
 import 'package:shared_ledger/domain/model/ledger_entries.dart';
 import 'package:shared_ledger/domain/model/payment_method.dart';
 import 'package:shared_ledger/domain/model/year_month.dart';
@@ -314,6 +315,18 @@ void main() {
         "이름표 '상대' → '바다'",
       );
       expect(memberRenameActivity(to: '바다').summary, "이름표 '바다'");
+    });
+
+    test('가계부에서 나가면 나간 것과 관리자를 넘긴 것을 적고, 혼자 쓰던 가계부를 닫으면 남기지 않는다', () {
+      expect(
+        ledgerLeaveActivity(LeaveOutcome.memberLeaves),
+        const ActivityDraft(ActivityAction.ledgerLeave, '가계부에서 나감'),
+      );
+      expect(
+        ledgerLeaveActivity(LeaveOutcome.handsOver)?.summary,
+        '가계부에서 나감 · 관리자 넘김',
+      );
+      expect(ledgerLeaveActivity(LeaveOutcome.closes), isNull);
     });
 
     test('분류는 이름과 저축 집계 켬·끔을 적는다', () {

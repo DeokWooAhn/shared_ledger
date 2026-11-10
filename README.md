@@ -16,6 +16,7 @@
 
 - Google 로그인(Android·iOS), Apple 로그인(iOS)
 - 함께 쓸 가계부 만들기, 초대 코드로 상대 초대·참여 (한 가계부에 두 명까지)
+- 가계부 나가기(관리자가 나가면 상대가 관리자가 되고, 혼자 쓰던 가계부는 지워짐), 계정 탈퇴
 - 월 요약 계산 규칙: 현금 유입·유출, 이번 달 지출, 저축, 남는 현금, 카드 이번 달 사용분과 다음 달 청구 예정액
   (시트 수식을 그대로 옮겼고, 화면은 만드는 중)
 
@@ -23,7 +24,7 @@
 
 - 월 요약·항목 입력 화면, 고정 지출 템플릿, 설정
 - 변경 기록과 휴지통, 두 기기 실시간 반영
-- Android Apple 로그인, 카카오 로그인, 계정 탈퇴
+- Android Apple 로그인, 카카오 로그인
 
 단계별 계획은 [docs/plan.md](docs/plan.md)에 있습니다.
 
@@ -44,7 +45,7 @@ lib/
 testing/                테스트용 가짜 저장소와 도우미
 firestore.rules         보안 규칙
 firestore-tests/        보안 규칙 테스트 (Firestore 에뮬레이터)
-functions/              Cloud Functions (공휴일을 특일 API에서 받아 Firestore에 둔다)
+functions/              Cloud Functions (공휴일을 특일 API에서 받아 Firestore에 둔다, 구성원이 빈 가계부를 지운다)
 design/                 화면 디자인(Pencil)과 내보낸 이미지
 ```
 

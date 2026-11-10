@@ -181,6 +181,22 @@ function seedInvite(code, fields = {}) {
   );
 }
 
+// 관리자가 나가며 [heir]에게 관리자를 넘기는 값. [ownerSlot]은 새 관리자가 앉은 이름표 자리다.
+function handOver(heir, ownerSlot) {
+  return {
+    ownerUid: heir,
+    roles: {},
+    memberUids: [heir],
+    ownerSlot,
+    updatedAt: serverTimestamp(),
+  };
+}
+
+// 혼자 쓰던 관리자가 나가는 값. 구성원을 비우면 함수가 가계부를 지운다.
+function closeAlone() {
+  return { memberUids: [], updatedAt: serverTimestamp() };
+}
+
 function joinUpdate(uid, role, code) {
   return {
     [`roles.${uid}`]: role,
@@ -291,6 +307,82 @@ describe('구성원 관리', () => {
         }),
       );
     }
+  });
+
+  test('관리자가 나가면 남은 사람에게 관리자를 넘기고, 새 관리자의 이름표 자리를 적는다', async () => {
+    // 앱의 ledgerLeaveUpdate(lib/data/ledger/firestore_ledger_repository.dart)와 같은 필드다.
+    for (const [ledger, heir] of [
+      [LEDGER, EDITOR],
+      [VIEWER_LEDGER, VIEWER],
+    ]) {
+      await assertSucceeds(updateDoc(ledgerRef(firestoreAs(OWNER), ledger), handOver(heir, 'partner')));
+    }
+    const after = await getDoc(ledgerRef(firestoreAs(VIEWER), VIEWER_LEDGER));
+    if (after.get('ownerUid') !== VIEWER) throw new Error('보기 전용이던 사람이 관리자가 돼야 한다');
+    // 나간 사람은 더 읽을 수 없다.
+    await assertFails(getDoc(ledgerRef(firestoreAs(OWNER), VIEWER_LEDGER)));
+  });
+
+  test('넘겨받은 관리자가 다시 넘길 때는 관리자 자리가 처음 자리(owner)로 돌아간다', async () => {
+    await seed((db) =>
+      setDoc(ledgerRef(db), { ...ledgerData(EDITOR, { [OWNER]: 'editor' }), ownerSlot: 'partner' }),
+    );
+    await assertFails(updateDoc(ledgerRef(firestoreAs(EDITOR)), handOver(OWNER, 'partner')));
+    await assertSucceeds(updateDoc(ledgerRef(firestoreAs(EDITOR)), handOver(OWNER, 'owner')));
+  });
+
+  test('관리자를 넘길 때 남은 구성원이 아닌 사람에게 주거나, 자리를 틀리게 적거나, 다른 칸을 같이 바꿀 수 없다', async () => {
+    const db = firestoreAs(OWNER);
+    await assertFails(updateDoc(ledgerRef(db), handOver(OUTSIDER, 'partner')));
+    await assertFails(updateDoc(ledgerRef(db), handOver(EDITOR, 'owner')));
+    await assertFails(updateDoc(ledgerRef(db), { ...handOver(EDITOR, 'partner'), ownerSlot: deleteField() }));
+    await assertFails(updateDoc(ledgerRef(db), { ...handOver(EDITOR, 'partner'), name: '바꾼 이름' }));
+    // 넘기면서 내가 남을 수는 없다.
+    await assertFails(
+      updateDoc(ledgerRef(db), { ...handOver(EDITOR, 'partner'), memberUids: [EDITOR, OWNER] }),
+    );
+  });
+
+  test('편집자는 관리자를 가져갈 수 없다', async () => {
+    await assertFails(updateDoc(ledgerRef(firestoreAs(EDITOR)), handOver(EDITOR, 'partner')));
+  });
+
+  test('혼자 쓰던 관리자가 나가면 구성원이 비고, 그 뒤로는 아무도 읽거나 쓰거나 들어올 수 없다', async () => {
+    const db = firestoreAs(OWNER);
+    // 상대가 있으면 비울 수 없다(넘겨야 한다).
+    await assertFails(updateDoc(ledgerRef(db), closeAlone()));
+    await assertFails(updateDoc(ledgerRef(firestoreAs(OUTSIDER), SOLO_LEDGER), closeAlone()));
+    await seedInvite('CLOSED0001', { ledgerId: SOLO_LEDGER, createdBy: OWNER });
+    await assertSucceeds(updateDoc(ledgerRef(db, SOLO_LEDGER), closeAlone()));
+
+    await assertFails(getDoc(ledgerRef(db, SOLO_LEDGER)));
+    await assertFails(setDoc(entryRef(db, { ledger: SOLO_LEDGER }), newEntry(OWNER)));
+    // 옛 관리자가 자기를 다시 넣거나, 이름을 바꾸거나, 초대 코드를 만들 수 없다.
+    await assertFails(
+      updateDoc(ledgerRef(db, SOLO_LEDGER), { memberUids: [OWNER], updatedAt: serverTimestamp() }),
+    );
+    await assertFails(
+      updateDoc(ledgerRef(db, SOLO_LEDGER), { name: '되살리기', updatedAt: serverTimestamp() }),
+    );
+    await assertFails(
+      setDoc(inviteRef(db, 'CLOSED0002'), {
+        ledgerId: SOLO_LEDGER,
+        role: 'editor',
+        createdBy: OWNER,
+        createdAt: serverTimestamp(),
+        expiresAt: Timestamp.fromMillis(Date.now() + 3 * DAY),
+      }),
+    );
+    // 나가기 전에 만든 초대 코드가 남아 있어도 들어올 수 없다.
+    await assertFails(
+      updateDoc(ledgerRef(firestoreAs(NEWCOMER), SOLO_LEDGER), joinUpdate(NEWCOMER, 'editor', 'CLOSED0001')),
+    );
+  });
+
+  test('혼자 나갈 때 다른 칸을 같이 바꿀 수 없다', async () => {
+    await assertFails(
+      updateDoc(ledgerRef(firestoreAs(OWNER), SOLO_LEDGER), { ...closeAlone(), name: '마지막 이름' }),
+    );
   });
 
   // 앱의 ledgerRenameUpdate(lib/core/data/ledger_repository.dart)와 같은 필드로 바꾼다.
@@ -419,6 +511,20 @@ describe('초대', () => {
     await seedInvite('JOINCODE05', { ledgerId: LEDGER, createdBy: OWNER });
     await assertFails(
       updateDoc(ledgerRef(firestoreAs(NEWCOMER), LEDGER), joinUpdate(NEWCOMER, 'editor', 'JOINCODE05')),
+    );
+  });
+
+  test('관리자를 넘기고 나간 사람은 자기가 만든 옛 초대 코드로 다시 들어올 수 없다', async () => {
+    // OWNER가 혼자일 때 만든 코드로 EDITOR가 들어온 뒤, OWNER가 EDITOR에게 관리자를 넘기고 나간 경우.
+    await seedInvite('OLDCODE001', { ledgerId: LEDGER, createdBy: OWNER });
+    await assertSucceeds(updateDoc(ledgerRef(firestoreAs(OWNER)), handOver(EDITOR, 'partner')));
+    await assertFails(
+      updateDoc(ledgerRef(firestoreAs(OWNER)), joinUpdate(OWNER, 'editor', 'OLDCODE001')),
+    );
+    // 새 관리자가 만든 코드로는 들어올 수 있다.
+    await seedInvite('NEWCODE001', { ledgerId: LEDGER, createdBy: EDITOR });
+    await assertSucceeds(
+      updateDoc(ledgerRef(firestoreAs(OWNER)), joinUpdate(OWNER, 'editor', 'NEWCODE001')),
     );
   });
 

@@ -1,6 +1,7 @@
 import { initializeApp } from 'firebase-admin/app';
 import { FieldValue, getFirestore } from 'firebase-admin/firestore';
 import { setGlobalOptions } from 'firebase-functions';
+import { onDocumentUpdated } from 'firebase-functions/firestore';
 import * as logger from 'firebase-functions/logger';
 import { defineSecret } from 'firebase-functions/params';
 import { onSchedule } from 'firebase-functions/scheduler';
@@ -14,8 +15,9 @@ import {
   sameDays,
   yearInKorea,
 } from './holidays.js';
+import { becameEmpty, hasNoMembers } from './ledgers.js';
 
-// Firestore와 같은 서울 지역에서 돌린다. 하루 한 번 도는 함수라 인스턴스는 하나면 된다.
+// Firestore와 같은 서울 지역에서 돌린다. 하루 한 번 도는 함수와 드물게 일하는 트리거뿐이라 인스턴스는 하나면 된다.
 setGlobalOptions({ region: 'asia-northeast3', maxInstances: 1 });
 initializeApp();
 
@@ -79,3 +81,29 @@ async function syncYear(year: number, serviceKey: string): Promise<void> {
   await doc.set({ days, updatedAt: FieldValue.serverTimestamp() });
   logger.info('공휴일을 고침', { year, count: Object.keys(days).length });
 }
+
+/**
+ * 혼자 쓰던 관리자가 나가 구성원이 빈 가계부를 하위 문서(설정·항목·변경 기록)까지 지운다(2026-11-10).
+ *
+ * - 앱은 가계부 문서를 지울 수 없다(규칙의 `allow delete: if false`). 문서만 지우면 하위 컬렉션이 남기 때문이다.
+ *   대신 구성원 목록을 비우면(규칙의 `ownerClosesAlone`, 탈퇴할 때도 같다) 이 함수가 관리자 권한으로 통째로 지운다.
+ * - 구성원이 빈 가계부는 규칙이 읽기·쓰기·참여를 모두 막아서, 지워지기 전에도 아무도 볼 수 없다.
+ * - 그 가계부의 초대 코드도 지운다. 남은 코드로는 어차피 들어올 수 없지만(규칙), 쓸모없는 문서를 남기지 않는다.
+ * - 가계부 문서는 고칠 때마다(달 더하기, 이름 바꾸기, 참여) 이 함수를 깨우지만, 구성원이 비지 않았으면 바로 끝난다.
+ * - 실패하면 다시 시도한다(`retry`). 이미 지웠으면 지울 것이 없어 끝난다.
+ * - 가계부 id는 만든 사람의 uid로 시작해서 로그에 남기지 않는다.
+ */
+export const deleteClosedLedger = onDocumentUpdated(
+  { document: 'ledgers/{ledgerId}', retry: true, timeoutSeconds: 540 },
+  async (event) => {
+    if (!becameEmpty(event.data?.before.data(), event.data?.after.data())) return;
+    const db = getFirestore();
+    const ledger = db.doc(`ledgers/${event.params.ledgerId}`);
+    // 다시 시도하는 사이에 이미 지웠으면 지울 것이 없다.
+    if (!hasNoMembers((await ledger.get()).data())) return;
+    const invites = await db.collection('invites').where('ledgerId', '==', ledger.id).get();
+    await Promise.all(invites.docs.map((invite) => invite.ref.delete()));
+    await db.recursiveDelete(ledger);
+    logger.info('구성원이 빈 가계부를 지움', { invites: invites.size });
+  },
+);

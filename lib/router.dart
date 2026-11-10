@@ -38,6 +38,9 @@ abstract final class Routes {
   static const startCreate = '$start/create';
   static const startJoin = '$start/join';
 
+  /// 가계부가 없을 때의 계정 화면(로그인 방법·로그아웃·탈퇴). 가계부에서 모두 나간 뒤에도 탈퇴할 수 있게 둔다.
+  static const startAccount = '$start/account';
+
   // 홈의 탭. 가계부가 있으면 홈 탭에서 시작한다.
   static const home = '/';
   static const entries = '/entries';
@@ -145,6 +148,9 @@ void _openCreateLedger(BuildContext context) =>
 void _openJoinLedger(BuildContext context) =>
     unawaited(context.push<void>(Routes.startJoin));
 
+void _openStartAccount(BuildContext context) =>
+    unawaited(context.push<void>(Routes.startAccount));
+
 void _openCalendar(BuildContext context) =>
     unawaited(context.push<void>(Routes.calendar));
 
@@ -207,11 +213,16 @@ final appGateProvider = Provider<AppGate>(
 
 final routerProvider = Provider<GoRouter>((ref) {
   final gate = ValueNotifier(AppGate.loading);
-  ref.listen(
-    appGateProvider,
-    (_, next) => gate.value = next,
-    fireImmediately: true,
-  );
+  ref
+    ..listen(appGateProvider, (_, next) {
+      // 탈퇴하는 동안에는 가계부에서 모두 나가도 시작 화면으로 옮기지 않는다. 계정이 지워지면 로그인 화면으로 간다.
+      if (next == AppGate.noLedger && ref.read(deletingAccountProvider)) return;
+      gate.value = next;
+    }, fireImmediately: true)
+    // 탈퇴하지 못하고 끝나면 그사이 미룬 화면 이동을 한다(가계부에서 나간 뒤 실패했으면 시작 화면).
+    ..listen(deletingAccountProvider, (_, deleting) {
+      if (!deleting) gate.value = ref.read(appGateProvider);
+    });
   ref.onDispose(gate.dispose);
 
   final router = GoRouter(
@@ -226,6 +237,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (_, _) => const LedgerStartScreen(
           openCreate: _openCreateLedger,
           openJoin: _openJoinLedger,
+          openAccount: _openStartAccount,
         ),
         routes: [
           GoRoute(
@@ -235,6 +247,11 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: _subPath(Routes.startJoin),
             builder: (_, _) => const JoinLedgerScreen(),
+          ),
+          GoRoute(
+            path: _subPath(Routes.startAccount),
+            builder: (_, _) =>
+                const AccountScreen(backTooltip: '가계부 시작으로 돌아가기'),
           ),
         ],
       ),

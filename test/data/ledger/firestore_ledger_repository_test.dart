@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_ledger/data/ledger/firestore_ledger_repository.dart';
 import 'package:shared_ledger/domain/model/ledger.dart';
+import 'package:shared_ledger/domain/model/member.dart';
 import 'package:shared_ledger/domain/model/year_month.dart';
 
 void main() {
@@ -56,6 +57,90 @@ void main() {
     expect(broken.name, '');
     expect(broken.ownerUid, '');
     expect(broken.roles, isEmpty);
+  });
+
+  test('관리자 자리(ownerSlot)를 읽고, 없거나 모르는 값이면 처음 자리(owner)다', () {
+    Ledger read(Object? ownerSlot) => ledgerFromFirestore('l1', {
+      'name': '우리 가계부',
+      'ownerUid': 'owner',
+      'ownerSlot': ?ownerSlot,
+    });
+
+    expect(read('partner').ownerSlot, MemberSlot.partner);
+    expect(read('owner').ownerSlot, MemberSlot.owner);
+    expect(read(null).ownerSlot, MemberSlot.owner);
+    expect(read('someone').ownerSlot, MemberSlot.owner);
+  });
+
+  group('가계부 나가기에 쓰는 값', () {
+    test('초대로 들어온 사람은 규칙(leavesSelf)대로 자기 역할과 uid만 뺀다', () {
+      const ledger = Ledger(
+        id: 'l1',
+        name: '우리 가계부',
+        ownerUid: 'owner',
+        roles: {'me': MemberRole.editor},
+      );
+
+      final update = ledgerLeaveUpdate(ledger, 'me');
+
+      expect(update.keys.toSet(), {
+        FieldPath(const ['roles', 'me']),
+        'memberUids',
+        'updatedAt',
+      });
+      expect(update[FieldPath(const ['roles', 'me'])], isA<FieldValue>());
+      expect(update['memberUids'], isA<FieldValue>());
+    });
+
+    test('관리자는 규칙(ownerHandsOver)대로 남은 사람을 관리자로 하고 그 사람의 자리를 관리자 자리로 적는다', () {
+      const ledger = Ledger(
+        id: 'l1',
+        name: '우리 가계부',
+        ownerUid: 'me',
+        roles: {'partner': MemberRole.viewer},
+      );
+
+      final update = ledgerLeaveUpdate(ledger, 'me');
+
+      expect(update.keys.toSet(), {
+        'ownerUid',
+        'roles',
+        'memberUids',
+        'ownerSlot',
+        'updatedAt',
+      });
+      expect(update['ownerUid'], 'partner');
+      expect(update['roles'], isEmpty);
+      expect(update['memberUids'], ['partner']);
+      expect(update['ownerSlot'], 'partner');
+    });
+
+    test('넘겨받은 관리자가 다시 넘기면 관리자 자리는 owner로 돌아간다', () {
+      const ledger = Ledger(
+        id: 'l1',
+        name: '우리 가계부',
+        ownerUid: 'me',
+        roles: {'newcomer': MemberRole.editor},
+        ownerSlot: MemberSlot.partner,
+      );
+
+      expect(ledgerLeaveUpdate(ledger, 'me')['ownerSlot'], 'owner');
+    });
+
+    test('혼자인 관리자는 규칙(ownerClosesAlone)대로 구성원만 비운다', () {
+      const ledger = Ledger(id: 'l1', name: '우리 가계부', ownerUid: 'me');
+
+      final update = ledgerLeaveUpdate(ledger, 'me');
+
+      expect(update.keys.toSet(), {'memberUids', 'updatedAt'});
+      expect(update['memberUids'], isEmpty);
+    });
+
+    test('구성원이 아니면 나갈 수 없다', () {
+      const ledger = Ledger(id: 'l1', name: '우리 가계부', ownerUid: 'owner');
+
+      expect(() => ledgerLeaveUpdate(ledger, 'me'), throwsStateError);
+    });
   });
 
   test('항목 있는 달 목록은 달 모양만 읽고, 목록이 없으면 아직 모으지 않은 가계부(null)다', () {

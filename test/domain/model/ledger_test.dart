@@ -21,6 +21,37 @@ void main() {
     expect(solo.uidOf(MemberSlot.partner), isNull);
   });
 
+  test('관리자를 넘겨받은 사람은 앉아 있던 partner 자리에 그대로 있고, 새로 들어온 사람은 owner 자리에 앉는다', () {
+    // 처음 관리자(owner 자리)가 나가며 partner 자리의 사람에게 관리자를 넘긴 뒤, 새 사람이 초대로 들어온 가계부.
+    const handedOver = Ledger(
+      id: 'l1',
+      name: '우리 가계부',
+      ownerUid: 'partner',
+      roles: {'newcomer': MemberRole.editor},
+      ownerSlot: MemberSlot.partner,
+    );
+
+    expect(handedOver.slotOf('partner'), MemberSlot.partner);
+    expect(handedOver.slotOf('newcomer'), MemberSlot.owner);
+    expect(handedOver.uidOf(MemberSlot.partner), 'partner');
+    expect(handedOver.uidOf(MemberSlot.owner), 'newcomer');
+    // 들어오기 전에는 owner 자리가 비어 있다.
+    const alone = Ledger(
+      id: 'l1',
+      name: '우리 가계부',
+      ownerUid: 'partner',
+      ownerSlot: MemberSlot.partner,
+    );
+    expect(alone.uidOf(MemberSlot.owner), isNull);
+  });
+
+  test('나가면 초대로 들어온 사람은 그냥 나가고, 관리자는 넘기며, 혼자인 관리자는 가계부를 닫는다', () {
+    expect(shared.leaveOutcomeOf('partner'), LeaveOutcome.memberLeaves);
+    expect(shared.leaveOutcomeOf('owner'), LeaveOutcome.handsOver);
+    expect(solo.leaveOutcomeOf('owner'), LeaveOutcome.closes);
+    expect(shared.leaveOutcomeOf('stranger'), isNull);
+  });
+
   test('관리자·구성원의 역할을 알려주고, 구성원이 아니면 null이다', () {
     expect(shared.roleOf('owner'), MemberRole.owner);
     expect(shared.roleOf('partner'), MemberRole.viewer);

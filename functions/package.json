@@ -1,7 +1,7 @@
 {
   "name": "shared-ledger-functions",
   "private": true,
-  "description": "심플 공유 가계부의 Cloud Functions. 지금은 공휴일 동기화 하나다.",
+  "description": "심플 공유 가계부의 Cloud Functions. 공휴일 동기화와 구성원이 빈 가계부 지우기.",
   "main": "lib/index.js",
   "engines": {
     "node": "22"

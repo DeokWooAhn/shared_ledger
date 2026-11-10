@@ -3,6 +3,7 @@ import 'package:shared_ledger/domain/model/year_month.dart';
 import 'package:shared_ledger/domain/model/auth_user.dart';
 import 'package:shared_ledger/domain/model/invite.dart';
 import 'package:shared_ledger/domain/model/ledger.dart';
+import 'package:shared_ledger/domain/model/member.dart';
 import 'package:shared_ledger/domain/model/name_problem.dart';
 import 'package:shared_ledger/domain/repository/ledger_repository.dart';
 import 'package:shared_ledger/domain/repository/settings_repository.dart';
@@ -198,6 +199,76 @@ void main() {
           ),
         ),
       );
+    });
+  });
+
+  group('가계부 나가기', () {
+    test('초대로 들어온 사람은 나가고 관리자는 그대로다', () async {
+      final ledgers = FakeLedgerRepository([
+        const Ledger(
+          id: 'l1',
+          name: '우리 가계부',
+          ownerUid: 'partner',
+          roles: {'me': MemberRole.editor},
+        ),
+      ]);
+
+      final outcome = await LedgerUseCases(
+        ledgers,
+      ).leaveLedger(ledgerId: 'l1', uid: 'me');
+
+      expect(outcome, LeaveOutcome.memberLeaves);
+      expect(await ledgers.watchMyLedgers('me').first, isEmpty);
+      final [left] = await ledgers.watchMyLedgers('partner').first;
+      expect(left.ownerUid, 'partner');
+      expect(left.roles, isEmpty);
+    });
+
+    test('관리자가 나가면 남은 사람이 관리자가 되고, 그 사람의 이름표 자리는 그대로다', () async {
+      final ledgers = FakeLedgerRepository([
+        const Ledger(
+          id: 'l1',
+          name: '우리 가계부',
+          ownerUid: 'me',
+          roles: {'partner': MemberRole.viewer},
+        ),
+      ]);
+
+      final outcome = await LedgerUseCases(
+        ledgers,
+      ).leaveLedger(ledgerId: 'l1', uid: 'me');
+
+      expect(outcome, LeaveOutcome.handsOver);
+      final [left] = await ledgers.watchMyLedgers('partner').first;
+      expect(left.roleOf('partner'), MemberRole.owner);
+      expect(left.slotOf('partner'), MemberSlot.partner);
+    });
+
+    test('혼자 쓰던 관리자가 나가면 가계부가 없어진다', () async {
+      final ledgers = FakeLedgerRepository([mine]);
+
+      final outcome = await LedgerUseCases(
+        ledgers,
+      ).leaveLedger(ledgerId: 'l1', uid: 'me');
+
+      expect(outcome, LeaveOutcome.closes);
+      expect(await ledgers.watchMyLedgers('me').first, isEmpty);
+    });
+
+    test('연결이 없으면 저장소의 실패를 그대로 던진다', () async {
+      final ledgers = FakeLedgerRepository([mine])..offline = true;
+
+      await expectLater(
+        LedgerUseCases(ledgers).leaveLedger(ledgerId: 'l1', uid: 'me'),
+        throwsA(
+          isA<SettingsWriteException>().having(
+            (e) => e.reason,
+            'reason',
+            SettingsWriteFailure.offline,
+          ),
+        ),
+      );
+      expect(await ledgers.watchMyLedgers('me').first, [mine]);
     });
   });
 }

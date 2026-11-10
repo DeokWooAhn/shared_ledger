@@ -47,16 +47,22 @@ void listenLedgerStartFailure(BuildContext context, WidgetRef ref) => ref
 ///
 /// '가계부 만들기'와 '초대 코드로 입장' 두 길만 크게 보여 주고, 고르면 각자의 화면에서 입력한다(02a·02b).
 /// 둘 중 하나만 하면 된다. 만든 사람이 관리자가 되고, 초대 코드로 들어온 사람은 초대에 정해진 역할을 받는다.
+/// 가계부에서 나오면 다시 여기로 와서 초대 코드로 다른 가계부에 들어갈 수 있다.
+/// 맨 아래에는 로그아웃과, 가계부가 없어도 탈퇴할 수 있게 계정 화면으로 가는 '탈퇴하기'를 둔다.
 /// 화면 이동은 router.dart가 정해서 넘겨준다.
 class LedgerStartScreen extends ConsumerWidget {
   const LedgerStartScreen({
     required this.openCreate,
     required this.openJoin,
+    required this.openAccount,
     super.key,
   });
 
   final void Function(BuildContext context) openCreate;
   final void Function(BuildContext context) openJoin;
+
+  /// 계정 화면(로그인 방법·로그아웃·탈퇴)을 연다.
+  final void Function(BuildContext context) openAccount;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -133,16 +139,29 @@ class LedgerStartScreen extends ConsumerWidget {
                             onTap: () => openJoin(context),
                           ),
                         ),
-                        Center(
-                          child: TextButton(
-                            key: const Key('sign-out'),
-                            style: TextButton.styleFrom(
-                              foregroundColor:
-                                  theme.colorScheme.onSurfaceVariant,
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            TextButton(
+                              key: const Key('sign-out'),
+                              style: TextButton.styleFrom(
+                                foregroundColor:
+                                    theme.colorScheme.onSurfaceVariant,
+                              ),
+                              onPressed: () =>
+                                  signOutWithFeedback(context, ref),
+                              child: const Text('로그아웃'),
                             ),
-                            onPressed: () => signOutWithFeedback(context, ref),
-                            child: const Text('로그아웃'),
-                          ),
+                            TextButton(
+                              key: const Key('start-account'),
+                              style: TextButton.styleFrom(
+                                foregroundColor:
+                                    theme.colorScheme.onSurfaceVariant,
+                              ),
+                              onPressed: () => openAccount(context),
+                              child: const Text('탈퇴하기'),
+                            ),
+                          ],
                         ),
                       ],
                     ),

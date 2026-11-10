@@ -15,12 +15,22 @@ String ownerMemberName(String? displayName) {
 ///
 /// 항목의 '누가'는 이 자리로 적는다. 상대가 초대로 들어오기 전에도 상대 몫을 적을 수 있고,
 /// 들어오면 그 사람이 [partner]가 된다.
+///
+/// 이름은 가계부를 만든 때의 것이다. 관리자가 나가며 관리자를 넘기면 넘겨받은 사람은 앉아 있던 [partner] 자리에 그대로 있고
+/// (지난 항목의 '누가'가 맞도록), 가계부가 관리자 자리를 따로 적는다(`Ledger.ownerSlot`). 나간 사람의 자리는 이름표와
+/// 지난 항목을 남긴 채 비고, 다음에 초대로 들어오는 사람이 이어받는다.
 enum MemberSlot {
   /// 가계부를 만든 사람(관리자).
   owner,
 
   /// 초대 코드로 들어온 사람.
-  partner,
+  partner;
+
+  /// 다른 한 자리.
+  MemberSlot get other => switch (this) {
+    owner => partner,
+    partner => owner,
+  };
 }
 
 /// [members]에서 [slot] 자리의 이름표.

@@ -17,6 +17,10 @@ class FirebaseAuthRepository implements AuthRepository {
   final String? _iosClientId;
   Future<void>? _googleInitialization;
 
+  /// 탈퇴 직전 [reauthenticate]에서 확인한 로그인 방법과, Apple이면 토큰을 취소할 때 쓸 인증 코드.
+  SignInMethod? _reauthenticatedWith;
+  String? _appleAuthorizationCode;
+
   @override
   Stream<AuthUser?> authStateChanges() => _auth.authStateChanges().map(
     (user) => user == null
@@ -67,6 +71,76 @@ class FirebaseAuthRepository implements AuthRepository {
       if (e.code == 'canceled') return false;
       rethrow;
     }
+  }
+
+  @override
+  Future<bool> reauthenticate() async {
+    final user = _auth.currentUser;
+    if (user == null) throw StateError('로그인하지 않아 다시 확인할 계정이 없다');
+    final method = signInMethodOf([
+      for (final info in user.providerData) info.providerId,
+    ]);
+    try {
+      switch (method) {
+        case SignInMethod.google:
+          await _initializeGoogle();
+          final GoogleSignInAccount account;
+          try {
+            account = await _googleSignIn.authenticate();
+          } on GoogleSignInException catch (e) {
+            if (e.code == GoogleSignInExceptionCode.canceled) return false;
+            rethrow;
+          }
+          final idToken = account.authentication.idToken;
+          if (idToken == null) {
+            throw StateError('Google 로그인에서 idToken을 받지 못했습니다.');
+          }
+          await user.reauthenticateWithCredential(
+            GoogleAuthProvider.credential(idToken: idToken),
+          );
+        case SignInMethod.apple:
+          final credential = await user.reauthenticateWithProvider(
+            AppleAuthProvider(),
+          );
+          _appleAuthorizationCode =
+              credential.additionalUserInfo?.authorizationCode;
+        case null:
+          // 모르는 로그인 방법이면 다시 확인할 수 없다. 최근에 로그인했으면 지우기가 되고, 아니면 지우기가 실패한다.
+          break;
+      }
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'canceled' || e.code == 'web-context-canceled') {
+        return false;
+      }
+      if (e.code == 'user-mismatch') {
+        throw const AccountDeletionException(
+          AccountDeletionFailure.wrongAccount,
+        );
+      }
+      rethrow;
+    }
+    _reauthenticatedWith = method;
+    return true;
+  }
+
+  @override
+  Future<void> deleteAccount() async {
+    final user = _auth.currentUser;
+    if (user == null) throw StateError('로그인하지 않아 지울 계정이 없다');
+    final method = _reauthenticatedWith;
+    final appleCode = _appleAuthorizationCode;
+    _reauthenticatedWith = null;
+    _appleAuthorizationCode = null;
+    // 토큰 취소는 지금 로그인한 사용자로 하므로 계정을 지우기 전에 한다(App Store 심사 지침의 Apple 토큰 취소).
+    switch (method) {
+      case SignInMethod.apple when appleCode != null:
+        await _auth.revokeTokenWithAuthorizationCode(appleCode);
+      case SignInMethod.google:
+        await _googleSignIn.disconnect();
+      case SignInMethod.apple || null:
+        break;
+    }
+    await user.delete();
   }
 
   @override

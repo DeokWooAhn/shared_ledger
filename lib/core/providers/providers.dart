@@ -26,6 +26,28 @@ final authUserProvider = StreamProvider<AuthUser?>(
   (ref) => ref.watch(authUseCasesProvider).watchAuthUser(),
 );
 
+/// 탈퇴하는 중인지. 계정 화면의 Notifier가 켜고 끈다.
+///
+/// 탈퇴는 가계부에서 모두 나간 뒤 계정을 지워서, 그사이 가계부가 없어졌다고 가계부 시작 화면으로 옮기면 화면이 잠깐 튄다.
+/// 화면 이동 규칙(router.dart)은 이 동안 가계부가 없어진 것으로는 화면을 옮기지 않고, 계정이 지워지면(로그아웃) 로그인 화면으로 간다.
+/// 로그인한 사람이 바뀌면 꺼진다. 탈퇴한 뒤 계정 화면이 먼저 사라져 끄지 못해도 켜진 채 남지 않는다.
+final deletingAccountProvider = NotifierProvider<DeletingAccountNotifier, bool>(
+  DeletingAccountNotifier.new,
+);
+
+/// 탈퇴 중 표시를 켜고 끈다.
+class DeletingAccountNotifier extends Notifier<bool> {
+  @override
+  bool build() {
+    ref.watch(authUserProvider.select((user) => user.value?.uid));
+    return false;
+  }
+
+  void start() => state = true;
+
+  void end() => state = false;
+}
+
 /// 내가 속한 가계부 목록. 로그아웃 상태면 빈 목록.
 final myLedgersProvider = StreamProvider<List<Ledger>>((ref) {
   final user = ref.watch(authUserProvider).value;

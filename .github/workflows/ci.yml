@@ -93,7 +93,7 @@ jobs:
           --project demo-shared-ledger
           "npm --prefix firestore-tests test"
 
-  # 공휴일을 받아 두는 Cloud Functions(functions/). 타입 검사·빌드와 응답 해석 테스트만 하고 배포는 하지 않는다.
+  # Cloud Functions(functions/: 공휴일 동기화, 구성원이 빈 가계부 지우기). 타입 검사·빌드와 판단 함수 테스트만 하고 배포는 하지 않는다.
   functions:
     name: Cloud Functions 빌드·테스트
     runs-on: ubuntu-latest

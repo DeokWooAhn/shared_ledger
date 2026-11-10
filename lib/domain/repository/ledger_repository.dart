@@ -59,6 +59,16 @@ abstract interface class LedgerRepository {
     required String uid,
   });
 
+  /// 내가([uid]) [ledgerId] 가계부에서 나가고, 무슨 일이 일어났는지 돌려준다.
+  ///
+  /// 무엇을 할지는 트랜잭션에서 읽은 서버의 지금 가계부로 정한다([Ledger.leaveOutcomeOf]). 초대로 들어온 사람은 그냥 나가고,
+  /// 관리자는 남은 사람에게 관리자를 넘기며, 혼자 쓰던 관리자는 구성원을 비운다(서버 함수가 가계부와 모든 내역을 지운다).
+  /// 상대를 두고 나가는 관리자·편집자는 변경 기록을 같은 트랜잭션으로 남긴다(보기 전용은 규칙상 남길 수 없다).
+  ///
+  /// 다른 설정처럼 온라인에서만 된다. 연결이 없으면 `SettingsWriteException`(`SettingsWriteFailure.offline`),
+  /// 이미 나갔거나 가계부가 없어졌으면 `SettingsWriteFailure.notFound`로 실패한다(settings_repository.dart).
+  Future<LeaveOutcome> leave({required String ledgerId, required String uid});
+
   /// 목록을 아직 모으지 않은 가계부([Ledger.months]가 null)에 항목 있는 달 [months]를 처음 적는다.
   ///
   /// 그사이 상대가 더한 달은 지우지 않고 합친다. 서버에서 읽어 합치는 트랜잭션이라 온라인에서만 되고,
