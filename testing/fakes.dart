@@ -1301,19 +1301,20 @@ class FakeTemplatesRepository with LogsActivity implements TemplatesRepository {
     required String ledgerId,
     required String id,
     required YearMonth month,
-    required TemplateDraft draft,
+    required TemplateDraft template,
     required EntryDraft base,
     required EntryDraft entry,
     required List<YearMonth> laterMonths,
     required String uid,
+    int? dueDay,
     bool amountForLater = false,
     EditConflictChoice? choice,
   }) async {
     _checkOnline();
     final before = _existing(id);
-    final kind = draft.kind;
+    final kind = template.kind;
     final entryBefore = _liveEntry(month, kind, id);
-    // 실제처럼 그달 항목은 지금 값과 칸마다 견주어 합치고, 반복 설정이 따르는 칸도 합친 값으로 맞춘다.
+    // 실제처럼 그달 항목은 지금 값과 칸마다 견주어 합치고, 반복 설정에는 내가 바꾼 칸만 얹는다.
     final theirs = entryBefore == null ? base : EntryDraft.of(entryBefore);
     final (merged: mergedEntry, :conflicts) = mergeEntryEdit(
       base: base,
@@ -1324,14 +1325,14 @@ class FakeTemplatesRepository with LogsActivity implements TemplatesRepository {
     if (conflicts.isNotEmpty) {
       throw EntryEditConflict(fields: conflicts, theirs: theirs, mine: entry);
     }
-    draft = TemplateDraft(
-      kind: draft.kind,
-      memberId: mergedEntry.memberId,
-      title: mergedEntry.title.trim(),
-      amount: amountForLater ? mergedEntry.amount : draft.amount,
-      categoryId: mergedEntry.categoryId,
-      paymentMethodId: mergedEntry.paymentMethodId,
-      dueDay: draft.dueDay,
+    final beforeDraft = TemplateDraft.of(before);
+    final draft = templateAfterEdit(
+      beforeDraft,
+      base: base,
+      mine: entry,
+      merged: mergedEntry,
+      dueDay: dueDay,
+      amountForLater: amountForLater,
     );
     entry = mergedEntry;
     updated.add((
@@ -1343,30 +1344,40 @@ class FakeTemplatesRepository with LogsActivity implements TemplatesRepository {
       laterMonths: laterMonths,
       uid: uid,
     ));
-    final beforeDraft = TemplateDraft.of(before);
-    put([
-      for (final template in _templates)
-        template.id == id ? _templateOf(id, draft) : template,
-    ]);
+    if (beforeDraft != draft) {
+      put([
+        for (final template in _templates)
+          template.id == id ? _templateOf(id, draft) : template,
+      ]);
+    }
     entries?.putFixed(month, id, entry);
+    // 실제처럼 뒤 달의 지급 전·받기 전 항목은 반복 설정에서 바뀐 칸만 맞춘다.
+    bool changed(Object? Function(TemplateDraft d) of) =>
+        of(beforeDraft) != of(draft);
     for (final later in laterMonths) {
       final current = entries?.liveFixed(later, kind, id);
       if (current == null || fixedEntrySettled(current)) continue;
+      final now = EntryDraft.of(current);
       final next = laterEntryOf(draft, later);
+      T follow<T>(
+        Object? Function(TemplateDraft d) field,
+        T Function(EntryDraft d) of,
+      ) => changed(field) ? of(next) : of(now);
       entries?.putFixed(
         later,
         id,
         EntryDraft(
           kind: kind,
-          memberId: next.memberId,
-          amount: beforeDraft.amount != draft.amount
-              ? next.amount
-              : current.amount,
-          title: next.title,
-          categoryId: next.categoryId,
-          paymentMethodId: next.paymentMethodId,
-          dueOn: next.dueOn,
-          memo: current.memo,
+          memberId: follow((d) => d.memberId, (d) => d.memberId),
+          amount: follow((d) => d.amount, (d) => d.amount),
+          title: follow((d) => d.title, (d) => d.title),
+          categoryId: follow((d) => d.categoryId, (d) => d.categoryId),
+          paymentMethodId: follow(
+            (d) => d.paymentMethodId,
+            (d) => d.paymentMethodId,
+          ),
+          dueOn: follow((d) => d.dueDay, (d) => d.dueOn),
+          memo: now.memo,
         ),
       );
     }

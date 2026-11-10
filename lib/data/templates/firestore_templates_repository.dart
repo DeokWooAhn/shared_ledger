@@ -84,17 +84,18 @@ class FirestoreTemplatesRepository implements TemplatesRepository {
     required String ledgerId,
     required String id,
     required YearMonth month,
-    required TemplateDraft draft,
+    required TemplateDraft template,
     required EntryDraft base,
     required EntryDraft entry,
     required List<YearMonth> laterMonths,
     required String uid,
+    int? dueDay,
     bool amountForLater = false,
     EditConflictChoice? choice,
   }) {
     final doc = _templates(ledgerId).doc(id);
-    // 반복 설정의 종류는 바꿀 수 없어서(규칙의 keepsKind) 고칠 값의 종류로 항목 문서를 찾는다.
-    final kind = draft.kind;
+    // 반복 설정의 종류는 바꿀 수 없어서(규칙의 keepsKind) 화면이 알던 종류로 항목 문서를 찾는다.
+    final kind = template.kind;
     final current = _entry(ledgerId, month, kind, id);
     return _writeOnline(ledgerId, uid, (transaction) async {
       // 트랜잭션은 읽기를 모두 마친 뒤에 써야 한다.
@@ -122,24 +123,28 @@ class FirestoreTemplatesRepository implements TemplatesRepository {
       if (conflicts.isNotEmpty) {
         throw EntryEditConflict(fields: conflicts, theirs: theirs, mine: entry);
       }
-      // 반복 설정이 따르는 칸(제목·분류·결제수단·누가)도 합친 그달 항목에 맞춘다.
-      final next = TemplateDraft(
-        kind: draft.kind,
-        memberId: merged.memberId,
-        title: merged.title.trim(),
-        amount: amountForLater ? merged.amount : draft.amount,
-        categoryId: merged.categoryId,
-        paymentMethodId: merged.paymentMethodId,
-        dueDay: draft.dueDay,
+      // 반복 설정은 서버의 지금 값에 내가 바꾼 칸만 얹는다. 지난달을 고쳐도 그 뒤의 반복 설정이 옛 값으로 돌아가지 않고,
+      // 겹침에서 상대 값을 고른 칸은 반복 설정에도 상대 값이 남는다. 모양이 잘못돼 읽지 못하면 화면이 알던 값에 얹는다.
+      final next = templateAfterEdit(
+        beforeDraft ?? template,
+        base: base,
+        mine: entry,
+        merged: merged,
+        dueDay: dueDay,
+        amountForLater: amountForLater,
       );
-      final amountChanged = beforeDraft?.amount != next.amount;
-      transaction.update(doc, templateUpdateData(next, uid: uid));
+      if (beforeDraft != next) {
+        transaction.update(doc, templateUpdateData(next, uid: uid));
+      }
       transaction.update(current, entryUpdateData(merged, uid: uid));
       for (final (month, laterDoc) in later) {
-        transaction.update(
-          laterDoc,
-          laterEntryUpdate(next, month, uid: uid, withAmount: amountChanged),
+        final update = laterEntryUpdate(
+          next,
+          month,
+          before: beforeDraft,
+          uid: uid,
         );
+        if (update != null) transaction.update(laterDoc, update);
       }
       return [
         if (beforeDraft != next)
@@ -360,25 +365,37 @@ EntryDraft laterEntryDraft(TemplateDraft draft, YearMonth month) => EntryDraft(
   },
 );
 
-/// 뒤 달의 지급 전 고정 지출(받기 전 고정 수입)을 반복 설정 [draft]에 맞출 때 쓰는 값.
-/// 반복 설정이 정하는 칸만 바꾸고 지급·받음·메모는 그대로 둔다.
-/// [withAmount]면 금액도 맞춘다(비운 금액은 필드를 지운다). 고친 사람·시간도 바꾼다(규칙의 updatedNow).
-Map<Object, Object> laterEntryUpdate(
-  TemplateDraft draft,
+/// 뒤 달의 지급 전 고정 지출(받기 전 고정 수입)을 반복 설정 [next]에 맞출 때 쓰는 값.
+///
+/// 반복 설정이 [before]에서 바뀐 칸만 바꾸고(뒤 달에서 따로 바뀐 다른 칸은 덮지 않는다) 지급·받음·메모는 그대로 둔다.
+/// 바뀐 칸이 없으면 null이다. [before]가 없으면(문서 모양이 잘못됐었다) 반복 설정이 정하는 칸을 모두 맞춘다.
+/// 비운 금액은 필드를 지운다. 고친 사람·시간도 바꾼다(규칙의 updatedNow).
+Map<Object, Object>? laterEntryUpdate(
+  TemplateDraft next,
   YearMonth month, {
+  required TemplateDraft? before,
   required String uid,
-  required bool withAmount,
-}) => {
-  'title': draft.title.trim(),
-  'memberId': draft.memberId,
-  'categoryId': ?draft.categoryId,
-  'paymentMethodId': ?draft.paymentMethodId,
-  if (draft.dueDay case final day?)
-    'dueOn': entryDateToFirestore(dueDateIn(month, day)),
-  if (withAmount) 'amount': draft.amount ?? FieldValue.delete(),
-  'updatedBy': uid,
-  'updatedAt': FieldValue.serverTimestamp(),
-};
+}) {
+  bool changed(Object? Function(TemplateDraft draft) of) =>
+      before == null || of(before) != of(next);
+  final fields = <Object, Object>{
+    if (changed((d) => d.title.trim())) 'title': next.title.trim(),
+    if (changed((d) => d.memberId)) 'memberId': next.memberId,
+    if (changed((d) => d.categoryId)) 'categoryId': ?next.categoryId,
+    if (changed((d) => d.paymentMethodId))
+      'paymentMethodId': ?next.paymentMethodId,
+    if (changed((d) => d.dueDay))
+      if (next.dueDay case final day?)
+        'dueOn': entryDateToFirestore(dueDateIn(month, day)),
+    if (changed((d) => d.amount)) 'amount': next.amount ?? FieldValue.delete(),
+  };
+  if (fields.isEmpty) return null;
+  return {
+    ...fields,
+    'updatedBy': uid,
+    'updatedAt': FieldValue.serverTimestamp(),
+  };
+}
 
 // 반복 설정이 쓰는 칸(docs/firestore.md의 templates 표). 값이 null이면 비어 있는 칸이다.
 Map<String, Object?> _templateFields(TemplateDraft draft) => {

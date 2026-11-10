@@ -158,47 +158,80 @@ void main() {
       expect(entryProblemsOf(entry), isEmpty);
     });
 
-    test('맞출 때는 반복 설정이 정하는 칸만 쓰고, 금액은 바뀌었을 때만 쓴다', () {
-      final same = laterEntryUpdate(
-        draft,
-        const YearMonth(2026, 11),
-        uid: 'me',
-        withAmount: false,
+    test('맞출 때는 반복 설정에서 바뀐 칸만 쓰고, 바뀐 칸이 없으면 쓰지 않는다', () {
+      const before = TemplateDraft(
+        memberId: 'partner',
+        title: '관리비',
+        amount: 200000,
+        categoryId: 'c-living',
+        paymentMethodId: 'p-account',
+        dueDay: 30,
       );
-      expect(same.keys, {
-        'title',
-        'memberId',
-        'categoryId',
-        'paymentMethodId',
-        'dueOn',
-        'updatedBy',
-        'updatedAt',
-      });
-      expect(same['title'], '관리비');
-      expect(same['dueOn'], '2026-11-30');
-      expect(same['updatedAt'], FieldValue.serverTimestamp());
+      expect(
+        laterEntryUpdate(
+          draft,
+          const YearMonth(2026, 11),
+          before: before,
+          uid: 'me',
+        ),
+        isNull,
+      );
 
-      final changed = laterEntryUpdate(
-        draft,
-        const YearMonth(2026, 11),
-        uid: 'me',
-        withAmount: true,
-      );
-      expect(changed['amount'], 200000);
-      // 금액을 비우면(금액 미정) 필드를 지운다.
-      final cleared = laterEntryUpdate(
+      final retitled = laterEntryUpdate(
         const TemplateDraft(
-          memberId: 'owner',
-          title: '관리비',
+          memberId: 'partner',
+          title: '관리비(난방)',
+          amount: 200000,
           categoryId: 'c-living',
           paymentMethodId: 'p-account',
           dueDay: 25,
         ),
         const YearMonth(2026, 11),
+        before: before,
         uid: 'me',
-        withAmount: true,
       );
-      expect(cleared['amount'], FieldValue.delete());
+      expect(retitled, {
+        'title': '관리비(난방)',
+        'dueOn': '2026-11-25',
+        'updatedBy': 'me',
+        'updatedAt': serverTime,
+      });
+
+      // 금액을 비우면(금액 미정) 필드를 지운다.
+      final cleared = laterEntryUpdate(
+        const TemplateDraft(
+          memberId: 'partner',
+          title: '관리비',
+          categoryId: 'c-living',
+          paymentMethodId: 'p-account',
+          dueDay: 30,
+        ),
+        const YearMonth(2026, 11),
+        before: before,
+        uid: 'me',
+      );
+      expect(cleared?.keys, {'amount', 'updatedBy', 'updatedAt'});
+      expect(cleared?['amount'], delete);
+    });
+
+    test('지금 반복 설정을 읽지 못했으면 반복 설정이 정하는 칸을 모두 맞춘다', () {
+      final all = laterEntryUpdate(
+        draft,
+        const YearMonth(2026, 11),
+        before: null,
+        uid: 'me',
+      );
+
+      expect(all, {
+        'title': '관리비',
+        'memberId': 'partner',
+        'categoryId': 'c-living',
+        'paymentMethodId': 'p-account',
+        'dueOn': '2026-11-30',
+        'amount': 200000,
+        'updatedBy': 'me',
+        'updatedAt': serverTime,
+      });
     });
   });
 

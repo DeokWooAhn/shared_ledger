@@ -283,4 +283,125 @@ void main() {
       expect(monthsAfter(null, october), isEmpty);
     });
   });
+
+  group('고친 뒤의 반복 설정', () {
+    // 11월 관리비를 열었을 때의 값. 12월에서 반복 설정 제목을 '관리비(난방)'으로 바꾼 뒤라 11월 제목은 옛 값이다.
+    final base = EntryDraft(
+      kind: EntryKind.planned,
+      memberId: 'owner',
+      amount: 200000,
+      title: '관리비',
+      categoryId: 'c-living',
+      paymentMethodId: 'p-account',
+      dueOn: DateTime(2026, 11, 10),
+    );
+    const current = TemplateDraft(
+      memberId: 'owner',
+      title: '관리비(난방)',
+      amount: 200000,
+      categoryId: 'c-living',
+      paymentMethodId: 'p-account',
+      dueDay: 10,
+    );
+
+    EntryDraft change({
+      String? title,
+      String? categoryId,
+      DateTime? dueOn,
+      int? amount,
+      String? memo,
+    }) => EntryDraft(
+      kind: base.kind,
+      memberId: base.memberId,
+      amount: amount ?? base.amount,
+      title: title ?? base.title,
+      categoryId: categoryId ?? base.categoryId,
+      paymentMethodId: base.paymentMethodId,
+      dueOn: dueOn ?? base.dueOn,
+      memo: memo ?? base.memo,
+    );
+
+    test('지난달 메모만 고치면 그달의 옛 제목으로 반복 설정을 되돌리지 않는다', () {
+      final mine = change(memo: '난방 포함');
+
+      expect(
+        templateAfterEdit(
+          current,
+          base: base,
+          mine: mine,
+          merged: mine,
+          dueDay: null,
+          amountForLater: false,
+        ),
+        current,
+      );
+    });
+
+    test('내가 바꾼 칸만 반복 설정에 얹는다', () {
+      final mine = change(categoryId: 'c-home', amount: 230000);
+
+      final next = templateAfterEdit(
+        current,
+        base: base,
+        mine: mine,
+        merged: mine,
+        dueDay: null,
+        amountForLater: false,
+      );
+
+      expect(next.categoryId, 'c-home');
+      expect(next.title, '관리비(난방)');
+      // 금액은 '다음 달부터도'가 아니면 그달만 바뀐다.
+      expect(next.amount, 200000);
+      expect(
+        templateAfterEdit(
+          current,
+          base: base,
+          mine: mine,
+          merged: mine,
+          dueDay: null,
+          amountForLater: true,
+        ).amount,
+        230000,
+      );
+    });
+
+    test('예정일 겹침에서 상대 값을 고르면 반복 설정도 상대 값을 지킨다', () {
+      // 10일이던 것을 상대가 20일로(반복 설정도 20일), 내가 15일로 바꿨다.
+      const theirs = TemplateDraft(
+        memberId: 'owner',
+        title: '관리비(난방)',
+        amount: 200000,
+        categoryId: 'c-living',
+        paymentMethodId: 'p-account',
+        dueDay: 20,
+      );
+      final mine = change(dueOn: DateTime(2026, 11, 15));
+
+      TemplateDraft after(DateTime mergedDueOn) => templateAfterEdit(
+        theirs,
+        base: base,
+        mine: mine,
+        merged: change(dueOn: mergedDueOn),
+        dueDay: 15,
+        amountForLater: false,
+      );
+
+      expect(after(DateTime(2026, 11, 20)).dueDay, 20);
+      expect(after(DateTime(2026, 11, 15)).dueDay, 15);
+    });
+
+    test('겹침에서 상대 값을 고른 칸은 내가 바꿨어도 반복 설정에 얹지 않는다', () {
+      final next = templateAfterEdit(
+        current,
+        base: base,
+        mine: change(title: '관리비(전기)'),
+        merged: change(title: '관리비(수도)'),
+        dueDay: null,
+        amountForLater: false,
+      );
+
+      expect(next.title, '관리비(난방)');
+    });
+  });
 }

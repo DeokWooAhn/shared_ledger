@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_ledger/domain/model/entry_edit.dart';
 import 'package:shared_ledger/domain/model/expense_template.dart';
 import 'package:shared_ledger/domain/model/ledger.dart';
 import 'package:shared_ledger/domain/model/ledger_entries.dart';
@@ -42,17 +43,23 @@ const phone = EntryDraft(
 );
 
 /// [rent]로 [month]에 만든 그달 항목. [paidOn]이 있으면 지급한 것이다.
-PlannedExpense rentIn(YearMonth month, {DateTime? paidOn, int? amount}) =>
-    PlannedExpense(
-      id: rent.id,
-      categoryId: rent.categoryId!,
-      memberId: rent.memberId,
-      title: rent.title,
-      paymentMethodId: rent.paymentMethodId!,
-      amount: amount ?? rent.amount,
-      dueOn: rent.dueOn(month),
-      paidOn: paidOn,
-    );
+/// [title]·[dueDay]를 주면 그 뒤에 반복 설정이 바뀐 것처럼 그 값으로 만든다.
+PlannedExpense rentIn(
+  YearMonth month, {
+  DateTime? paidOn,
+  int? amount,
+  String? title,
+  int? dueDay,
+}) => PlannedExpense(
+  id: rent.id,
+  categoryId: rent.categoryId!,
+  memberId: rent.memberId,
+  title: title ?? rent.title,
+  paymentMethodId: rent.paymentMethodId!,
+  amount: amount ?? rent.amount,
+  dueOn: dueDateIn(month, dueDay ?? rent.dueDay),
+  paidOn: paidOn,
+);
 
 const salary = ExpenseTemplate(
   id: 'template-salary',
@@ -251,6 +258,182 @@ void main() {
       );
 
       expect(entries.monthOf(november).plannedExpenses.single, paid);
+    });
+  });
+
+  group('고정 지출 고치기와 반복 설정의 다른 변경', () {
+    /// 화면을 연 [original]에서 [memo]·[categoryId]만 바꾼 값. 화면은 그달 예정일을 그대로 넘긴다.
+    EntryDraft from(LedgerEntry original, {String? memo, String? categoryId}) {
+      final draft = EntryDraft.of(original);
+      return EntryDraft(
+        kind: draft.kind,
+        memberId: draft.memberId,
+        amount: draft.amount,
+        title: draft.title,
+        categoryId: categoryId ?? draft.categoryId,
+        paymentMethodId: draft.paymentMethodId,
+        date: draft.date,
+        dueOn: draft.dueOn,
+        memo: memo ?? draft.memo,
+      );
+    }
+
+    // 11월에서 제목을 '관리비(난방)', 예정일을 10일로 바꾼 반복 설정. 10월 항목은 옛 값 그대로다.
+    const retitled = ExpenseTemplate(
+      id: 'template-rent',
+      title: '관리비(난방)',
+      amount: 200000,
+      categoryId: 'c-living',
+      paymentMethodId: 'p-account',
+      memberId: 'owner',
+      dueDay: 10,
+    );
+
+    test('지난달 메모만 고치면 반복 설정과 뒤 달은 그대로고, 그달 예정일도 옮기지 않는다', () async {
+      final (:templates, :entries) = fakes(
+        templates: const [retitled],
+        months: {
+          october: MonthLedger(plannedExpenses: [rentIn(october)]),
+          november: MonthLedger(
+            plannedExpenses: [rentIn(november, title: '관리비(난방)', dueDay: 10)],
+          ),
+        },
+      );
+
+      await TemplateUseCases(templates).updateFixedEntry(
+        ledger: ledger,
+        month: october,
+        template: retitled,
+        original: rentIn(october),
+        entry: from(rentIn(october), memo: '난방 포함'),
+        dueDay: null,
+        amountForLater: false,
+        uid: 'me',
+      );
+
+      expect(templates.templates.single, retitled);
+      final thisMonth = entries.monthOf(october).plannedExpenses.single;
+      expect(thisMonth.memo, '난방 포함');
+      expect(thisMonth.title, '관리비');
+      expect(thisMonth.dueOn, DateTime(2026, 10, 25));
+      final later = entries.monthOf(november).plannedExpenses.single;
+      expect(later.title, '관리비(난방)');
+      expect(later.dueOn, DateTime(2026, 11, 10));
+    });
+
+    test('바꾼 칸만 반복 설정과 뒤 달에 맞추고, 뒤 달의 다른 칸은 덮지 않는다', () async {
+      final (:templates, :entries) = fakes(
+        templates: const [retitled],
+        months: {
+          october: MonthLedger(plannedExpenses: [rentIn(october)]),
+          november: MonthLedger(
+            plannedExpenses: [rentIn(november, title: '관리비(11월)', dueDay: 12)],
+          ),
+        },
+      );
+
+      await TemplateUseCases(templates).updateFixedEntry(
+        ledger: ledger,
+        month: october,
+        template: retitled,
+        original: rentIn(october),
+        entry: from(rentIn(october), categoryId: 'c-home'),
+        dueDay: null,
+        amountForLater: false,
+        uid: 'me',
+      );
+
+      final template = templates.templates.single;
+      expect(template.categoryId, 'c-home');
+      expect(template.title, '관리비(난방)');
+      expect(template.dueDay, 10);
+      final later = entries.monthOf(november).plannedExpenses.single;
+      expect(later.categoryId, 'c-home');
+      expect(later.title, '관리비(11월)');
+      expect(later.dueOn, DateTime(2026, 11, 12));
+    });
+
+    group('예정일을 상대와 다르게 바꾸면', () {
+      // 25일이던 것을 화면을 연 사이 상대가 20일로 바꿨다(반복 설정과 뒤 달도 20일). 나는 15일로 바꾼다.
+      const moved = ExpenseTemplate(
+        id: 'template-rent',
+        title: '관리비',
+        amount: 200000,
+        categoryId: 'c-living',
+        paymentMethodId: 'p-account',
+        memberId: 'owner',
+        dueDay: 20,
+      );
+
+      Future<
+        ({FakeTemplatesRepository templates, FakeEntriesRepository entries})
+      >
+      saveWith(EditConflictChoice? choice) async {
+        final repositories = fakes(
+          templates: const [moved],
+          months: {
+            october: MonthLedger(
+              plannedExpenses: [rentIn(october, dueDay: 20)],
+            ),
+            november: MonthLedger(
+              plannedExpenses: [rentIn(november, dueDay: 20)],
+            ),
+          },
+        );
+        await TemplateUseCases(repositories.templates).updateFixedEntry(
+          ledger: ledger,
+          month: october,
+          template: rent,
+          original: rentIn(october),
+          entry: from(rentIn(october)),
+          dueDay: 15,
+          amountForLater: false,
+          uid: 'me',
+          choice: choice,
+        );
+        return repositories;
+      }
+
+      test('고르기 전에는 쓰지 않고 겹친 칸을 알린다', () async {
+        await expectLater(
+          saveWith(null),
+          throwsA(
+            isA<EntryEditConflict>().having((e) => e.fields, 'fields', {
+              EntryField.dueOn,
+            }),
+          ),
+        );
+      });
+
+      test('상대 값을 고르면 그달·반복 설정·뒤 달 모두 상대 예정일이다', () async {
+        final (:templates, :entries) = await saveWith(
+          EditConflictChoice.theirs,
+        );
+
+        expect(
+          entries.monthOf(october).plannedExpenses.single.dueOn,
+          DateTime(2026, 10, 20),
+        );
+        expect(templates.templates.single.dueDay, 20);
+        expect(
+          entries.monthOf(november).plannedExpenses.single.dueOn,
+          DateTime(2026, 11, 20),
+        );
+      });
+
+      test('내 값을 고르면 그달·반복 설정·뒤 달 모두 내 예정일이다', () async {
+        final (:templates, :entries) = await saveWith(EditConflictChoice.mine);
+
+        expect(
+          entries.monthOf(october).plannedExpenses.single.dueOn,
+          DateTime(2026, 10, 15),
+        );
+        expect(templates.templates.single.dueDay, 15);
+        expect(
+          entries.monthOf(november).plannedExpenses.single.dueOn,
+          DateTime(2026, 11, 15),
+        );
+      });
     });
   });
 
