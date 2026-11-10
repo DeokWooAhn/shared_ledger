@@ -10,6 +10,9 @@ import '../../domain/model/ledger_entries.dart';
 import '../../domain/model/year_month.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widget/keep_all.dart';
+import '../../domain/repository/entries_repository.dart';
+import '../../domain/format/won.dart';
+import '../../core/widget/entry_kind_label.dart';
 import 'month_fill_notifier.dart';
 import 'months_backfill_notifier.dart';
 
@@ -42,6 +45,16 @@ typedef AddEntry =
 /// 어느 쪽이든 + 버튼이 있든 없든 탭 막대의 폭과 탭 위치는 그대로다.
 /// 탭마다 화면 상태(스크롤 위치 등)를 [StatefulNavigationShell]이 따로 지킨다.
 /// 보고 있는 달(이번 달·다음 달)에 빠진 고정 지출은 어느 탭에 있든 반복 설정으로 채운다.
+
+/// 서버가 받지 않아 목록에서 빠진 항목을 알리는 문구. 어느 항목인지 제목(없으면 종류)과 금액으로 보여준다.
+String rejectedEntryMessage(RejectedEntry entry) {
+  final name = entry.title.isEmpty ? entryKindLabel(entry.kind) : entry.title;
+  final amount = entry.amount;
+  final item = amount == null ? name : '$name · ${won(amount)}';
+  // 문장마다 줄을 바꾸고, 항목은 가운데 줄에 따로 둬서 제목·금액 중간에서 줄이 바뀌지 않게 한다.
+  return '서버가 받지 않아 목록에서 빠졌어요.\n$item\n쓰기 권한이 있는지 확인해 주세요.';
+}
+
 class HomeShell extends ConsumerWidget {
   const HomeShell({
     required this.navigationShell,
@@ -90,15 +103,14 @@ class HomeShell extends ConsumerWidget {
     ref.listen(monthsBackfillNotifierProvider, (_, _) {});
     // 기다리지 않고 더한 항목을 서버가 거부하면 목록에서 조용히 빠지므로, 어느 탭에 있든 알린다.
     ref.listen(rejectedEntriesProvider, (_, rejected) {
-      if (rejected is! AsyncData) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          key: const Key('entry-rejected'),
-          content: Text(
-            keepAll('저장한 항목을 서버가 받지 않아 목록에서 빠졌어요. 쓰기 권한이 있는지 확인해 주세요.'),
+      if (rejected case AsyncData(value: final entry)) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            key: const Key('entry-rejected'),
+            content: Text(keepAll(rejectedEntryMessage(entry))),
           ),
-        ),
-      );
+        );
+      }
     });
     final onAdd = _addEntry(context, ref);
     return _HomeBackHandler(

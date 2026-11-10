@@ -705,8 +705,22 @@ class FakeEntriesRepository with LogsActivity implements EntriesRepository {
   /// true면 다음 구독이 권한 오류처럼 실패한다.
   bool failNextWatch = false;
 
-  /// true면 연결이 없는 것처럼 고치기·휴지통·꺼내기·완전 삭제가 실패한다. 추가는 된다.
+  /// true면 연결이 없는 것처럼 고치기·휴지통·꺼내기·완전 삭제가 실패한다. 추가는 되고, 실제처럼 더한 항목은
+  /// [reconnect] 전까지 서버에 올라가지 않은 것으로 [MonthLedger.unsentIds]에 든다.
   bool offline = false;
+
+  /// 연결이 없을 때 더해 아직 서버에 올라가지 않은 항목 id. 달마다 둔다.
+  final _unsent = <YearMonth, Set<String>>{};
+
+  /// 연결이 돌아온 것처럼 한다. 기다리던 항목이 서버에 올라가 [MonthLedger.unsentIds]에서 빠진다.
+  void reconnect() {
+    offline = false;
+    final months = [..._unsent.keys];
+    _unsent.clear();
+    for (final month in months) {
+      _edit(month, EntryKind.income, (entries) => entries);
+    }
+  }
 
   /// true면 다음 쓰기가 [EntryWriteException]이 아닌 오류(권한 등)로 실패한다.
   bool failNextWrite = false;
@@ -778,6 +792,7 @@ class FakeEntriesRepository with LogsActivity implements EntriesRepository {
     added.add((ledgerId: ledgerId, month: month, draft: draft, uid: uid));
     if (recordMonth) _recordMonth(ledgerId, month);
     final id = 'entry-${added.length}';
+    if (offline) _unsent.putIfAbsent(month, () => {}).add(id);
     _edit(month, draft.kind, (entries) => [...entries, _entryOf(id, draft)]);
     final activityId = logActivity(
       entryActivity(
@@ -791,13 +806,20 @@ class FakeEntriesRepository with LogsActivity implements EntriesRepository {
     if (rejectNextAdd) {
       rejectNextAdd = false;
       scheduleMicrotask(() {
+        _unsent[month]?.remove(id);
         _edit(
           month,
           draft.kind,
           (entries) => [...entries.where((e) => e.id != id)],
         );
         if (activityId != null) activity?.drop(activityId);
-        _rejected.add((id: id, month: month, kind: draft.kind));
+        _rejected.add((
+          id: id,
+          month: month,
+          kind: draft.kind,
+          title: draft.title.trim(),
+          amount: draft.amount,
+        ));
       });
     }
     return id;
@@ -1092,6 +1114,7 @@ class FakeEntriesRepository with LogsActivity implements EntriesRepository {
         trashed: trashed,
         plannedIds: {...ledger.plannedIds}..remove(forget),
         fixedIncomeIds: {...ledger.fixedIncomeIds}..remove(forget),
+        unsentIds: {...?_unsent[month]},
       ),
     );
   }

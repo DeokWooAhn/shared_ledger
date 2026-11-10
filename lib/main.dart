@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
@@ -6,6 +8,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'app.dart';
+import 'data/entries/firestore_entries_repository.dart';
 import 'di.dart';
 import 'firebase_options.dart';
 
@@ -31,9 +34,13 @@ Future<void> main() async {
       automaticHostMapping: false,
     );
   }
+  // 지난 실행에서 오프라인으로 더한 항목을 서버가 거부했는지 확인한다. Firestore는 처음 쓰일 때 밀린 쓰기를 보내므로
+  // 다른 Firestore 작업보다 먼저 시작해야 한다. 끝나기를 기다리지 않고, 거부는 저장소가 모아 뒀다가 홈 화면에 알린다.
+  final entries = FirestoreEntriesRepository(FirebaseFirestore.instance);
+  unawaited(entries.checkUnsentFromLastRun());
   runApp(
     ProviderScope(
-      overrides: repositoryOverrides(),
+      overrides: repositoryOverrides(entries: entries),
       child: const SharedLedgerApp(),
     ),
   );
