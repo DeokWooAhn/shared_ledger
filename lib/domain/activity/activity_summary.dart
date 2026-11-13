@@ -1,5 +1,6 @@
 import '../model/activity.dart';
 import '../model/expense_template.dart';
+import '../model/ledger.dart';
 import '../model/ledger_entries.dart';
 import '../model/payment_method.dart';
 import '../model/year_month.dart';
@@ -90,6 +91,21 @@ ActivityDraft templateActivity(
 /// 가계부 이름을 바꾼 기록. 예: `가계부 이름 '우리 가계부' → '하늘바다 가계부'`
 ActivityDraft ledgerRenameActivity({String? from, required String to}) =>
     ActivityDraft(ActivityAction.ledgerRename, '가계부 이름 ${_renamed(from, to)}');
+
+/// 가계부에서 나간 기록. 관리자를 넘겼으면 그것도 적는다. 예: `가계부에서 나감 · 관리자 넘김`
+///
+/// 혼자 쓰던 관리자가 나가면 가계부가 지워지니 남기지 않는다(null).
+ActivityDraft? ledgerLeaveActivity(LeaveOutcome outcome) => switch (outcome) {
+  LeaveOutcome.memberLeaves => const ActivityDraft(
+    ActivityAction.ledgerLeave,
+    '가계부에서 나감',
+  ),
+  LeaveOutcome.handsOver => const ActivityDraft(
+    ActivityAction.ledgerLeave,
+    '가계부에서 나감 · 관리자 넘김',
+  ),
+  LeaveOutcome.closes => null,
+};
 
 /// 이름표 이름을 바꾼 기록. 이름표가 없던 옛 가계부면 [from]이 null이다. 예: `이름표 '상대' → '바다'`
 ActivityDraft memberRenameActivity({String? from, required String to}) =>

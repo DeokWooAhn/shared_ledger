@@ -77,7 +77,7 @@ lib/
 test/                   lib와 같은 구조 + architecture_test.dart(레이어 규칙 검사), 앱 전체 흐름 테스트
 testing/                테스트에서만 쓰는 가짜 저장소와 도우미(fakes, provider_container, app). 배포하지 않는다
 firestore.rules         보안 규칙. 테스트는 firestore-tests/
-functions/              Cloud Functions(TypeScript). 지금은 공휴일 동기화(syncHolidays) 하나
+functions/              Cloud Functions(TypeScript). 공휴일 동기화(syncHolidays)와 구성원이 빈 가계부 지우기(deleteClosedLedger)
 ```
 
 의존 방향은 한쪽으로만 흐른다(MVVM, 단방향 데이터 흐름).
@@ -162,7 +162,8 @@ MVVM의 ViewModel 역할은 Riverpod `Notifier`를 상속한 클래스가 맡는
 Flutter의 `TextEditingController`·`ScrollController`와 헷갈리지 않게 하려는 것이다.
 
 - **화면 하나 = View + Notifier.** `join_ledger_screen.dart` + `ledger_start_notifier.dart`가 정석이다(만들기·입장 두 화면이 Notifier 하나를 같이 쓴다).
-  Notifier가 맡을 동작이 없는 화면(`settings_screen.dart`: 시트 열기와 화면 이동만, `account_screen.dart`: `signOutWithFeedback`만 씀)은 Notifier 없이 공급자만 읽는다.
+  Notifier가 맡을 동작이 없는 화면(`summary_screen.dart`: 계산한 요약만 그림, `settings_screen.dart`: 시트 열기와 화면 이동만. 맨 아래 '가계부 나가기' 줄만 `LeaveLedgerNotifier`를 씀)은 Notifier 없이 공급자만 읽는다.
+  나가기·탈퇴처럼 성공하면 화면이 사라지는 동작은 결과를 State 대신 Notifier 메서드의 돌려준 값으로 넘기고, View가 `await` 전에 잡아 둔 `ScaffoldMessenger`로 알린다(`account_screen.dart`).
 - **Notifier**는 Riverpod `Notifier<불변 State>`이고 `NotifierProvider.autoDispose`로 만든다. 사용자 동작은 메서드로 받는다.
   `await` 뒤에는 `ref.mounted`를 확인한 뒤 상태를 바꾼다(화면이 사라지면 Notifier도 해제된다).
 - **State**는 불변 클래스다. 진행 중인 동작(`pending`), 입력란 문제, 일회성 실패를 필드로 두고 화면 문구는 넣지 않는다.
@@ -219,6 +220,9 @@ Flutter의 `TextEditingController`·`ScrollController`와 헷갈리지 않게 �
   같은 칸이 겹치면 `EntryEditConflict`로 묻는다. 캐시에서 온 목록(반복 설정 등)으로 쓰기를 정하면 트랜잭션에서 원본을 다시 읽는다(`fillPlanned`).
 - 가계부 문서는 지우지 않는다(규칙도 막는다). 하위 컬렉션이 남아 같은 ID로 다시 만들면 읽힌다(`docs/firestore.md`).
   같은 까닭으로 새 가계부 ID는 만든 사람 uid로 시작한다(`newLedgerId`, 규칙이 이 모양만 받는다).
+  혼자 쓰던 관리자가 나가면 앱은 구성원만 비우고 함수(`deleteClosedLedger`)가 하위까지 지운다. 구성원이 빈 가계부는 규칙이 읽기·쓰기·참여를 모두 막는다.
+- **이름표 자리는 사람이 아니라 자리다.** 항목의 '누가'는 `owner`·`partner` 자리로 적고, 관리자가 나가며 넘기면 사람을 옮기지 않고 가계부의 `ownerSlot`을 바꾼다.
+  uid ↔ 자리는 `Ledger.slotOf`·`uidOf`로만 구한다(관리자 = owner 자리라고 가정하지 않는다).
 - **공급자**(`lib/core/providers/providers.dart`): 다른 공급자는 `ref.watch`로 의존하고, 구독은 UseCase 홀더의 `watch…`로 연다. 로그인하지 않았으면 빈 값을 내보낸다.
   공급자 본문에서 쓰기 같은 부수효과를 일으키지 않는다.
 

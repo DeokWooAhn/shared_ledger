@@ -71,7 +71,12 @@ firebase deploy --only firestore:rules --project simple-shared-ledger
 
 ## Cloud Functions
 
-`functions/`(TypeScript, Node 22, 서울 지역). 지금은 공휴일을 받아 두는 `syncHolidays` 하나다(`docs/firestore.md`의 holidays).
+`functions/`(TypeScript, Node 22, 서울 지역). 공휴일을 받아 두는 `syncHolidays`(`docs/firestore.md`의 holidays)와,
+구성원이 빈 가계부를 하위 문서까지 지우는 Firestore 트리거 `deleteClosedLedger`(2026-11-10, `docs/firestore.md`의 '가계부 나가기')가 있다.
+
+- `deleteClosedLedger`는 규칙의 `ownerClosesAlone`과 짝이다. 규칙만 배포하고 함수를 배포하지 않으면 혼자 나간 가계부가 지워지지 않고
+  (아무도 읽을 수 없는 채로) 남으니, 이 PR 뒤 배포는 규칙과 함수를 같이 한다(`--only firestore:rules,functions`).
+  처음 배포하면 Firestore 트리거용 Eventarc 권한을 CLI가 설정한다. 확인은 `firebase functions:log --only deleteClosedLedger`.
 
 - 검사: `npm --prefix functions test`(타입 검사·빌드 + 응답 해석 테스트). CI의 'Cloud Functions 빌드·테스트' job과 같다.
 - 공공데이터포털 인증키는 Secret Manager의 `HOLIDAY_API_KEY`에 있다. 저장소·로그에 남기지 않는다. 처음이나 키를 바꿀 때 사용자가 직접 넣는다.

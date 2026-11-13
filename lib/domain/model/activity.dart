@@ -22,6 +22,7 @@ enum ActivityAction {
   templateDelete('template.delete'),
   templateRestore('template.restore'),
   ledgerRename('ledger.rename'),
+  ledgerLeave('ledger.leave'),
   memberRename('member.rename'),
   categoryCreate('category.create'),
   categoryUpdate('category.update'),

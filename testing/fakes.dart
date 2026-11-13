@@ -54,6 +54,21 @@ class FakeAuthRepository implements AuthRepository {
   int appleCalls = 0;
   int signOutCalls = 0;
 
+  /// true면 다음 다시 로그인(탈퇴 전 확인)을 사용자가 취소한다.
+  bool cancelNextReauth = false;
+
+  /// true면 다음 다시 로그인에서 다른 계정을 고른다([AccountDeletionFailure.wrongAccount]).
+  bool wrongAccountOnReauth = false;
+
+  /// true면 다음 계정 지우기가 오류로 실패한다.
+  bool failNextDelete = false;
+  int reauthCalls = 0;
+  int deleteCalls = 0;
+
+  /// 값을 넣으면 계정을 지우기 전에 이것이 끝나기를 기다린다. 탈퇴하는 동안의 화면을 보는 테스트가 쓴다.
+  Future<void>? holdDelete;
+  bool _reauthenticated = false;
+
   @override
   Stream<AuthUser?> authStateChanges() async* {
     yield _user;
@@ -88,6 +103,37 @@ class FakeAuthRepository implements AuthRepository {
     if (failNextSignOut) {
       failNextSignOut = false;
       throw FakeFailure('sign-out failed');
+    }
+    _set(null);
+  }
+
+  @override
+  Future<bool> reauthenticate() async {
+    reauthCalls++;
+    if (cancelNextReauth) {
+      cancelNextReauth = false;
+      return false;
+    }
+    if (wrongAccountOnReauth) {
+      wrongAccountOnReauth = false;
+      throw const AccountDeletionException(AccountDeletionFailure.wrongAccount);
+    }
+    _reauthenticated = true;
+    return true;
+  }
+
+  /// 실제처럼 바로 전에 다시 로그인했어야 지운다. 지우면 로그아웃 상태가 된다.
+  @override
+  Future<void> deleteAccount() async {
+    deleteCalls++;
+    if (!_reauthenticated) {
+      throw StateError('다시 로그인하지 않고 계정을 지우려 했다');
+    }
+    _reauthenticated = false;
+    await holdDelete;
+    if (failNextDelete) {
+      failNextDelete = false;
+      throw FakeFailure('delete failed');
     }
     _set(null);
   }
@@ -143,6 +189,12 @@ class FakeLedgerRepository with LogsActivity implements LedgerRepository {
   /// true면 다음 이름 바꾸기가 [SettingsWriteException]이 아닌 오류로 실패한다.
   bool failNextRename = false;
 
+  /// 가계부에서 나간 기록.
+  final leaves = <({String ledgerId, String uid})>[];
+
+  /// true면 다음 나가기가 [SettingsWriteException]이 아닌 오류로 실패한다.
+  bool failNextLeave = false;
+
   static Never _fail(String what) => throw FakeFailure('$what failed');
 
   /// 그사이 가계부 목록이 바뀐 것처럼(나간 가계부가 빠지거나 다른 가계부가 앞에 오거나) 목록을 [ledgers]로 바꾼다.
@@ -157,13 +209,16 @@ class FakeLedgerRepository with LogsActivity implements LedgerRepository {
   static Ledger _copy(
     Ledger ledger, {
     String? name,
+    String? ownerUid,
     Map<String, MemberRole>? roles,
+    MemberSlot? ownerSlot,
     Set<YearMonth>? months,
   }) => Ledger(
     id: ledger.id,
     name: name ?? ledger.name,
-    ownerUid: ledger.ownerUid,
+    ownerUid: ownerUid ?? ledger.ownerUid,
     roles: roles ?? ledger.roles,
+    ownerSlot: ownerSlot ?? ledger.ownerSlot,
     createdAt: ledger.createdAt,
     months: months ?? ledger.months,
   );
@@ -296,6 +351,49 @@ class FakeLedgerRepository with LogsActivity implements LedgerRepository {
     _ledgers[index] = _copy(_ledgers[index], name: name.trim());
     _changes.add(null);
     logActivity(ledgerRenameActivity(from: before, to: name), uid);
+  }
+
+  /// 실제 저장소처럼 초대로 들어온 사람은 빠지고, 관리자는 남은 사람에게 관리자를 넘기며(이름표 자리는 그대로),
+  /// 혼자 쓰던 관리자가 나가면 가계부가 없어진다(서버 함수가 지운다). 상대를 두고 나가는 관리자·편집자만 기록을 남긴다.
+  @override
+  Future<LeaveOutcome> leave({
+    required String ledgerId,
+    required String uid,
+  }) async {
+    if (failNextLeave) {
+      failNextLeave = false;
+      _fail('leave');
+    }
+    if (offline) {
+      throw const SettingsWriteException(SettingsWriteFailure.offline);
+    }
+    final index = _ledgers.indexWhere((l) => l.id == ledgerId);
+    final ledger = index < 0 ? null : _ledgers[index];
+    final outcome = ledger?.leaveOutcomeOf(uid);
+    if (ledger == null || outcome == null) {
+      throw const SettingsWriteException(SettingsWriteFailure.notFound);
+    }
+    leaves.add((ledgerId: ledgerId, uid: uid));
+    switch (outcome) {
+      case LeaveOutcome.memberLeaves:
+        _ledgers[index] = _copy(ledger, roles: {...ledger.roles}..remove(uid));
+      case LeaveOutcome.handsOver:
+        _ledgers[index] = _copy(
+          ledger,
+          ownerUid: ledger.roles.keys.first,
+          roles: const {},
+          ownerSlot: ledger.ownerSlot.other,
+        );
+      case LeaveOutcome.closes:
+        _ledgers.removeAt(index);
+    }
+    _changes.add(null);
+    if (ledger.roleOf(uid)?.canWrite ?? false) {
+      if (ledgerLeaveActivity(outcome) case final draft?) {
+        logActivity(draft, uid);
+      }
+    }
+    return outcome;
   }
 
   @override

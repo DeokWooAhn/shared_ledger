@@ -230,7 +230,7 @@ void main() {
       );
       expect(find.byKey(const Key('sign-in-method')), findsNothing);
 
-      await tapShown(tester, find.byKey(const Key('open-account')));
+      await tapVisible(tester, const Key('open-account'));
       await settleRoute(tester);
       expect(
         find.descendant(
@@ -283,7 +283,7 @@ void main() {
       expect(row.label, contains('분류'));
       expect(row.label.replaceAll('\u2060', ''), contains('2개'));
       expect(row.flagsCollection.isButton, isTrue);
-      await tapShown(tester, find.byKey(const Key('open-account')));
+      await tapVisible(tester, const Key('open-account'));
       await settleRoute(tester);
       final method = tester.getSemantics(
         find.byKey(const Key('sign-in-method')),

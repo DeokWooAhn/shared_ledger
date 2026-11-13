@@ -33,9 +33,10 @@ service cloud.firestore {
       return signedIn() && uid() in ledger.memberUids;
     }
 
-    // 관리자와 편집자만 쓸 수 있다.
+    // 관리자와 편집자만 쓸 수 있다. 혼자 쓰던 관리자가 나가 구성원이 빈 가계부(ownerClosesAlone)에는
+    // ownerUid가 남아 있어도 아무도 쓰지 못한다.
     function canWriteIn(ledger) {
-      return signedIn()
+      return isMemberOf(ledger)
         && (ledger.ownerUid == uid() || ledger.roles.get(uid(), '') == 'editor');
     }
 
@@ -112,11 +113,13 @@ service cloud.firestore {
         && isOwnLedgerId(ledgerId);
 
       // 관리자: 이름 변경, 역할 변경, 내보내기. 구성원을 직접 추가할 수는 없다(초대로만).
+      // 구성원이 빈 가계부의 옛 관리자가 자기를 다시 넣지 못하게 지금 구성원인지도 본다.
       function ownerManages() {
         let before = resource.data;
         let after = request.resource.data;
         return signedIn()
           && before.ownerUid == uid()
+          && uid() in before.memberUids
           && after.diff(before).affectedKeys().hasOnly(['name', 'roles', 'memberUids', 'updatedAt'])
           && validName(after.name)
           && consistentMembers(after)
@@ -139,17 +142,52 @@ service cloud.firestore {
           && after.updatedAt == request.time;
       }
 
+      // 관리자가 나가며 남은 한 명에게 관리자를 넘긴다(2026-11-10). 남은 사람은 역할(편집자·보기 전용)과 상관없이 관리자가 된다.
+      // 항목의 '누가'는 이름표 자리(owner·partner)로 적혀 있어서 자리는 옮기지 않고, 새 관리자가 앉은 자리를 ownerSlot에 적는다.
+      // 남은 사람은 관리자가 아닌 자리에 있었으니 넘길 때마다 ownerSlot은 다른 자리로 바뀐다(없으면 owner 자리).
+      function ownerHandsOver() {
+        let before = resource.data;
+        let after = request.resource.data;
+        return signedIn()
+          && before.ownerUid == uid()
+          && uid() in before.memberUids
+          && before.roles.size() == 1
+          && after.diff(before).affectedKeys().hasOnly(['ownerUid', 'roles', 'memberUids', 'ownerSlot', 'updatedAt'])
+          && after.ownerUid in before.roles
+          && after.roles == {}
+          && after.memberUids == [after.ownerUid]
+          && after.get('ownerSlot', null) == (before.get('ownerSlot', 'owner') == 'owner' ? 'partner' : 'owner')
+          && after.updatedAt == request.time;
+      }
+
+      // 혼자 쓰던 관리자가 나간다(2026-11-10). 구성원을 비워 아무도 읽고 쓰지 못하게 하면, 함수(deleteClosedLedger)가
+      // 하위 문서와 그 가계부의 초대까지 지운다. 가계부 문서를 앱에서 지우지 않는 까닭은 아래 delete 규칙.
+      function ownerClosesAlone() {
+        let before = resource.data;
+        let after = request.resource.data;
+        return signedIn()
+          && before.ownerUid == uid()
+          && before.memberUids == [uid()]
+          && after.diff(before).affectedKeys().hasOnly(['memberUids', 'updatedAt'])
+          && after.memberUids == []
+          && after.updatedAt == request.time;
+      }
+
       // 초대 코드로 참여: 자리가 있을 때, 자기 uid만, 초대에 적힌 역할로.
+      // 초대는 지금 관리자가 만든 것만 쓴다. 관리자를 넘기고 나간 사람이 자기가 만든 옛 코드로 다시 들어오지 못한다.
+      // 구성원이 빈 가계부(지워지기를 기다리는 중)에는 들어올 수 없다.
       function joinsWithInvite() {
         let before = resource.data;
         let after = request.resource.data;
         let invite = get(/databases/$(database)/documents/invites/$(after.inviteCode)).data;
         let rolesDiff = after.roles.diff(before.roles);
         return signedIn()
+          && before.ownerUid in before.memberUids
           && !(uid() in before.memberUids)
           && before.memberUids.size() < maxMembers()
           && after.diff(before).affectedKeys().hasOnly(['roles', 'memberUids', 'inviteCode', 'updatedAt'])
           && invite.ledgerId == ledgerId
+          && invite.createdBy == before.ownerUid
           && invite.expiresAt > request.time
           && rolesDiff.addedKeys() == [uid()].toSet()
           && rolesDiff.affectedKeys() == [uid()].toSet()
@@ -173,8 +211,10 @@ service cloud.firestore {
             || after.join(',').matches('[0-9]{4}-(0[1-9]|1[0-2])(,[0-9]{4}-(0[1-9]|1[0-2]))*'));
       }
 
-      allow update: if ownerManages() || leavesSelf() || joinsWithInvite() || recordsMonths();
-      // 가계부 문서만 지우면 하위 컬렉션(설정·항목·변경 기록)이 남는다. 앱에서는 지우지 않고, 탈퇴는 서버에서 하위까지 지운다(docs/plan.md).
+      allow update: if ownerManages() || leavesSelf() || ownerHandsOver() || ownerClosesAlone()
+        || joinsWithInvite() || recordsMonths();
+      // 가계부 문서만 지우면 하위 컬렉션(설정·항목·변경 기록)이 남는다. 앱에서는 지우지 않고, 혼자 쓰던 관리자가 나가면(탈퇴 포함)
+      // 구성원을 비우고(ownerClosesAlone) 함수(deleteClosedLedger)가 하위까지 지운다.
       allow delete: if false;
 
       // ---------- 가계부 설정: 구성원 이름표, 분류, 결제수단, 고정 지출 템플릿 ----------
@@ -395,7 +435,7 @@ service cloud.firestore {
     // ---------- 초대 ----------
 
     match /invites/{code} {
-      // 관리자만, 자리가 남은 가계부에, 7일 이내로 만든다.
+      // 관리자만, 자리가 남은 가계부에, 7일 이내로 만든다. 구성원이 빈 가계부의 옛 관리자는 만들 수 없다.
       function createsInvite() {
         let data = request.resource.data;
         let ledger = ledgerData(data.ledgerId);
@@ -404,6 +444,7 @@ service cloud.firestore {
           && data.keys().hasOnly(['ledgerId', 'role', 'createdBy', 'createdAt', 'expiresAt'])
           && data.ledgerId is string
           && ledger.ownerUid == uid()
+          && uid() in ledger.memberUids
           && ledger.memberUids.size() < maxMembers()
           && data.role in ['editor', 'viewer']
           && data.createdBy == uid()

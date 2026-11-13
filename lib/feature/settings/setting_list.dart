@@ -8,10 +8,18 @@ import '../../core/widget/tab_page.dart';
 
 /// 설정 탭에서 들어가는 목록 화면의 머리말. 뒤로 가기 단추 아래에 제목과 설명을 둔다.
 class SubPageTitle extends StatelessWidget {
-  const SubPageTitle(this.title, {this.description, super.key});
+  const SubPageTitle(
+    this.title, {
+    this.description,
+    this.backTooltip = '설정으로 돌아가기',
+    super.key,
+  });
 
   final String title;
   final String? description;
+
+  /// 뒤로 단추의 설명. 설정 탭 밖(가계부 시작의 계정 화면)에서 열면 바꾼다.
+  final String backTooltip;
 
   @override
   Widget build(BuildContext context) {
@@ -20,9 +28,9 @@ class SubPageTitle extends StatelessWidget {
       children: [
         Padding(
           padding: const EdgeInsets.only(top: 4),
-          child: const BackCircleButton(
-            key: Key('sub-page-back'),
-            tooltip: '설정으로 돌아가기',
+          child: BackCircleButton(
+            key: const Key('sub-page-back'),
+            tooltip: backTooltip,
           ),
         ),
         TabTitle(title, description: description),

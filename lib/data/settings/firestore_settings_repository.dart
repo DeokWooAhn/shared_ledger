@@ -223,19 +223,21 @@ class FirestoreSettingsRepository implements SettingsRepository {
 }
 
 /// 설정 쓰기를 트랜잭션으로 한다. 연결이 없거나 10초 안에 서버가 답하지 않으면
-/// [SettingsWriteException]([SettingsWriteFailure.offline])으로 실패한다. 가계부 이름 바꾸기도 쓴다.
+/// [SettingsWriteException]([SettingsWriteFailure.offline])으로 실패한다. 가계부 이름 바꾸기와 가계부 나가기도 쓴다.
 ///
-/// [write]가 돌려준 변경 기록을 [uid]의 이름으로 같은 트랜잭션에 남긴다.
+/// [write]가 돌려준 변경 기록을 [uid]의 이름으로 같은 트랜잭션에 남긴다. null이면 남기지 않는다(가계부 나가기에서
+/// 보기 전용이나 혼자 쓰던 관리자가 나갈 때).
 Future<void> runSettingsWrite(
   FirebaseFirestore firestore, {
   required String ledgerId,
   required String uid,
   required DateTime now,
-  required Future<ActivityDraft> Function(Transaction transaction) write,
+  required Future<ActivityDraft?> Function(Transaction transaction) write,
 }) async {
   try {
     await firestore.runTransaction((transaction) async {
       final activity = await write(transaction);
+      if (activity == null) return;
       addActivity(
         transaction,
         firestore,

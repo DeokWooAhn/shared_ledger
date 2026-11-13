@@ -17,7 +17,10 @@ import 'repositories.dart';
 // 시간이 필요한 UseCase는 clockProvider로 받는다(테스트는 testNow로 고정한다).
 
 final authUseCasesProvider = Provider<AuthUseCases>(
-  (ref) => AuthUseCases(ref.watch(authRepositoryProvider)),
+  (ref) => AuthUseCases(
+    ref.watch(authRepositoryProvider),
+    ref.watch(ledgerRepositoryProvider),
+  ),
 );
 
 final ledgerUseCasesProvider = Provider<LedgerUseCases>(

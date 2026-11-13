@@ -2,6 +2,7 @@ import 'dart:math';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../domain/model/invite.dart';
 import '../../domain/model/ledger.dart';
+import '../../domain/model/member.dart';
 import '../../domain/model/year_month.dart';
 import '../../domain/activity/activity_summary.dart';
 import '../settings/firestore_settings_repository.dart';
@@ -142,6 +143,44 @@ class FirestoreLedgerRepository implements LedgerRepository {
   }
 
   @override
+  Future<LeaveOutcome> leave({
+    required String ledgerId,
+    required String uid,
+  }) async {
+    final doc = _ledgers.doc(ledgerId);
+    late LeaveOutcome outcome;
+    await runSettingsWrite(
+      _firestore,
+      ledgerId: ledgerId,
+      uid: uid,
+      now: _now(),
+      write: (transaction) async {
+        final Map<String, dynamic>? data;
+        try {
+          data = (await transaction.get(doc)).data();
+        } on FirebaseException catch (e) {
+          // 구성원이 아니면(이미 나갔거나 내보내짐) 규칙이 읽기를 막는다. 지워진 가계부도 같다.
+          if (e.code == 'permission-denied') {
+            throw const SettingsWriteException(SettingsWriteFailure.notFound);
+          }
+          rethrow;
+        }
+        final ledger = data == null ? null : ledgerFromFirestore(doc.id, data);
+        final left = ledger?.leaveOutcomeOf(uid);
+        if (ledger == null || left == null) {
+          throw const SettingsWriteException(SettingsWriteFailure.notFound);
+        }
+        outcome = left;
+        transaction.update(doc, ledgerLeaveUpdate(ledger, uid));
+        // 변경 기록은 쓰기 권한이 있어야 남길 수 있다(규칙은 나가기 전의 가계부로 본다).
+        final canWrite = ledger.roleOf(uid)?.canWrite ?? false;
+        return canWrite ? ledgerLeaveActivity(left) : null;
+      },
+    );
+    return outcome;
+  }
+
+  @override
   Future<void> recordMonths({
     required String ledgerId,
     required Iterable<YearMonth> months,
@@ -206,6 +245,34 @@ Map<String, Object> ledgerRenameUpdate(String name) => {
   'updatedAt': FieldValue.serverTimestamp(),
 };
 
+/// [uid]가 [ledger]에서 나갈 때 가계부 문서에 쓰는 값. 규칙의 leavesSelf·ownerHandsOver·ownerClosesAlone이 받는 필드와 같다.
+///
+/// - 초대로 들어온 사람: 자기 역할과 uid만 뺀다.
+/// - 관리자(상대 있음): 남은 사람을 관리자로 하고, 그 사람이 앉아 있던 이름표 자리를 관리자 자리([Ledger.ownerSlot])로 적는다.
+/// - 관리자(혼자): 구성원을 비운다. 서버 함수(`deleteClosedLedger`)가 하위 문서까지 지운다.
+///
+/// [uid]가 구성원이 아니면 [StateError].
+Map<Object, Object> ledgerLeaveUpdate(Ledger ledger, String uid) =>
+    switch (ledger.leaveOutcomeOf(uid)) {
+      LeaveOutcome.memberLeaves => {
+        FieldPath(['roles', uid]): FieldValue.delete(),
+        'memberUids': FieldValue.arrayRemove([uid]),
+        'updatedAt': FieldValue.serverTimestamp(),
+      },
+      LeaveOutcome.handsOver => {
+        'ownerUid': ledger.roles.keys.first,
+        'roles': <String, String>{},
+        'memberUids': [ledger.roles.keys.first],
+        'ownerSlot': ledger.ownerSlot.other.name,
+        'updatedAt': FieldValue.serverTimestamp(),
+      },
+      LeaveOutcome.closes => {
+        'memberUids': <String>[],
+        'updatedAt': FieldValue.serverTimestamp(),
+      },
+      null => throw StateError('구성원이 아니라 나갈 수 없다'),
+    };
+
 /// Firestore 문서를 [Ledger]로 바꾼다. 알 수 없는 역할 값은 건너뛴다.
 Ledger ledgerFromFirestore(String id, Map<String, dynamic> data) {
   final rawRoles = data['roles'];
@@ -225,6 +292,9 @@ Ledger ledgerFromFirestore(String id, Map<String, dynamic> data) {
     name: name is String ? name : '',
     ownerUid: ownerUid is String ? ownerUid : '',
     roles: roles,
+    // 관리자를 넘긴 적이 없으면 없다. 모르는 값도 처음 자리(owner)로 본다.
+    ownerSlot:
+        MemberSlot.values.asNameMap()[data['ownerSlot']] ?? MemberSlot.owner,
     createdAt: createdAt is Timestamp ? createdAt.toDate() : null,
     // 모양이 다른 달 값은 건너뛴다. 목록 자체가 없거나 목록이 아니면 아직 모으지 않은 가계부다.
     months: months is List

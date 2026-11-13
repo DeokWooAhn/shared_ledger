@@ -31,6 +31,7 @@ String activityActionLabel(ActivityAction? action) => switch (action) {
   ActivityAction.paymentMethodRename => '이름 변경',
   ActivityAction.categoryHide || ActivityAction.paymentMethodHide => '숨김',
   ActivityAction.categoryShow || ActivityAction.paymentMethodShow => '다시 보임',
+  ActivityAction.ledgerLeave => '나감',
   null => '변경',
 };
 
