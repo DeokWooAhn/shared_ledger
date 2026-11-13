@@ -470,14 +470,18 @@ class _MetricTile extends StatelessWidget {
               Row(
                 spacing: 6,
                 children: [
-                  // 18로 키우면 반쪽 폭 카드에서 '이번 달 지출'이 단어 중간에서 줄바뀐다(글자 크기가 큰 기기).
+                  // 18로 키우면 반쪽 폭 카드에서 '이번 달 지출'이 글자 크기 1.1에서도 두 줄이 된다.
                   Icon(
                     icon,
                     size: 16,
                     color: theme.colorScheme.onSurfaceVariant,
                   ),
                   Expanded(
-                    child: Text(label, style: theme.textTheme.labelMedium),
+                    // 글자를 키워 줄이 넘쳐도 '이번 달 지 / 출'처럼 단어 중간에서 끊기지 않게 한다.
+                    child: Text(
+                      keepAll(label),
+                      style: theme.textTheme.labelMedium,
+                    ),
                   ),
                   Icon(
                     Icons.chevron_right,

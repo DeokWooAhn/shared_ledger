@@ -806,6 +806,8 @@ void main() {
       expect(textOf(tester, const Key('cash-out')), '2,827,000원');
       expect(textOf(tester, const Key('spending')), '2,657,000원');
       expect(textOf(tester, const Key('saving')), '1,600,000원');
+      // 반쪽 폭 카드라 글자를 키우면 줄이 넘친다. 단어 중간에서 끊기지 않게 keepAll로 그린다.
+      expect(findSentence('이번 달 지출'), findsOneWidget);
       // 지급 전: 계좌 이자 하나와 카드 둘.
       expect(findSentence('지급 전 고정 지출 3건'), findsOneWidget);
 
