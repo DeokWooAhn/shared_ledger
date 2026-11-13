@@ -5,12 +5,12 @@ description: 심플 공유 가계부(shared_ledger)에 새 화면이나 기능�
 
 # 화면 / MVVM / 레이어 배선
 
-설명보다 아래 정석 레퍼런스를 먼저 읽고 그 구조를 그대로 따른다. 규칙의 원본은 AGENTS.md의 'Dart 작성 규칙', '화면·상태 작업', '데이터·Firestore 작업'이다.
+설명보다 아래 정석 레퍼런스를 먼저 읽고 그 구조를 그대로 따른다. 화면·데이터 규칙의 원본은 이 파일이고, 모든 Dart 코드에 걸리는 규칙은 AGENTS.md의 'Dart 작성 규칙'이다.
 
 MVVM의 ViewModel 역할은 Riverpod `Notifier`를 상속한 클래스가 맡고, 이름은 `XxxNotifier`다(2026-10-27, 그전에는 `XxxController`).
 레이어(`domain`·`data`·`core`·`feature`)와 의존 규칙은 AGENTS.md '프로젝트 구조'의 표가 원본이고 `test/architecture_test.dart`가 검사한다.
 Notifier는 저장소 대신 domain의 UseCase를 영역별 홀더로 부른다(AGENTS.md 'UseCase', 2026-10-27).
-입력란의 `TextEditingController`와 헷갈리지 않게, 입력란 컨트롤러 변수는 `_name`·`_code`처럼 내용으로 짓는다.
+Flutter의 `TextEditingController`·`ScrollController`와 헷갈리지 않게 하려는 것이다. 입력란 컨트롤러 변수는 `_name`·`_code`처럼 내용으로 짓는다.
 
 ## 화면 하나 = 파일 2개 (`lib/feature/<기능>/`)
 
@@ -22,7 +22,9 @@ Notifier는 저장소 대신 domain의 UseCase를 영역별 홀더로 부른다(
 - 더 작은 예: 로그인(`lib/feature/auth/sign_in_*`), 시트(`lib/feature/settings/invite_*`, 입력란이 있는 시트는 `lib/feature/settings/category_sheet.dart` + `category_form_notifier.dart`)
 - 무엇을 열지 인자를 받는 화면(새 항목·고칠 항목)은 `NotifierProvider.autoDispose.family`로, Notifier가 생성자로 인자를 받는다.
   인자 클래스는 `==`를 구현한다: `lib/feature/entries/entry_form_notifier.dart`(`EntryFormArgs`)
-- Notifier가 맡을 동작이 없는 화면은 Notifier 없이 공급자만 읽는다: `lib/feature/settings/settings_screen.dart`, `lib/feature/summary/summary_screen.dart`(계산한 요약 `monthSummaryProvider`를 그린다)
+- Notifier가 맡을 동작이 없는 화면은 Notifier 없이 공급자만 읽는다: `lib/feature/settings/settings_screen.dart`(맨 아래 '가계부 나가기' 줄만 `LeaveLedgerNotifier`를 쓴다), `lib/feature/summary/summary_screen.dart`(계산한 요약 `monthSummaryProvider`를 그린다)
+- **나가기·탈퇴처럼 성공하면 화면이 사라지는 동작**은 결과를 State 대신 Notifier 메서드의 돌려준 값으로 넘기고,
+  View가 `await` 전에 잡아 둔 `ScaffoldMessenger`로 알린다(`lib/feature/settings/account_screen.dart`). State에 담으면 화면이 이미 없어 못 보여 준다.
 - 같은 기능 안에서 함께 쓰는 문구·위젯은 그 기능 폴더에 둔다(`member_role_label.dart`). 기능을 넘어 쓰는 위젯·공급자는 `lib/core`로,
   화면과 상관없는 규칙(검사, 계산, 기본값)은 `lib/domain`으로 올린다.
 
@@ -36,6 +38,10 @@ Notifier는 저장소 대신 domain의 UseCase를 영역별 홀더로 부른다(
 - 보고 있는 달은 `selectedMonthProvider`를 읽는다(탭을 옮겨도 같은 달). 오늘 날짜가 필요하면 `clockProvider`.
   머리말로 오가는 달은 `ledgerMonthsProvider`(가계부가 있는 달, 이번 달도 추가해야 들어간다. 목록을 아직 모으지 않았으면 null)이고, 달력은 모든 달을 보여준다.
   새 항목을 더하는 쓰기는 `Ledger.needsToRecord(month)`로 그달을 가계부의 달 목록에 같이 더한다(`SaveEntryUseCase`, `docs/firestore.md`의 `months`).
+- 내역 탭은 세 칸이다(`EntryTab`: 수입·지출·카드 대금). 고정 수입·고정 지출은 따로 된 화면 없이 수입·지출 칸과 입력 화면에서 다룬다.
+  달력은 내역 탭 머리말의 달력 단추로 연다. 홈의 카드는 누르면 내역 탭의 그에 맞는 칸으로 간다(현금 카드는 카드 전체가 누름 자리 하나).
+- 통계 탭은 '통계' 제목과 기간 아이콘을 머리말로 쓰고(홈과 헷갈리지 않게), 보는 달 대신 따로 고른 기간(`statsPeriodProvider`)을 본다.
+- `+` 버튼은 내역 탭에서만 탭 막대 위에 떠 있어서, 있든 없든 탭 막대의 폭과 탭 위치가 바뀌지 않는다.
 - 두 사람 표시는 `MemberAvatar`, 이름은 `membersProvider`에서 꺼낸다.
 - 탭을 더하거나 빼면 `HomeTab`과 router.dart의 `Routes.of`·`_tabScreen`을 같이 고친다(`switch`라 빠뜨리면 컴파일 에러).
 - 폭 600 이상(`wideLayoutMinWidth`)에서는 아래 탭 막대 대신 옆 탭 막대(NavigationRail)가 나온다. 위젯 테스트는 두 배치를 다 본다.
@@ -90,7 +96,9 @@ final xxxUseCasesProvider = Provider<XxxUseCases>(
 
 - UseCase 하나 = 파일 하나(`<이름>_use_case.dart`), 공개 메서드는 `call()` 하나. 구독은 `Watch…`(`Stream`), 순수 계산은 저장소 없이(`CalculateMonthSummaryUseCase`).
 - 바로 답이 나오는 검사는 domain 함수(`categoryNameProblemOf`, `inviteCodeProblemOf`)로 두고 UseCase와 Notifier가 같이 부른다. UseCase에만 두면 '진행 중'을 거친 뒤에야 문제를 알게 된다.
-- Riverpod·Flutter를 import하지 않는다. `AsyncValue` 묶기는 공급자에, 화면에 그리려고 묶는 일(`mergeActivities`)은 feature에 남긴다.
+- 검사에 걸리면 쓰지 않고 문제를 값으로 돌려준다(`Future<NameProblem?>`). 저장소의 실패는 그대로 던지고,
+  참여 실패처럼 입력란 문제로 보여 줄 것만 UseCase가 문제 값으로 바꾼다(`JoinLedgerUseCase`).
+- Riverpod·Flutter를 import하지 않는다. `AsyncValue` 묶기는 공급자에, 화면에 그리려고 묶는 일(`mergeActivities`, `calendar_days`)은 feature에 남긴다.
 - 시간이 필요하면 생성자로 `DateTime Function() now`를 받고, 홀더 공급자가 `clockProvider`를 넣는다(`PurgeEntryUseCase`, `AddMonthUseCase`).
 - 공급자가 판단만 UseCase에 맡길 때는 다른 공급자 값을 미리 읽어 넘기지 말고 꺼내는 함수(`MonthLedger? Function()`)를 넘긴다.
   UseCase가 꺼낼 때만 `ref.watch`가 불려서, 지금처럼 필요할 때만 구독한다(`plannedFillProvider` → `PlanMonthFillUseCase`).
@@ -199,6 +207,27 @@ Widget build(BuildContext context) {
     semantics 단언(`node.isMergedIntoParent`)이 깨진다(Flutter 3.47, PR ③에서 겪음). 늘 보이는 `suffixIcon`이나 입력란 밖 글자로 둔다(`WonAmountField`).
   - 안에 따로 누를 단추가 있는 칸(날짜 칸의 '지우기')은 `LabeledField`로 합치지 않고 `Semantics(button:, label:, value:)`로 직접 알린다(`_DateField`).
 
+## 화면 작성 규칙
+
+AGENTS.md에서 옮겨 온 규칙이다. 이 파일이 원본이다.
+
+- **입력란 오류는 한 곳에서만 관리한다.** 그 칸 안에서 끝나는 검사는 폼 validator로(가계부 이름),
+  서버 결과도 보여야 하는 칸은 입력 검사까지 Notifier 상태로(초대 코드) 한다. `Form.validate()`와
+  `forceErrorText`를 섞으면 실패 뒤 첫 누름이 무시된다(PR #3에서 실제로 겪음).
+- 위젯을 돌려주는 private 메서드보다 작은 위젯 클래스로 나눈다(`_OptionCard`, `_ValuePoint`). 바뀌지 않는 위젯은 `const`.
+- 긴 목록은 `ListView.builder`로 만들고, 항목에는 안정적인 id로 `ValueKey`를 준다. 인덱스를 키로 쓰지 않는다.
+- **넓은 화면:** 아이패드와 Mac(아이패드 앱)에서도 쓴다. 본문은 `ConstrainedBox(maxWidth: …)`로 가운데 두고,
+  두 칸 배치는 `LayoutBuilder`로 바꾼다(`docs/plan.md`의 '화면'). 플랫폼 분기는 `defaultTargetPlatform`.
+- **테마:** 색은 `Theme.of(context).colorScheme`과 `context.appColors`, 글자는 `textTheme`에서 꺼낸다
+  (`lib/core/theme/app_theme.dart`, 원본은 `design/app.pen`). 화면 디자인은 `design/app/*.png`.
+  화면에서 색을 직접 쓰지 않는다(`Color(0xFF…)`, `Colors.red`, `AppPalette`). Apple 로그인 버튼의 검정·흰색만 예외.
+- **문구:** 해요체. 여러 단어로 된 문장(설명·안내·오류)은 `keepAll()`로 감싸고, 입력란 오류도 `errorText: keepAll(...)`로 넘긴다.
+  Flutter는 한글을 단어 중간에서 줄바꿈한다. 저장하거나 비교하는 값에는 쓰지 않는다. '가구'·'가족' 대신 '가계부'·'두 사람'을 쓴다.
+  두 문장 이상인 안내는 문장 사이(긴 한 문장은 쉼표 뒤)에 `\n`을 넣어 문장 단위로 줄을 바꾼다(2026-11-03).
+- **접근성:** 입력란은 `LabeledField`로 이름표와 묶어 화면 읽기 도구가 함께 읽게 한다. 아이콘만 있는 버튼에는 `tooltip`.
+  누를 수 있는 것은 높이 48 이상(테마의 버튼은 54). 색만으로 뜻을 전하지 않는다.
+- 테스트에서 찾을 위젯에는 `Key('kebab-case')`를 준다(`sign-in-google`, `join-ledger`).
+
 ## 레이어 배선 순서
 
 1. **모델** — `lib/domain/model/<이름>.dart`. 순수 Dart, 불변. 역할·권한 판단과 도메인 제한은 모델에 둔다(`MemberRole.canWrite`, `Ledger.canInvite`).
@@ -237,7 +266,15 @@ Widget build(BuildContext context) {
 - [ ] 가짜 저장소가 같은 약속을 지키는지(`testing/fakes.dart`)
 - [ ] 새 쓰기면 변경 기록을 같은 일괄 쓰기·트랜잭션으로 남기는지(`lib/data/activity/firestore_activity_repository.dart`의 `addActivity`·`newActivityData`, 요약은 `lib/domain/activity/activity_summary.dart`). 가짜도 `logActivity`로 같은 요약을 남긴다
 
-리스너는 필요한 문서만 구독한다. 규칙 배포는 PR이 합쳐진 뒤에 한다(firebase 스킬).
+- **읽기는 곧 비용이다**(Firestore는 지출 한도 대상이 아님). 필요한 문서만 구독하고, 계속 늘어나는 목록(항목, 변경 기록)에는
+  `limit`이나 달 단위 범위를 두고, 같은 쿼리는 공급자 하나를 여러 화면이 같이 읽는다.
+- **쓴 시각은 서버 시각이다.** `createdAt`·`updatedAt`·`deletedAt`·변경 기록의 `at`은 `FieldValue.serverTimestamp()`로 쓰고,
+  규칙이 `request.time`과 같은지 본다. 방금 쓴 문서는 서버 시간이 아직 null이다.
+- **만료·정리 시각은 앱이 계산한다.** 초대 `expiresAt`, 변경 기록 `expireAt`, 휴지통 `purgeAt`은
+  `Timestamp.fromDate(…)`로 쓴다. 여기에 서버 시각을 쓰면 값이 `request.time`과 같아져
+  규칙의 `data.expiresAt > request.time`·`data.expireAt > request.time`에 걸려 쓰기가 거부된다(`firestore.rules`).
+
+규칙 배포는 PR이 합쳐진 뒤에 한다(firebase 스킬).
 
 ## 마치기 전에
 
