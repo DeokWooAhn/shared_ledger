@@ -277,11 +277,12 @@ class _AddButton extends StatelessWidget {
     return DecoratedBox(
       decoration: BoxDecoration(
         shape: BoxShape.circle,
+        // 탭 막대와 같은 중립 그림자. 포인트 색 그림자는 버튼이 빛나 보여서 쓰지 않는다.
         boxShadow: [
           BoxShadow(
-            color: scheme.tertiary.withValues(alpha: 0.25),
-            blurRadius: 16,
-            offset: const Offset(0, 6),
+            color: scheme.shadow.withValues(alpha: 0.08),
+            blurRadius: 24,
+            offset: const Offset(0, 8),
           ),
         ],
       ),
@@ -422,14 +423,17 @@ class _TabButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final color = selected ? scheme.onTertiary : context.appColors.textMuted;
+    // 고른 탭은 연한 코발트 바탕에 파란 글자. 꽉 찬 포인트 색은 + 버튼과 남는 현금 카드에 남긴다.
+    final color = selected
+        ? scheme.onPrimaryContainer
+        : context.appColors.textMuted;
     const radius = BorderRadius.all(Radius.circular(25));
     return Semantics(
       button: true,
       selected: selected,
       child: Ink(
         decoration: BoxDecoration(
-          color: selected ? scheme.tertiary : null,
+          color: selected ? scheme.primaryContainer : null,
           borderRadius: radius,
         ),
         child: InkWell(
@@ -485,10 +489,13 @@ class _SideTabBar extends StatelessWidget {
       labelType: NavigationRailLabelType.all,
       groupAlignment: -0.9,
       backgroundColor: scheme.surface,
-      indicatorColor: scheme.tertiary,
-      selectedIconTheme: IconThemeData(color: scheme.onTertiary, size: 22),
+      indicatorColor: scheme.primaryContainer,
+      selectedIconTheme: IconThemeData(
+        color: scheme.onPrimaryContainer,
+        size: 22,
+      ),
       unselectedIconTheme: IconThemeData(color: muted, size: 22),
-      selectedLabelTextStyle: label?.copyWith(color: scheme.tertiary),
+      selectedLabelTextStyle: label?.copyWith(color: scheme.onPrimaryContainer),
       unselectedLabelTextStyle: label?.copyWith(color: muted),
       // + 버튼이 없는 탭에서도 자리를 비워 둬서, 탭을 옮길 때 탭 막대가 위아래로 움직이지 않게 한다.
       leading: Padding(

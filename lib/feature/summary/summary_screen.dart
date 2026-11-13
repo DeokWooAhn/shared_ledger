@@ -564,9 +564,9 @@ class _CardSection extends StatelessWidget {
                             ),
                             Text(
                               won(amount),
-                              style: lineStyle?.copyWith(
-                                fontWeight: FontWeight.w600,
-                              ),
+                              style: lineStyle
+                                  ?.copyWith(fontWeight: FontWeight.w600)
+                                  .tabularFigures,
                             ),
                           ],
                         ),
@@ -669,9 +669,9 @@ class _CardUsageRow extends StatelessWidget {
                     child: Text(
                       won(amount),
                       maxLines: 1,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
+                      style: theme.textTheme.bodyMedium
+                          ?.copyWith(fontWeight: FontWeight.w700)
+                          .tabularFigures,
                     ),
                   ),
                 ),

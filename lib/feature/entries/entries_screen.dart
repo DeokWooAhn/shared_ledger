@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/providers/providers.dart';
+import '../../core/theme/app_theme.dart';
 import '../../domain/model/category.dart';
 import '../../domain/model/ledger_entries.dart';
 import '../../domain/model/member.dart';
@@ -237,7 +238,9 @@ class _ListSummary extends StatelessWidget {
           Text(
             won(total),
             key: const Key('entries-total'),
-            style: theme.textTheme.titleMedium?.copyWith(fontSize: 18),
+            style: theme.textTheme.titleMedium
+                ?.copyWith(fontSize: 18)
+                .tabularFigures,
           ),
         ],
       ),
@@ -298,7 +301,9 @@ class _SectionHeader extends StatelessWidget {
           Text(
             won(list.total),
             key: Key('section-total-${kind.name}'),
-            style: theme.textTheme.titleMedium?.copyWith(fontSize: 15),
+            style: theme.textTheme.titleMedium
+                ?.copyWith(fontSize: 15)
+                .tabularFigures,
           ),
         ],
       ),
@@ -360,7 +365,9 @@ class _GroupCard extends StatelessWidget {
                     ),
                     Text(
                       won(group.total),
-                      style: headerStyle?.copyWith(fontWeight: FontWeight.w600),
+                      style: headerStyle
+                          ?.copyWith(fontWeight: FontWeight.w600)
+                          .tabularFigures,
                     ),
                   ],
                 ),

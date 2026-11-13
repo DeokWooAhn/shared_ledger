@@ -12,7 +12,7 @@ const summaryTwoColumnMinWidth = 840.0;
 /// 두 칸일 때 본문의 최대 폭.
 const summaryTwoColumnMaxWidth = 960.0;
 
-/// 진한 코발트 큰 카드(홈의 남는 현금). 라이트·다크 모두 같은 색이고, 오른쪽 위에 옅은 원을 깐다.
+/// 진한 코발트 큰 카드(홈의 남는 현금). 라이트·다크 모두 같은 색이고, 장식 없이 바탕색만 깐다.
 ///
 /// [onTap]을 주면 카드 전체가 단추 하나가 되고, 누른 자리의 물결이 안쪽 여백에 갇히지 않고 카드 끝까지 퍼진다.
 class HeroCard extends StatelessWidget {
@@ -26,28 +26,11 @@ class HeroCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = context.appColors;
-    final content = Stack(
-      children: [
-        Positioned(
-          top: -70,
-          right: -80,
-          child: Container(
-            width: 200,
-            height: 200,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: colors.onHero.withValues(alpha: 0.07),
-            ),
-          ),
-        ),
-        Padding(padding: const EdgeInsets.all(22), child: child),
-      ],
-    );
+    final content = Padding(padding: const EdgeInsets.all(22), child: child);
     return Container(
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
-        color: colors.hero,
+        color: context.appColors.hero,
         borderRadius: BorderRadius.circular(24),
       ),
       child: onTap == null
@@ -108,7 +91,12 @@ class AmountText extends StatelessWidget {
     return FittedBox(
       fit: BoxFit.scaleDown,
       alignment: AlignmentDirectional.centerStart,
-      child: Text(won(amount), key: textKey, maxLines: 1, style: style),
+      child: Text(
+        won(amount),
+        key: textKey,
+        maxLines: 1,
+        style: style?.tabularFigures,
+      ),
     );
   }
 }

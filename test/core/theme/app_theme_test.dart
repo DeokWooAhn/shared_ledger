@@ -36,9 +36,14 @@ void main() {
           ('버튼 글자 / 버튼', scheme.onPrimary, scheme.primary),
           ('포인트 색 위 글자 / 포인트 색', scheme.onTertiary, scheme.tertiary),
           (
-            '아이콘 원·초대 코드 / 그 바탕',
+            '아이콘 원·초대 코드·고른 탭 / 그 바탕',
             scheme.onPrimaryContainer,
             scheme.primaryContainer,
+          ),
+          (
+            '옆 탭 막대의 고른 탭 글자 / 화면 바탕',
+            scheme.onPrimaryContainer,
+            scheme.surface,
           ),
           ('본문 / 화면 바탕', scheme.onSurface, scheme.surface),
           ('본문 / 카드', scheme.onSurface, scheme.surfaceContainerLowest),
