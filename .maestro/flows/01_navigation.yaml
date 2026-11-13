@@ -20,6 +20,7 @@ tags: [smoke]
     element:
       id: open-trash
     direction: DOWN
+    centerElement: true
 - assertVisible:
     id: open-trash
 - tapOn:

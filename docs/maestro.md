@@ -81,7 +81,8 @@ Flow 시작 시 공용 Firebase 테스트 데이터를 초기화하므로 다른
 삭제·이름 변경도 감지한다. 판별 규칙은 `.github/scripts/maestro_changes.py`, 회귀 검사는 같은 폴더의 Python 테스트에 있다.
 
 `Maestro 스모크 테스트`는 Flutter를 `.fvmrc` 버전으로 설치하고 전용 디버그 APK를 빌드한다.
-Maestro 2.1.0·Firebase CLI 15.20.0·Java 21을 사용하고, API 34 Android 에뮬레이터에서 로컬 Firebase와 실행한다.
+APK는 기존 Android CI와 같은 JDK 17로 빌드하고, Firebase·Maestro 실행 전에 JDK 21로 전환한다.
+Maestro 2.1.0·Firebase CLI 15.20.0을 사용하고, API 34 Android 에뮬레이터에서 로컬 Firebase와 실행한다.
 첫 탭 이동 Flow로 앱을 워밍업한 뒤 smoke 세 개를 실행한다. iOS는 로컬 검증으로 유지한다.
 실패 여부와 관계없이 `maestro-smoke-results` artifact에 스크린샷·JUnit·logcat·에뮬레이터 로그를 7일간 보관한다.
 캐시에는 부팅 후 패키지 작업이 안정된 AVD 스냅샷을 남긴다.
@@ -103,6 +104,8 @@ Android·iOS가 같은 식별자를 사용하며 좌표나 번역된 버튼 문�
 
 화면을 바꾼 뒤에는 `maestro --device <id> hierarchy --compact`로 식별자가 실제로 보이는지 확인하고 Flow를 다시 실행한다.
 앱 문제로 실패하면 단언을 느슨하게 하거나 임의 대기를 늘려 통과시키지 않는다.
+떠 있는 탭 막대가 단추를 가릴 수 있으므로, 설정의 휴지통 이동은 `scrollUntilVisible`의 `centerElement: true`로
+대상을 본문 가운데에 놓은 뒤 누른다. 단순히 화면 안에 있다는 판정만으로 가려지지 않았다고 볼 수 없다.
 
 ## ahn-cc-kit과의 관계
 

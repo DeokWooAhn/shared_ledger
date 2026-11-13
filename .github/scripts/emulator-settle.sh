@@ -15,14 +15,14 @@ if ! timeout 600 adb shell cmd package bg-dexopt-job; then
 fi
 start=$(date +%s)
 while true; do
-  load=$(adb shell cat /proc/loadavg | cut -d' ' -f1)
+  emulator_load_average=$(adb shell cat /proc/loadavg | cut -d' ' -f1)
   elapsed=$(( $(date +%s) - start ))
-  if awk -v load="$load" 'BEGIN { exit !(load < 2.0) }'; then
-    echo "에뮬레이터 부하 안정: $load"
+  if awk -v emulator_load_average="$emulator_load_average" 'BEGIN { exit !(emulator_load_average < 2.0) }'; then
+    echo "에뮬레이터 부하 안정: $emulator_load_average"
     break
   fi
   if [[ "$elapsed" -ge "$max_wait" ]]; then
-    echo "::warning::에뮬레이터 부하가 $load 상태입니다. 테스트를 계속합니다."
+    echo "::warning::에뮬레이터 부하가 $emulator_load_average 상태입니다. 테스트를 계속합니다."
     break
   fi
   sleep 10
