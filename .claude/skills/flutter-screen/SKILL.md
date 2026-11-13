@@ -268,7 +268,11 @@ AGENTS.md에서 옮겨 온 규칙이다. 이 파일이 원본이다.
 
 - **읽기는 곧 비용이다**(Firestore는 지출 한도 대상이 아님). 필요한 문서만 구독하고, 계속 늘어나는 목록(항목, 변경 기록)에는
   `limit`이나 달 단위 범위를 두고, 같은 쿼리는 공급자 하나를 여러 화면이 같이 읽는다.
-- 시간 필드는 `FieldValue.serverTimestamp()`. 규칙이 `request.time`과 같은지 본다. 방금 쓴 문서는 서버 시간이 아직 null이다.
+- **쓴 시각은 서버 시각이다.** `createdAt`·`updatedAt`·`deletedAt`·변경 기록의 `at`은 `FieldValue.serverTimestamp()`로 쓰고,
+  규칙이 `request.time`과 같은지 본다. 방금 쓴 문서는 서버 시간이 아직 null이다.
+- **만료·정리 시각은 앱이 계산한다.** 초대 `expiresAt`, 변경 기록 `expireAt`, 휴지통 `purgeAt`은
+  `Timestamp.fromDate(…)`로 쓴다. 여기에 서버 시각을 쓰면 값이 `request.time`과 같아져
+  규칙의 `data.expiresAt > request.time`·`data.expireAt > request.time`에 걸려 쓰기가 거부된다(`firestore.rules`).
 
 규칙 배포는 PR이 합쳐진 뒤에 한다(firebase 스킬).
 

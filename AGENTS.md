@@ -113,6 +113,7 @@ View(*_screen) ─→ Notifier(*_notifier) ─→ UseCase 홀더(core/providers/
   영역: auth, ledger, settings, entry, month, template, activity, summary, holiday.
 - **입력 검사처럼 바로 답이 나오는 규칙은 domain 함수**(`nameProblemOf`, `inviteCodeProblemOf`)다. Notifier가 먼저 부르고 쓰는 UseCase도 같은 함수로 다시 검사한다.
 - 저장소의 실패(`SettingsWriteException` 등)는 UseCase가 그대로 던지고, 화면용 실패로 바꾸는 것은 Notifier다.
+  입력란 문제로 보여 줄 것만 예외다 — `JoinLedgerUseCase`는 `JoinLedgerException`을 `InviteCodeProblem` 값으로 바꿔 돌려준다.
 
 ### 지금 쓰지 않는 것
 
