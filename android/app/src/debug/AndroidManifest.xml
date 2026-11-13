@@ -4,4 +4,6 @@
          to allow setting breakpoints, to provide hot reload, etc.
     -->
     <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- Auth 에뮬레이터의 로컬 HTTP 연결만 디버그에서 허용한다. -->
+    <application android:networkSecurityConfig="@xml/debug_network_security_config"/>
 </manifest>

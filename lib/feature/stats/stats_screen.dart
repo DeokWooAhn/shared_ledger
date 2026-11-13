@@ -273,6 +273,7 @@ class _IncomeCard extends StatelessWidget {
             AmountText(
               income,
               textKey: const Key('stats-income'),
+              identifier: 'stats-income',
               style: theme.textTheme.titleMedium?.copyWith(
                 fontSize: 22,
                 fontWeight: FontWeight.w700,

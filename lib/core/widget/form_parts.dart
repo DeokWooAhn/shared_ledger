@@ -57,6 +57,7 @@ class WonAmountField extends StatefulWidget {
     required this.enabled,
     required this.errorText,
     required this.onChanged,
+    this.identifier,
     super.key,
   });
 
@@ -69,6 +70,9 @@ class WonAmountField extends StatefulWidget {
   final bool enabled;
   final String? errorText;
   final ValueChanged<String> onChanged;
+
+  /// 실제 기기의 접근성 계층에서 입력란을 찾을 식별자.
+  final String? identifier;
 
   @override
   State<WonAmountField> createState() => _WonAmountFieldState();
@@ -108,6 +112,7 @@ class _WonAmountFieldState extends State<WonAmountField> {
         : (scheme.outline, 1.0);
     return LabeledField(
       label: '금액',
+      identifier: widget.identifier,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         spacing: 6,
@@ -277,6 +282,7 @@ class ChoicePill extends StatelessWidget {
     required this.label,
     required this.selected,
     required this.onSelected,
+    this.identifier,
     super.key,
   });
 
@@ -284,13 +290,16 @@ class ChoicePill extends StatelessWidget {
   final bool selected;
   final VoidCallback? onSelected;
 
+  /// 실제 기기의 접근성 계층에서 선택 단추를 찾을 식별자.
+  final String? identifier;
+
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final fill = scheme.primary;
     final onSelected = this.onSelected;
     return ChoiceChip(
-      label: Text(label),
+      label: Text(label, semanticsIdentifier: identifier),
       selected: selected,
       onSelected: onSelected == null ? null : (_) => onSelected(),
       showCheckmark: true,

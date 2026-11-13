@@ -240,6 +240,7 @@ class _CashCard extends StatelessWidget {
           AmountText(
             totals.remainingCash,
             textKey: const Key('remaining-cash'),
+            identifier: 'remaining-cash',
             style: TextStyle(
               fontSize: 34,
               fontWeight: FontWeight.w700,

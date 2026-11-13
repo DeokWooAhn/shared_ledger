@@ -63,6 +63,12 @@ JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home" firebase
 
 ## 테스트 작성
 
+Maestro 기본 Flow 3개는 `docs/maestro.md`를 따른다. `scripts/maestro-smoke.sh`가 테스트 앱 빌드·설치와
+로컬 Auth·Firestore 에뮬레이터를 묶어 실행한다. 일반 운영 앱을 대상으로 Flow만 따로 실행하지 않는다.
+CI는 앱 관련 경로가 바뀌면 Android smoke를 실행한다. 경로·삭제·이름 변경 판별은
+`python3 -m unittest discover -s .github/scripts -p 'test_*.py' -v`로 확인한다.
+워크플로를 바꿨으면 `actionlint .github/workflows/ci.yml`로 문법도 검사한다.
+
 작성 기준과 정석 레퍼런스는 testing 스킬에 있다.
 
 ## CI 실패 분석
@@ -74,6 +80,7 @@ JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home" firebase
 | Flutter 포맷·분석·테스트 | 포맷 안 함, `pubspec.lock`이 `pubspec.yaml`과 안 맞음(`--enforce-lockfile`) | 위 명령 세 개, `fvm flutter pub get` 후 `git diff pubspec.lock` |
 | Firestore 보안 규칙 테스트 | 규칙과 테스트 불일치, `package-lock.json` 미반영 | 보안 규칙 테스트 명령 |
 | Android 디버그 빌드 | Gradle·AGP·Kotlin 버전, 플러그인 캐시 | `fvm flutter clean` 후 `fvm flutter build apk --debug` |
+| Maestro 스모크 테스트 | 화면 식별자 누락, 에뮬레이터 부하, Firebase 준비 실패 | `docs/maestro.md`. CI artifact의 스크린샷·JUnit·logcat을 함께 본다 |
 
 - CI의 Flutter 버전은 `.fvmrc`에서 읽는다. 로컬과 버전이 다르다고 의심되면 `.fvmrc`부터 본다.
 - 원인을 고치지 않고 단계를 건너뛰거나 검사를 끄지 않는다.

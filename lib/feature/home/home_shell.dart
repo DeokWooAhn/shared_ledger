@@ -293,6 +293,7 @@ class _AddButton extends StatelessWidget {
       child: Tooltip(
         message: '항목 추가',
         child: Semantics(
+          identifier: 'add-entry',
           button: true,
           child: Material(
             color: scheme.tertiary,
@@ -433,6 +434,7 @@ class _TabButton extends StatelessWidget {
         : context.appColors.textMuted;
     const radius = BorderRadius.all(Radius.circular(25));
     return Semantics(
+      identifier: 'tab-${tab.name}',
       button: true,
       selected: selected,
       child: Ink(
@@ -527,9 +529,15 @@ class _SideTabBar extends StatelessWidget {
       destinations: [
         for (final tab in HomeTab.values)
           NavigationRailDestination(
-            icon: Icon(tab.icon, key: tab.key),
+            icon: Semantics(
+              identifier: 'tab-${tab.name}',
+              child: Icon(tab.icon, key: tab.key),
+            ),
             // 레일은 둘 중 하나만 그리므로 같은 키를 줘도 겹치지 않는다.
-            selectedIcon: Icon(tab.selectedIcon, key: tab.key),
+            selectedIcon: Semantics(
+              identifier: 'tab-${tab.name}',
+              child: Icon(tab.selectedIcon, key: tab.key),
+            ),
             label: Text(tab.label),
           ),
       ],

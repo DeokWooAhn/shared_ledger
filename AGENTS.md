@@ -219,4 +219,6 @@ Claude Code는 아래 스킬을 필요할 때 알아서 불러온다. 스킬 자
 | Firestore 컬렉션·필드·역할별 권한 | `docs/firestore.md` |
 | 사람용 소개, 개발 환경 준비 | `README.md` |
 
-Maestro E2E는 아직 없다(`.maestro/` 없음). 출시 준비 단계에서 smoke Flow부터 만든다.
+Maestro 기본 Flow 3개는 `.maestro/`에 있다. 로컬 Auth·Firestore 에뮬레이터와 테스트 전용 시작점을 사용한다.
+실행 방법·검증 범위·화면 식별자는 `docs/maestro.md`를 따른다. CI는 앱 관련 경로가 바뀌었을 때 Android smoke를 실행한다.
+경로 판별은 `.github/scripts/maestro_changes.py`다. 기존 필수 검사 이름은 바꾸지 않는다.

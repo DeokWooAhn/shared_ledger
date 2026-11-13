@@ -1,0 +1,29 @@
+appId: ${APP_ID}
+name: 앱 실행과 네 탭 이동
+tags: [smoke]
+---
+- runFlow: ../subflows/launch_clean.yaml
+- tapOn:
+    id: tab-entries
+- assertVisible:
+    id: entry-title-smoke-expense
+- assertVisible:
+    id: add-entry
+- tapOn:
+    id: tab-stats
+- assertVisible:
+    id: stats-income
+    text: "1,000,000원"
+- tapOn:
+    id: tab-settings
+- scrollUntilVisible:
+    element:
+      id: open-trash
+    direction: DOWN
+- assertVisible:
+    id: open-trash
+- tapOn:
+    id: tab-home
+- assertVisible:
+    id: remaining-cash
+    text: "977,000원"

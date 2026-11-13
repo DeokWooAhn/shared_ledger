@@ -245,6 +245,7 @@ class _EntryFormScreenState extends ConsumerState<EntryFormScreen> {
       ),
       WonAmountField(
         controller: _amount,
+        identifier: 'entry-amount',
         fieldKey: const Key('entry-amount'),
         optional: kind == EntryKind.planned,
         autofocus: !isEdit,
@@ -264,6 +265,7 @@ class _EntryFormScreenState extends ConsumerState<EntryFormScreen> {
       if (kind != EntryKind.cardBill)
         LabeledField(
           label: '내용',
+          identifier: 'entry-title',
           child: TextField(
             key: const Key('entry-title'),
             controller: _title,
@@ -322,6 +324,7 @@ class _EntryFormScreenState extends ConsumerState<EntryFormScreen> {
             for (final method in methods)
               ChoicePill(
                 key: Key('entry-method-${method.id}'),
+                identifier: 'entry-method-${method.id}',
                 label: method.name,
                 selected: state.paymentMethodId == method.id,
                 onSelected: enabled
@@ -392,7 +395,7 @@ class _EntryFormScreenState extends ConsumerState<EntryFormScreen> {
             FilledButton(
               key: const Key('entry-save'),
               onPressed: enabled ? _save : null,
-              child: const Text('저장'),
+              child: const Text('저장', semanticsIdentifier: 'entry-save'),
             ),
             if (isEdit && template != null)
               TextButton(
@@ -413,7 +416,10 @@ class _EntryFormScreenState extends ConsumerState<EntryFormScreen> {
                 ),
                 onPressed: enabled ? notifier.trash : null,
                 icon: const Icon(Icons.delete_outline, size: 20),
-                label: const Text('휴지통에 넣기'),
+                label: const Text(
+                  '휴지통에 넣기',
+                  semanticsIdentifier: 'entry-trash',
+                ),
               ),
           ],
         ),
