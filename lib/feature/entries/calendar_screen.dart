@@ -866,6 +866,7 @@ class _DayPanel extends ConsumerWidget {
                     key: const Key('calendar-day-total'),
                     style: theme.textTheme.titleMedium?.copyWith(
                       fontSize: 16,
+                      fontWeight: FontWeight.w700,
                       color: day.entries.isEmpty ? colors.textMuted : null,
                     ),
                   ),

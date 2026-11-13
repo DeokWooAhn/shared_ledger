@@ -239,7 +239,7 @@ class _ListSummary extends StatelessWidget {
             won(total),
             key: const Key('entries-total'),
             style: theme.textTheme.titleMedium
-                ?.copyWith(fontSize: 18)
+                ?.copyWith(fontSize: 18, fontWeight: FontWeight.w700)
                 .tabularFigures,
           ),
         ],
@@ -302,7 +302,7 @@ class _SectionHeader extends StatelessWidget {
             won(list.total),
             key: Key('section-total-${kind.name}'),
             style: theme.textTheme.titleMedium
-                ?.copyWith(fontSize: 15)
+                ?.copyWith(fontSize: 15, fontWeight: FontWeight.w700)
                 .tabularFigures,
           ),
         ],

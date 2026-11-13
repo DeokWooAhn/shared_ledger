@@ -411,9 +411,11 @@ ThemeData buildAppTheme([Brightness brightness = Brightness.light]) {
           fontWeight: FontWeight.w700,
           color: p.textPrimary,
         ),
+        // 구역·시트 제목. 700은 금액·화면 제목·버튼에만 남겨, 위계를 굵기보다 크기로 나눈다.
+        // 이 스타일로 금액을 그릴 때는 700을 직접 준다.
         titleMedium: TextStyle(
           fontSize: 17,
-          fontWeight: FontWeight.w700,
+          fontWeight: FontWeight.w600,
           color: p.textPrimary,
         ),
         bodyLarge: TextStyle(fontSize: 16, color: p.textPrimary),

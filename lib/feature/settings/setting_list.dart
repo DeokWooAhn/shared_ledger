@@ -175,7 +175,8 @@ class SettingLinkRow extends StatelessWidget {
               child: Row(
                 spacing: 14,
                 children: [
-                  Icon(icon, size: 22, color: scheme.onSurface),
+                  // 홈 카드 제목의 아이콘과 같은 보조 글자색. 아이콘이 글자보다 앞서 보이지 않게 한다.
+                  Icon(icon, size: 22, color: scheme.onSurfaceVariant),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -325,7 +326,7 @@ class SettingIconTile extends StatelessWidget {
       child: Icon(
         icon,
         size: 20,
-        color: danger ? scheme.error : scheme.onSurface,
+        color: danger ? scheme.error : scheme.onSurfaceVariant,
       ),
     );
   }

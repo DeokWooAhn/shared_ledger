@@ -47,7 +47,7 @@ class HeroCard extends StatelessWidget {
   }
 }
 
-/// 카드 맨 위의 제목. 포인트 색 아이콘을 앞에 둔다.
+/// 카드 맨 위의 제목. 보조 글자색 아이콘을 앞에 둔다(설정 줄의 아이콘과 같은 색).
 class SectionTitle extends StatelessWidget {
   const SectionTitle({required this.icon, required this.title, super.key});
 
@@ -61,7 +61,7 @@ class SectionTitle extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       spacing: 8,
       children: [
-        Icon(icon, size: 18, color: context.appColors.accentText),
+        Icon(icon, size: 18, color: theme.colorScheme.onSurfaceVariant),
         Flexible(
           child: Semantics(
             header: true,
