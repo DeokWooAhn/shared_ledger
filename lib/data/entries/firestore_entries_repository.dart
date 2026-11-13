@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:rxdart/rxdart.dart';
 import '../../domain/model/activity.dart';
 import '../../domain/model/entry_edit.dart';
 import '../../domain/model/expense_template.dart';
@@ -132,7 +133,7 @@ class FirestoreEntriesRepository implements EntriesRepository {
               ),
             );
 
-    return combineLatest([
+    return Rx.combineLatestList([
       watch(EntryKind.income),
       watch(EntryKind.fixedIncome),
       watch(EntryKind.planned),
@@ -843,47 +844,3 @@ String? _memo(Map<String, dynamic> data) => switch (data['memo']) {
   final String memo => memo,
   _ => null,
 };
-
-/// 여러 스트림의 최신 값을 묶는다. 모든 스트림이 한 번씩 값을 낸 뒤부터, 하나라도 바뀌면 묶음을 다시 낸다.
-///
-/// 오류는 그대로 넘기고, 모든 스트림이 끝나면 함께 끝난다. 구독을 끊으면 모든 스트림의 구독을 끊는다.
-Stream<List<T>> combineLatest<T extends Object>(List<Stream<T>> streams) {
-  final latest = List<T?>.filled(streams.length, null);
-  final subscriptions = <StreamSubscription<T>>[];
-  var done = 0;
-  late final StreamController<List<T>> controller;
-  controller = StreamController<List<T>>(
-    onListen: () {
-      for (final (index, stream) in streams.indexed) {
-        subscriptions.add(
-          stream.listen(
-            (value) {
-              latest[index] = value;
-              final values = [for (final value in latest) ?value];
-              if (values.length == streams.length) controller.add(values);
-            },
-            onError: controller.addError,
-            onDone: () {
-              done++;
-              if (done == streams.length) unawaited(controller.close());
-            },
-          ),
-        );
-      }
-    },
-    onPause: () {
-      for (final subscription in subscriptions) {
-        subscription.pause();
-      }
-    },
-    onResume: () {
-      for (final subscription in subscriptions) {
-        subscription.resume();
-      }
-    },
-    onCancel: () => Future.wait([
-      for (final subscription in subscriptions) subscription.cancel(),
-    ]),
-  );
-  return controller.stream;
-}

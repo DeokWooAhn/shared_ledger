@@ -6,7 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 /// lib의 import를 읽어 어기면 실패한다.
 ///
 /// - domain: 다른 레이어와 패키지를 import하지 않는다(순수 Dart, dart: 만)
-/// - data: domain과 Firebase 패키지만
+/// - data: domain과 Firebase·RxDart 패키지만
 /// - core: domain과 Flutter·Riverpod만. data·feature는 못 본다
 /// - feature/<기능>: domain·core와 자기 기능 폴더, Flutter·Riverpod·go_router만. data와 다른 기능은 못 본다
 /// - lib 바로 아래(main·app·router·di): 모두 조립하는 자리라 제한이 없다
@@ -16,7 +16,7 @@ import 'package:flutter_test/flutter_test.dart';
 /// 새 패키지를 들이면(먼저 승인을 받는다) 여기 허용 목록도 같이 고친다.
 const _allowedPackages = <String, Set<String>>{
   'domain': {},
-  'data': {'cloud_firestore', 'firebase_auth', 'google_sign_in'},
+  'data': {'cloud_firestore', 'firebase_auth', 'google_sign_in', 'rxdart'},
   'core': {'flutter', 'flutter_riverpod'},
   'feature': {'flutter', 'flutter_riverpod', 'go_router'},
 };
