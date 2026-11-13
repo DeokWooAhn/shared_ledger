@@ -13,6 +13,7 @@ Claude Code는 `CLAUDE.md`를 통해 이 파일을 읽고, Codex 같은 다른 �
 - 사용자가 만든 변경은 되돌리지 않고, 관계없는 변경은 커밋에 넣지 않는다.
 - 패키지는 그 기능을 만드는 단계에서 추가한다. 새 패키지는 목적·대안·앱 크기 영향을 설명하고 승인을 받은 뒤 넣는다.
 - 주석·문서·테스트 설명·커밋 메시지·화면 문구는 한국어, 코드 식별자는 영어로 쓴다.
+- **실행하지 않은 검증을 통과했다고 말하지 않는다.** 돌리지 못했으면 무엇을 왜 못 돌렸는지와 돌려야 할 명령을 적는다.
 
 ## 브랜치·커밋·PR
 
@@ -105,19 +106,13 @@ View(*_screen) ─→ Notifier(*_notifier) ─→ UseCase 홀더(core/providers/
 
 ### UseCase (`lib/domain/usecase/<영역>/`)
 
-CalcMoney처럼 업무 규칙과 저장소 호출을 domain의 UseCase에 두고, Notifier는 UseCase만 부른다(2026-10-27).
-feature가 저장소 자리(`repositories.dart`)를 import하면 `test/architecture_test.dart`가 실패한다.
+업무 규칙과 저장소 호출은 domain의 UseCase에 두고, Notifier는 UseCase만 부른다(2026-10-27). 뼈대와 예시는 flutter-screen 스킬.
 
-- **UseCase 하나 = 파일 하나 = `call()` 하나짜리 클래스**(`save_category_use_case.dart`의 `SaveCategoryUseCase`). 저장소와 시간(`DateTime Function() now`)은 생성자로 받는다. 순수 Dart다.
-- **영역마다 홀더 하나**(`settings_use_cases.dart`의 `SettingsUseCases`)가 그 영역 UseCase를 필드로 갖는다. 필드 이름은 클래스 이름에서 `UseCase`를 뺀 것(`saveCategory`).
+- **UseCase 하나 = 파일 하나 = `call()` 하나짜리 클래스**(`save_category_use_case.dart`). 저장소와 시간(`DateTime Function() now`)은 생성자로 받는다. 순수 Dart다.
+- **영역마다 홀더 하나**(`settings_use_cases.dart`의 `SettingsUseCases`)를 두고 홀더 공급자(`lib/core/providers/usecases.dart`)로 꺼낸다.
   영역: auth, ledger, settings, entry, month, template, activity, summary, holiday.
-- **홀더 공급자는 `lib/core/providers/usecases.dart`**(`settingsUseCasesProvider`)이고 저장소 공급자와 `clockProvider`로 만든다. 그래서 테스트는 지금처럼 저장소 자리에 가짜를 넣으면 된다.
-- Notifier와 공급자(`providers.dart`)는 `ref.read(settingsUseCasesProvider).saveCategory(…)`처럼 홀더를 부른다. 저장소 공급자(`xxxRepositoryProvider`)를 읽지 않는다.
-- **입력 검사처럼 바로 답이 나오는 규칙은 domain 함수**(`nameProblemOf`, `categoryNameProblemOf`, `inviteCodeProblemOf`)다. Notifier가 먼저 불러 '진행 중' 없이 문제를 보여 주고,
-  쓰는 UseCase도 같은 함수로 다시 검사해서 혼자 불려도 잘못된 값을 쓰지 않는다. 검사에 걸리면 쓰지 않고 문제를 값으로 돌려준다(`Future<NameProblem?>`).
-- 저장소의 실패(`SettingsWriteException` 등)는 UseCase가 그대로 던지고, 화면용 실패로 바꾸는 것은 Notifier다. 참여 실패처럼 입력란 문제로 보여 줄 것만 UseCase가 문제 값으로 바꾼다(`JoinLedgerUseCase`).
-- `AsyncValue`를 묶는 것처럼 Riverpod에 기대는 일과, 화면에 그리려고 묶는 일(`mergeActivities`, `calendar_days`)은 UseCase에 넣지 않는다.
-  공급자가 판단을 UseCase에 맡길 때 구독은 필요할 때만 열리게 값 대신 꺼내는 함수를 넘긴다(`plannedFillProvider` → `PlanMonthFillUseCase`).
+- **입력 검사처럼 바로 답이 나오는 규칙은 domain 함수**(`nameProblemOf`, `inviteCodeProblemOf`)다. Notifier가 먼저 부르고 쓰는 UseCase도 같은 함수로 다시 검사한다.
+- 저장소의 실패(`SettingsWriteException` 등)는 UseCase가 그대로 던지고, 화면용 실패로 바꾸는 것은 Notifier다.
 
 ### 지금 쓰지 않는 것
 
@@ -154,94 +149,29 @@ feature가 저장소 자리(`repositories.dart`)를 import하면 `test/architect
 - **시간·난수는 주입한다**(`FirestoreLedgerRepository(now:, random:)`, UseCase는 생성자의 `now`, 공급자·Notifier는 `clockProvider`). 안에서 `DateTime.now()`를 읽으면 테스트가 흔들린다.
 - 저장소 인터페이스, Notifier의 공개 메서드, 공용 위젯에는 무엇을 하는지 한국어 문서 주석을 단다.
 
-## 화면·상태 작업 (MVVM)
+## 화면·데이터 작업
 
-새 화면을 만들 때는 flutter-screen 스킬의 순서와 정석 레퍼런스를 따른다.
-MVVM의 ViewModel 역할은 Riverpod `Notifier`를 상속한 클래스가 맡는다. 이름은 상속하는 클래스에 맞춰
-`XxxNotifier`, 파일은 `<이름>_notifier.dart`, 공급자는 `xxxNotifierProvider`로 짓는다(2026-10-27, 그전에는 `XxxController`).
-Flutter의 `TextEditingController`·`ScrollController`와 헷갈리지 않게 하려는 것이다.
+파일 구성, 뼈대, 정석 레퍼런스, 탭 화면, 테마·문구·접근성, Firestore를 바꿀 때 같이 고칠 파일은 **flutter-screen 스킬**에 있다.
+여기에는 어기면 검사가 막거나 실제 Firestore가 거부하는 경계만 둔다.
 
-- **화면 하나 = View + Notifier.** `join_ledger_screen.dart` + `ledger_start_notifier.dart`가 정석이다(만들기·입장 두 화면이 Notifier 하나를 같이 쓴다).
-  Notifier가 맡을 동작이 없는 화면(`summary_screen.dart`: 계산한 요약만 그림, `settings_screen.dart`: 시트 열기와 화면 이동만. 맨 아래 '가계부 나가기' 줄만 `LeaveLedgerNotifier`를 씀)은 Notifier 없이 공급자만 읽는다.
-  나가기·탈퇴처럼 성공하면 화면이 사라지는 동작은 결과를 State 대신 Notifier 메서드의 돌려준 값으로 넘기고, View가 `await` 전에 잡아 둔 `ScaffoldMessenger`로 알린다(`account_screen.dart`).
-- **Notifier**는 Riverpod `Notifier<불변 State>`이고 `NotifierProvider.autoDispose`로 만든다. 사용자 동작은 메서드로 받는다.
-  `await` 뒤에는 `ref.mounted`를 확인한 뒤 상태를 바꾼다(화면이 사라지면 Notifier도 해제된다).
-- **State**는 불변 클래스다. 진행 중인 동작(`pending`), 입력란 문제, 일회성 실패를 필드로 두고 화면 문구는 넣지 않는다.
-- **View**는 State를 그리고 Notifier 메서드를 부르기만 한다. `build` 안에서 저장소를 부르거나 상태를 바꾸거나 화면을 옮기거나 스낵바를 띄우지 않는다.
-  스낵바 같은 일회성 표시는 `ref.listen(provider.select(...))`으로 띄우고 Notifier의 `failureShown()`으로 끈다.
-- 화면에서만 쓰는 상태(입력란 컨트롤러, 폼 키, '복사했어요' 표시)는 위젯에 두고 `dispose`에서 정리한다. 서버·공유 상태는 공급자와 Notifier에 둔다.
-- 그릴 값은 `ref.watch`, 콜백에서 부를 Notifier·UseCase 홀더는 `ref.read`로 꺼낸다. `build`에서 `ref.read`로 읽은 값을 그리면 갱신되지 않는다.
-- **입력란 오류는 한 곳에서만 관리한다.** 그 칸 안에서 끝나는 검사는 폼 validator로(가계부 이름),
-  서버 결과도 보여야 하는 칸은 입력 검사까지 Notifier 상태로(초대 코드) 한다. `Form.validate()`와 `forceErrorText`를 섞으면
-  실패 뒤 첫 누름이 무시된다(PR #3에서 실제로 겪음).
-- 진행 중에는 버튼을 막고(`state.busy`), Notifier도 진행 중에 들어온 호출을 무시한다.
-- 위젯 밖에서 `await`한 뒤 `BuildContext`를 쓰지 않는다. `await` 전에 `ScaffoldMessenger`를 잡아 두거나(`signOutWithFeedback`) `context.mounted`를 확인한다.
-- 위젯을 돌려주는 private 메서드보다 작은 위젯 클래스로 나눈다(`_OptionCard`, `_ValuePoint`). 바뀌지 않는 위젯은 `const`.
-- 긴 목록은 `ListView.builder`로 만들고, 항목에는 안정적인 id로 `ValueKey`를 준다. 인덱스를 키로 쓰지 않는다.
-- **탭:** 홈은 탭 4개(`HomeTab`: 홈·내역·통계·설정)이고 `StatefulShellRoute`가 탭마다 화면 상태를 지킨다(2026-11-02). 탭 화면은 `TabPage`로 감싸고,
-  달을 보는 탭은 `MonthHeader`(`11월 ▾`)를 머리말로 쓴다. 달 이름을 누르면 달 고르기 시트가 열리고 좌우로 밀면 옆 달로 간다. 달을 골라도 보던 탭에 머문다.
-  보고 있는 달은 `selectedMonthProvider` 하나를 홈·내역 탭(과 휴지통·달력)이 같이 읽는다.
-  내역 탭은 세 칸(`EntryTab`: 수입·지출·카드 대금)이고, 고정 수입·고정 지출은 따로 된 화면 없이 수입·지출 칸과 입력 화면에서 다룬다. 달력은 내역 탭 머리말의 달력 단추로 연다.
-  + 버튼은 내역 탭에서만 탭 막대 위에 떠 있어서, 있든 없든 탭 막대의 폭과 탭 위치가 바뀌지 않는다.
-  홈의 카드는 누르면 내역 탭의 그에 맞는 칸으로 간다(현금 카드는 카드 전체가 누름 자리 하나). 통계 탭은 '통계' 제목과 기간 아이콘을 머리말로 쓰고(홈과 헷갈리지 않게), 보는 달 대신 따로 고른 기간(`statsPeriodProvider`)을 본다.
-- **넓은 화면:** 아이패드와 Mac(아이패드 앱)에서도 쓴다. 폭 600 이상이면 탭 막대가 옆(NavigationRail)으로 간다. 본문은 `ConstrainedBox(maxWidth: …)`로 가운데 두고,
-  두 칸 배치는 `LayoutBuilder`로 바꾼다(`docs/plan.md`의 '화면'). 플랫폼 분기는 `defaultTargetPlatform`.
-- **테마:** 색은 `Theme.of(context).colorScheme`과 `context.appColors`, 글자는 `textTheme`에서 꺼낸다(`lib/core/theme/app_theme.dart`, 원본은 `design/app.pen`). 화면 디자인은 `design/app/*.png`.
-- **문구:** 해요체. 여러 단어로 된 문장(설명·안내·오류)은 `keepAll()`로 감싸고, 입력란 오류도 `errorText: keepAll(...)`로 넘긴다.
-  Flutter는 한글을 단어 중간에서 줄바꿈한다. 저장하거나 비교하는 값에는 쓰지 않는다. '가구'·'가족' 대신 '가계부'·'두 사람'을 쓴다.
-  두 문장 이상인 안내는 문장 사이(긴 한 문장은 쉼표 뒤)에 `\n`을 넣어 문장 단위로 줄을 바꾼다(2026-11-03).
-- **접근성:** 입력란은 `LabeledField`로 이름표와 묶어 화면 읽기 도구가 함께 읽게 한다. 아이콘만 있는 버튼에는 `tooltip`.
-  누를 수 있는 것은 높이 48 이상(테마의 버튼은 54). 색만으로 뜻을 전하지 않는다.
-- 테스트에서 찾을 위젯에는 `Key('kebab-case')`를 준다(`sign-in-google`, `join-ledger`).
-
-## 데이터·Firestore 작업
-
-- **저장소:** 인터페이스(`abstract interface class XxxRepository`)와 도메인 실패는 `lib/domain/repository/`,
-  Firestore 구현(`FirestoreXxxRepository`)과 변환 함수는 `lib/data/<영역>/`에 둔다.
-  Firestore 타입(`DocumentSnapshot`, `Timestamp`)은 data 밖으로 내보내지 않고 모델로 바꿔 돌려준다.
-- **조립:** core의 저장소 공급자(`lib/core/providers/repositories.dart`)는 구현을 모르는 자리다. 앱 시작점이
-  `ProviderScope(overrides: repositoryOverrides(entries: entries))`로 Firebase 구현을 넣고(`lib/di.dart`), 테스트는 가짜를 넣는다.
-  항목 저장소(`entries`)만 시작점(`main.dart`)이 먼저 만들어 `checkUnsentFromLastRun`을 시작한 뒤 넘긴다.
-  새 저장소를 만들면 인터페이스(domain) → 구현(data) → 자리 공급자(core) → `di.dart` → 가짜(`testing/fakes.dart`) → UseCase·홀더(domain) → 홀더 공급자(`usecases.dart`) 순서로 배선한다.
-- 문서 ↔ 모델 변환은 최상위 순수 함수로 빼서 Firebase 없이 테스트한다(`newLedgerData`, `ledgerFromFirestore`, `joinLedgerUpdate`). 모르는 값은 앱을 죽이지 말고 건너뛴다.
-- **쓰는 필드 = 보안 규칙이 받는 필드.** 필드·컬렉션을 바꿀 때 같이 고칠 파일은 flutter-screen 스킬의 체크리스트를 따른다.
-- 시간 필드는 `FieldValue.serverTimestamp()`. 규칙이 `request.time`과 같은지 본다. 방금 쓴 문서는 서버 시간이 아직 null이다.
-- **실패:** 저장소는 처리할 `FirebaseException` 코드만 도메인 실패로 바꿔 던지고 나머지는 다시 던진다. `permission-denied`를 빈 결과로 숨기지 않는다.
-- 여러 문서를 함께 바꿔야 일관성이 맞으면 `WriteBatch`나 트랜잭션을 쓴다(가계부 + 기본 설정: `LedgerRepository.create`).
-- 항목·반복 설정·설정을 쓰는 저장소는 변경 기록(`activity`)을 같은 일괄 쓰기·트랜잭션으로 남긴다(`newActivityData`, 요약은 `activity_summary.dart`).
-  새 쓰기를 만들면 기록도 같이 남긴다. 요약에는 금액·제목이 들어가므로 로그에 찍지 않는다.
-- **읽기는 곧 비용이다**(Firestore는 지출 한도 대상이 아님). 필요한 문서만 구독하고, 계속 늘어나는 목록(항목, 변경 기록)에는 `limit`이나 달 단위 범위를 두고,
-  같은 쿼리는 공급자 하나를 여러 화면이 같이 읽는다.
-- 오프라인에서는 보기와 새 항목 추가만 된다. 수정·삭제는 온라인에서만 한다(`docs/plan.md`).
-  새 항목은 서버를 기다리지 않아서, 올라가기 전에는 줄에 '전송 대기'(`MonthLedger.unsentIds`)를 보이고 거부는 `rejectedAdds`로 알린다.
-  **`main.dart`의 `checkUnsentFromLastRun`이 Firestore의 첫 작업이어야 한다.** Firestore는 처음 쓰일 때 밀린 쓰기를 보내서,
-  그보다 앞에 Firestore를 쓰면 다시 켠 뒤의 거부를 놓친다(`docs/firestore.md`).
-- **고치기는 통째로 덮어쓰지 않는다.** 화면을 열 때의 값과 트랜잭션에서 읽은 서버 값을 칸마다 견주어(`mergeEntryEdit`) 내가 바꾼 칸만 쓰고,
-  같은 칸이 겹치면 `EntryEditConflict`로 묻는다. 캐시에서 온 목록(반복 설정 등)으로 쓰기를 정하면 트랜잭션에서 원본을 다시 읽는다(`fillPlanned`).
-- 가계부 문서는 지우지 않는다(규칙도 막는다). 하위 컬렉션이 남아 같은 ID로 다시 만들면 읽힌다(`docs/firestore.md`).
-  같은 까닭으로 새 가계부 ID는 만든 사람 uid로 시작한다(`newLedgerId`, 규칙이 이 모양만 받는다).
-  혼자 쓰던 관리자가 나가면 앱은 구성원만 비우고 함수(`deleteClosedLedger`)가 하위까지 지운다. 구성원이 빈 가계부는 규칙이 읽기·쓰기·참여를 모두 막는다.
-- **이름표 자리는 사람이 아니라 자리다.** 항목의 '누가'는 `owner`·`partner` 자리로 적고, 관리자가 나가며 넘기면 사람을 옮기지 않고 가계부의 `ownerSlot`을 바꾼다.
-  uid ↔ 자리는 `Ledger.slotOf`·`uidOf`로만 구한다(관리자 = owner 자리라고 가정하지 않는다).
-- **공급자**(`lib/core/providers/providers.dart`): 다른 공급자는 `ref.watch`로 의존하고, 구독은 UseCase 홀더의 `watch…`로 연다. 로그인하지 않았으면 빈 값을 내보낸다.
-  공급자 본문에서 쓰기 같은 부수효과를 일으키지 않는다.
+- **화면 하나 = View(`<이름>_screen.dart`) + Notifier(`<이름>_notifier.dart`).** MVVM의 ViewModel 역할은 Riverpod `Notifier`가 맡는다
+  (2026-10-27, 그전에는 `XxxController`). Flutter의 `TextEditingController`와 헷갈리지 않게 하려는 것이다.
+- **Notifier와 공급자는 저장소를 직접 부르지 않고 UseCase 홀더를 부른다.** feature가 저장소 자리(`core/providers/repositories.dart`)를
+  import하면 `test/architecture_test.dart`가 실패한다.
+- **View는 State를 그리고 Notifier 메서드를 부르기만 한다.** `build` 안에서 저장소를 부르거나 상태를 바꾸거나 화면을 옮기거나 스낵바를 띄우지 않는다.
+  `await` 뒤에는 `ref.mounted`·`context.mounted`를 확인한다.
+- **어느 화면을 보여줄지는 `router.dart`의 `appGate`·`redirectFor`가 정한다.** 화면에서 시작 화면들로 직접 이동하지 않는다.
+- **저장소 인터페이스와 도메인 실패는 `lib/domain/repository/`, Firestore 구현과 변환 함수는 `lib/data/<영역>/`에 둔다.**
+  Firestore 타입(`DocumentSnapshot`, `Timestamp`)을 data 밖으로 내보내지 않고 모델로 바꿔 돌려준다.
+- **쓰는 필드 = 보안 규칙이 받는 필드.** 한 곳만 바꾸면 앱 테스트는 가짜 저장소로 통과해도 실제 Firestore가 쓰기를 거부한다.
+  같이 고칠 파일은 flutter-screen 스킬의 체크리스트를 따른다.
 
 ## 테스트와 검증
 
-작성법과 정석 레퍼런스는 testing 스킬, 명령·기기 실행·CI는 verification 스킬.
-
-| 대상 | 테스트 | 정석 레퍼런스 |
-| --- | --- | --- |
-| 계산 규칙·모델·변환 함수 | 단위 테스트 | `test/domain/model/ledger_test.dart`, `test/data/ledger/firestore_ledger_repository_test.dart` |
-| UseCase | 가짜 저장소로 단위 테스트 | `test/domain/usecase/ledger/ledger_use_cases_test.dart` |
-| Notifier | `ProviderContainer` + 가짜 | `test/feature/ledger/ledger_start_notifier_test.dart` |
-| 화면 흐름·화면 이동 | 위젯 테스트 | `test/widget_test.dart`, `test/router_test.dart` |
-| 레이어 규칙 | import 검사 | `test/architecture_test.dart` |
-| 보안 규칙 | 에뮬레이터 | `firestore-tests/rules.test.js` |
+층별 작성법과 정석 레퍼런스는 **testing 스킬**, 명령·기기 실행·CI 실패 분석은 **verification 스킬**이다.
 
 - Firebase를 모킹하지 않는다. 가짜 저장소는 실제 구현의 약속(두 명 제한, 취소는 false, 로그아웃이면 빈 목록)을 지킨다.
 - 버그를 고치면 그 버그를 재현하는 테스트를 같이 넣는다.
-- 테스트 설명은 한국어로, 상황과 기대 결과가 드러나게 쓴다.
 - 작업을 마치기 전에 CI와 같은 검사(포맷·분석·테스트)를 돌린다.
 
 ## 환경 함정
@@ -263,7 +193,7 @@ Claude Code는 아래 스킬을 필요할 때 알아서 불러온다. 스킬 자
 
 | 상황 | 읽을 파일 |
 | --- | --- |
-| 새 화면·기능 추가, Notifier·UseCase 작성, 저장소·경로 배선, Firestore 필드 변경 | `.claude/skills/flutter-screen/SKILL.md` |
+| 새 화면·기능 추가, Notifier·UseCase 작성, 저장소·경로 배선, Firestore 필드 변경, 탭·테마·문구·접근성 | `.claude/skills/flutter-screen/SKILL.md` |
 | 테스트 작성(단위·UseCase·Notifier·위젯·보안 규칙), 가짜 저장소 | `.claude/skills/testing/SKILL.md` |
 | 검사 명령, 기기·에뮬레이터 실행, CI 실패 분석 | `.claude/skills/verification/SKILL.md` |
 | Firebase 설정, 규칙 배포, 로그인 제공자, 패키지 버전 | `.claude/skills/firebase/SKILL.md` |
