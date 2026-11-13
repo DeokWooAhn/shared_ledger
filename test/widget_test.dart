@@ -551,18 +551,58 @@ void main() {
       semantics.dispose();
     });
 
-    testWidgets('넓은 화면에서는 옆 탭 막대로 옮겨 다닌다', (tester) async {
+    testWidgets('넓은 화면에서는 옆 탭 막대로 옮겨 다니고, 고른 탭은 채운 아이콘이다', (tester) async {
       await pumpApp(
         tester,
         auth: FakeAuthRepository(signedIn: me),
         ledgers: FakeLedgerRepository([shared]),
         size: tabletSize,
       );
+      IconData? railIcon(HomeTab tab) =>
+          tester.widget<Icon>(find.byKey(tab.key)).icon;
 
       expect(find.byType(NavigationRail), findsOneWidget);
+      expect(railIcon(HomeTab.home), Icons.home);
+      expect(railIcon(HomeTab.settings), Icons.settings_outlined);
 
       await openTab(tester, HomeTab.settings);
       expect(find.text('우리 가계부'), findsOneWidget);
+      expect(railIcon(HomeTab.home), Icons.home_outlined);
+      expect(railIcon(HomeTab.settings), Icons.settings);
+    });
+
+    testWidgets('고른 탭은 바탕색 말고도 채운 아이콘과 굵은 이름으로 구분된다', (tester) async {
+      await pumpApp(
+        tester,
+        auth: FakeAuthRepository(signedIn: me),
+        ledgers: FakeLedgerRepository([shared]),
+      );
+      Finder inTab(HomeTab tab, Finder finder) =>
+          find.descendant(of: find.byKey(tab.key), matching: finder);
+      FontWeight? weightOf(HomeTab tab) => tester
+          .widget<Text>(inTab(tab, find.text(tab.label)))
+          .style
+          ?.fontWeight;
+
+      expect(inTab(HomeTab.home, find.byIcon(Icons.home)), findsOneWidget);
+      expect(
+        inTab(HomeTab.settings, find.byIcon(Icons.settings_outlined)),
+        findsOneWidget,
+      );
+      expect(weightOf(HomeTab.home), FontWeight.w700);
+      expect(weightOf(HomeTab.settings), FontWeight.w500);
+
+      await openTab(tester, HomeTab.settings);
+      expect(
+        inTab(HomeTab.home, find.byIcon(Icons.home_outlined)),
+        findsOneWidget,
+      );
+      expect(
+        inTab(HomeTab.settings, find.byIcon(Icons.settings)),
+        findsOneWidget,
+      );
+      expect(weightOf(HomeTab.home), FontWeight.w500);
+      expect(weightOf(HomeTab.settings), FontWeight.w700);
     });
 
     testWidgets('설정 탭에서 두 사람의 이름표와 역할을 보고, 로그아웃하면 로그인 화면으로 간다', (tester) async {
