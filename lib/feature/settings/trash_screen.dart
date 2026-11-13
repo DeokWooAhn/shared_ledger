@@ -275,12 +275,14 @@ class _TrashRow extends StatelessWidget {
                 ),
                 Text(
                   amount == null ? '금액 미정' : won(amount),
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    fontWeight: amount == null
-                        ? FontWeight.w500
-                        : FontWeight.w700,
-                    color: amount == null ? colors.textMuted : null,
-                  ),
+                  style: theme.textTheme.bodyMedium
+                      ?.copyWith(
+                        fontWeight: amount == null
+                            ? FontWeight.w500
+                            : FontWeight.w700,
+                        color: amount == null ? colors.textMuted : null,
+                      )
+                      .tabularFigures,
                 ),
               ],
             ),

@@ -551,18 +551,58 @@ void main() {
       semantics.dispose();
     });
 
-    testWidgets('넓은 화면에서는 옆 탭 막대로 옮겨 다닌다', (tester) async {
+    testWidgets('넓은 화면에서는 옆 탭 막대로 옮겨 다니고, 고른 탭은 채운 아이콘이다', (tester) async {
       await pumpApp(
         tester,
         auth: FakeAuthRepository(signedIn: me),
         ledgers: FakeLedgerRepository([shared]),
         size: tabletSize,
       );
+      IconData? railIcon(HomeTab tab) =>
+          tester.widget<Icon>(find.byKey(tab.key)).icon;
 
       expect(find.byType(NavigationRail), findsOneWidget);
+      expect(railIcon(HomeTab.home), Icons.home);
+      expect(railIcon(HomeTab.settings), Icons.settings_outlined);
 
       await openTab(tester, HomeTab.settings);
       expect(find.text('우리 가계부'), findsOneWidget);
+      expect(railIcon(HomeTab.home), Icons.home_outlined);
+      expect(railIcon(HomeTab.settings), Icons.settings);
+    });
+
+    testWidgets('고른 탭은 바탕색 말고도 채운 아이콘과 굵은 이름으로 구분된다', (tester) async {
+      await pumpApp(
+        tester,
+        auth: FakeAuthRepository(signedIn: me),
+        ledgers: FakeLedgerRepository([shared]),
+      );
+      Finder inTab(HomeTab tab, Finder finder) =>
+          find.descendant(of: find.byKey(tab.key), matching: finder);
+      FontWeight? weightOf(HomeTab tab) => tester
+          .widget<Text>(inTab(tab, find.text(tab.label)))
+          .style
+          ?.fontWeight;
+
+      expect(inTab(HomeTab.home, find.byIcon(Icons.home)), findsOneWidget);
+      expect(
+        inTab(HomeTab.settings, find.byIcon(Icons.settings_outlined)),
+        findsOneWidget,
+      );
+      expect(weightOf(HomeTab.home), FontWeight.w700);
+      expect(weightOf(HomeTab.settings), FontWeight.w500);
+
+      await openTab(tester, HomeTab.settings);
+      expect(
+        inTab(HomeTab.home, find.byIcon(Icons.home_outlined)),
+        findsOneWidget,
+      );
+      expect(
+        inTab(HomeTab.settings, find.byIcon(Icons.settings)),
+        findsOneWidget,
+      );
+      expect(weightOf(HomeTab.home), FontWeight.w500);
+      expect(weightOf(HomeTab.settings), FontWeight.w700);
     });
 
     testWidgets('설정 탭에서 두 사람의 이름표와 역할을 보고, 로그아웃하면 로그인 화면으로 간다', (tester) async {
@@ -766,6 +806,8 @@ void main() {
       expect(textOf(tester, const Key('cash-out')), '2,827,000원');
       expect(textOf(tester, const Key('spending')), '2,657,000원');
       expect(textOf(tester, const Key('saving')), '1,600,000원');
+      // 반쪽 폭 카드라 글자를 키우면 줄이 넘친다. 단어 중간에서 끊기지 않게 keepAll로 그린다.
+      expect(findSentence('이번 달 지출'), findsOneWidget);
       // 지급 전: 계좌 이자 하나와 카드 둘.
       expect(findSentence('지급 전 고정 지출 3건'), findsOneWidget);
 
@@ -780,7 +822,8 @@ void main() {
       expect(inCards('99,000원'), findsOneWidget);
       expect(inCards('10월'), findsOneWidget);
       expect(inCards('853,000원'), findsOneWidget);
-      expect(findSentence('이번 달 출금 · 카드 대금 2건'), findsOneWidget);
+      expect(findSentence('11월 출금 예정'), findsOneWidget);
+      expect(findSentence('10월 출금 · 카드 대금 2건'), findsOneWidget);
       // 결제수단에 있어도 이번 달에 쓰지 않은 카드는 줄을 만들지 않는다.
       expect(find.byKey(const ValueKey('card-p-account')), findsNothing);
       expect(find.byKey(const Key('empty-month')), findsNothing);
@@ -980,7 +1023,7 @@ void main() {
 
       expect(monthTitle(tester), '11월');
       expect(textOf(tester, const Key('remaining-cash')), '1,000원');
-      expect(findSentence('이번 달 출금 · 카드 대금 0건'), findsOneWidget);
+      expect(findSentence('11월 출금 · 카드 대금 0건'), findsOneWidget);
     });
 
     testWidgets('항목을 불러오지 못하면 안내한다', (tester) async {

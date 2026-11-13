@@ -21,15 +21,19 @@ const wideLayoutMinWidth = 600.0;
 
 /// 홈의 탭. 순서가 router.dart의 탭 경로(branch) 순서다.
 enum HomeTab {
-  home('홈', Icons.home_outlined),
-  entries('내역', Icons.format_list_bulleted),
-  stats('통계', Icons.bar_chart_rounded),
-  settings('설정', Icons.settings_outlined);
+  home('홈', Icons.home_outlined, Icons.home),
+  // 내역·통계 아이콘은 채운 모양이 따로 없어 고른 탭에서도 같다. 굵은 이름과 바탕으로 구분한다.
+  entries('내역', Icons.format_list_bulleted, Icons.format_list_bulleted),
+  stats('통계', Icons.bar_chart_rounded, Icons.bar_chart_rounded),
+  settings('설정', Icons.settings_outlined, Icons.settings);
 
-  const HomeTab(this.label, this.icon);
+  const HomeTab(this.label, this.icon, this.selectedIcon);
 
   final String label;
   final IconData icon;
+
+  /// 고른 탭의 아이콘. 바탕색 차이가 작아서 색만으로 고른 탭을 알리지 않게 채운 모양을 쓴다.
+  final IconData selectedIcon;
 
   /// 테스트에서 탭을 찾을 키.
   Key get key => Key('tab-$name');
@@ -277,11 +281,12 @@ class _AddButton extends StatelessWidget {
     return DecoratedBox(
       decoration: BoxDecoration(
         shape: BoxShape.circle,
+        // 탭 막대와 같은 중립 그림자. 포인트 색 그림자는 버튼이 빛나 보여서 쓰지 않는다.
         boxShadow: [
           BoxShadow(
-            color: scheme.tertiary.withValues(alpha: 0.25),
-            blurRadius: 16,
-            offset: const Offset(0, 6),
+            color: scheme.shadow.withValues(alpha: 0.08),
+            blurRadius: 24,
+            offset: const Offset(0, 8),
           ),
         ],
       ),
@@ -422,14 +427,17 @@ class _TabButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final color = selected ? scheme.onTertiary : context.appColors.textMuted;
+    // 고른 탭은 연한 코발트 바탕에 파란 글자. 꽉 찬 포인트 색은 + 버튼과 남는 현금 카드에 남긴다.
+    final color = selected
+        ? scheme.onPrimaryContainer
+        : context.appColors.textMuted;
     const radius = BorderRadius.all(Radius.circular(25));
     return Semantics(
       button: true,
       selected: selected,
       child: Ink(
         decoration: BoxDecoration(
-          color: selected ? scheme.tertiary : null,
+          color: selected ? scheme.primaryContainer : null,
           borderRadius: radius,
         ),
         child: InkWell(
@@ -439,7 +447,11 @@ class _TabButton extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(tab.icon, size: 22, color: color),
+              Icon(
+                selected ? tab.selectedIcon : tab.icon,
+                size: 22,
+                color: color,
+              ),
               const SizedBox(height: 3),
               FittedBox(
                 fit: BoxFit.scaleDown,
@@ -448,7 +460,9 @@ class _TabButton extends StatelessWidget {
                   maxLines: 1,
                   style: TextStyle(
                     fontSize: 10,
-                    fontWeight: FontWeight.w600,
+                    // 고른 탭은 이름도 굵게 해서 색과 바탕 말고도 알아볼 수 있게 한다.
+                    // 600과 700은 굵은 글꼴 하나로 그리는 기기가 있어 500과 700으로 벌린다.
+                    fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
                     color: color,
                   ),
                 ),
@@ -485,11 +499,20 @@ class _SideTabBar extends StatelessWidget {
       labelType: NavigationRailLabelType.all,
       groupAlignment: -0.9,
       backgroundColor: scheme.surface,
-      indicatorColor: scheme.tertiary,
-      selectedIconTheme: IconThemeData(color: scheme.onTertiary, size: 22),
+      indicatorColor: scheme.primaryContainer,
+      selectedIconTheme: IconThemeData(
+        color: scheme.onPrimaryContainer,
+        size: 22,
+      ),
       unselectedIconTheme: IconThemeData(color: muted, size: 22),
-      selectedLabelTextStyle: label?.copyWith(color: scheme.tertiary),
-      unselectedLabelTextStyle: label?.copyWith(color: muted),
+      selectedLabelTextStyle: label?.copyWith(
+        color: scheme.onPrimaryContainer,
+        fontWeight: FontWeight.w700,
+      ),
+      unselectedLabelTextStyle: label?.copyWith(
+        color: muted,
+        fontWeight: FontWeight.w500,
+      ),
       // + 버튼이 없는 탭에서도 자리를 비워 둬서, 탭을 옮길 때 탭 막대가 위아래로 움직이지 않게 한다.
       leading: Padding(
         padding: const EdgeInsets.only(top: 8, bottom: 12),
@@ -505,6 +528,8 @@ class _SideTabBar extends StatelessWidget {
         for (final tab in HomeTab.values)
           NavigationRailDestination(
             icon: Icon(tab.icon, key: tab.key),
+            // 레일은 둘 중 하나만 그리므로 같은 키를 줘도 겹치지 않는다.
+            selectedIcon: Icon(tab.selectedIcon, key: tab.key),
             label: Text(tab.label),
           ),
       ],

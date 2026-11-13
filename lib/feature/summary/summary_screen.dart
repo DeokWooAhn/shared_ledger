@@ -422,7 +422,7 @@ class _MetricTiles extends StatelessWidget {
               label: '저축',
               amount: totals.saving,
               amountKey: const Key('saving'),
-              caption: '저축으로 집계하는 분류',
+              caption: '저축 분류의 고정 지출',
             ),
           ),
         ],
@@ -470,9 +470,18 @@ class _MetricTile extends StatelessWidget {
               Row(
                 spacing: 6,
                 children: [
-                  Icon(icon, size: 16, color: context.appColors.accentText),
+                  // 18로 키우면 반쪽 폭 카드에서 '이번 달 지출'이 글자 크기 1.1에서도 두 줄이 된다.
+                  Icon(
+                    icon,
+                    size: 16,
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
                   Expanded(
-                    child: Text(label, style: theme.textTheme.labelMedium),
+                    // 글자를 키워 줄이 넘쳐도 '이번 달 지 / 출'처럼 단어 중간에서 끊기지 않게 한다.
+                    child: Text(
+                      keepAll(label),
+                      style: theme.textTheme.labelMedium,
+                    ),
                   ),
                   Icon(
                     Icons.chevron_right,
@@ -484,7 +493,10 @@ class _MetricTile extends StatelessWidget {
               AmountText(
                 amount,
                 textKey: amountKey,
-                style: theme.textTheme.titleMedium?.copyWith(fontSize: 18),
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
               Text(
                 keepAll(caption),
@@ -532,7 +544,8 @@ class _CardSection extends StatelessWidget {
               onTap: onUsage,
               month: month.next,
               title: '이번 달 사용분',
-              caption: '다음 달 청구 예정',
+              // 왼쪽 배지의 달이 사용한 달이 아니라 출금 달임을 옆 글로 밝힌다.
+              caption: '${month.next.month}월 출금 예정',
               amount: totals.cardUsage,
             ),
             DecoratedBox(
@@ -564,9 +577,9 @@ class _CardSection extends StatelessWidget {
                             ),
                             Text(
                               won(amount),
-                              style: lineStyle?.copyWith(
-                                fontWeight: FontWeight.w600,
-                              ),
+                              style: lineStyle
+                                  ?.copyWith(fontWeight: FontWeight.w600)
+                                  .tabularFigures,
                             ),
                           ],
                         ),
@@ -580,7 +593,7 @@ class _CardSection extends StatelessWidget {
               onTap: onBills,
               month: month,
               title: '저번 달 사용분',
-              caption: '이번 달 출금 · 카드 대금 ${summary.cardBillCount}건',
+              caption: '${month.month}월 출금 · 카드 대금 ${summary.cardBillCount}건',
               amount: totals.cardBillTotal,
             ),
           ],
@@ -669,9 +682,9 @@ class _CardUsageRow extends StatelessWidget {
                     child: Text(
                       won(amount),
                       maxLines: 1,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
+                      style: theme.textTheme.bodyMedium
+                          ?.copyWith(fontWeight: FontWeight.w700)
+                          .tabularFigures,
                     ),
                   ),
                 ),

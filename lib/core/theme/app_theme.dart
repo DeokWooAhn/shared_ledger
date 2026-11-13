@@ -333,6 +333,14 @@ extension AppColorsContext on BuildContext {
   }
 }
 
+extension TabularFigures on TextStyle {
+  /// 숫자를 모두 같은 폭으로 그린다. 금액에 써서 위아래 줄의 자릿수가 맞게 한다.
+  ///
+  /// 날짜·'11월' 같은 다른 숫자에는 쓰지 않는다. 같은 폭이면 '1'의 양옆이 벌어져 보인다.
+  TextStyle get tabularFigures =>
+      copyWith(fontFeatures: const [FontFeature.tabularFigures()]);
+}
+
 /// 상태 표시줄과 내비게이션 바를 투명하게 해 화면 바탕과 잇고, 아이콘은 바탕과 반대 밝기로 한다.
 /// app.dart에서 앱 전체를 감싸 쓰고, AppBar 테마에서도 같은 값을 쓴다.
 SystemUiOverlayStyle appSystemOverlayStyle(Brightness brightness) {
@@ -366,11 +374,12 @@ ThemeData buildAppTheme([Brightness brightness = Brightness.light]) {
     onPrimaryContainer: p.accentText,
     secondary: p.primary,
     onSecondary: p.onPrimary,
-    // 선택 표시는 디자인에서 컴포넌트마다 달라(탭은 포인트 색, 칩은 primary, 세그먼트는 밝은 바탕)
+    // 선택 표시는 디자인에서 컴포넌트마다 달라(탭은 연한 코발트, 칩은 primary, 세그먼트는 밝은 바탕)
     // 그 화면을 만들 때 컴포넌트 테마로 정한다. 여기서는 연한 코발트를 둔다.
     secondaryContainer: p.primarySoft,
     onSecondaryContainer: p.accentText,
-    // 포인트 색. 선택된 탭, + 버튼, 지급 전 배지, 입력 중인 칸, 앱 아이콘에만 쓴다.
+    // 포인트 색. + 버튼, 지급 전 배지, 입력 중인 칸, 앱 아이콘에만 쓴다.
+    // 선택된 탭까지 칠하면 남는 현금 카드·+ 버튼과 꽉 찬 파랑이 겹쳐 어디를 볼지 흐려진다.
     tertiary: p.accent,
     onTertiary: p.onAccent,
     error: p.danger,
@@ -402,9 +411,11 @@ ThemeData buildAppTheme([Brightness brightness = Brightness.light]) {
           fontWeight: FontWeight.w700,
           color: p.textPrimary,
         ),
+        // 구역·시트 제목. 700은 금액·화면 제목·버튼에만 남겨, 위계를 굵기보다 크기로 나눈다.
+        // 이 스타일로 금액을 그릴 때는 700을 직접 준다.
         titleMedium: TextStyle(
           fontSize: 17,
-          fontWeight: FontWeight.w700,
+          fontWeight: FontWeight.w600,
           color: p.textPrimary,
         ),
         bodyLarge: TextStyle(fontSize: 16, color: p.textPrimary),

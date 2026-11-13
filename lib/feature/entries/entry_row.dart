@@ -227,9 +227,9 @@ class EntryRow extends StatelessWidget {
                 else
                   Text(
                     won(amount),
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
+                    style: theme.textTheme.bodyMedium
+                        ?.copyWith(fontWeight: FontWeight.w700)
+                        .tabularFigures,
                   ),
                 if (pending != null) StatusPill(pending),
                 if (unsent) UnsentPill(key: ValueKey('unsent-${entry.id}')),

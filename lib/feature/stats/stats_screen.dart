@@ -385,7 +385,7 @@ class _IncomeLegend extends StatelessWidget {
           ),
           Text(
             won(amount),
-            style: style?.copyWith(fontWeight: FontWeight.w700),
+            style: style?.copyWith(fontWeight: FontWeight.w700).tabularFigures,
           ),
         ],
       ),
@@ -931,7 +931,7 @@ class _SliceLegend extends StatelessWidget {
           ),
           Text(
             won(slice.amount),
-            style: style?.copyWith(fontWeight: FontWeight.w700),
+            style: style?.copyWith(fontWeight: FontWeight.w700).tabularFigures,
           ),
         ],
       ),
@@ -1045,7 +1045,9 @@ class _PaymentSection extends StatelessWidget {
                       ),
                       Text(
                         won(amount),
-                        style: rowStyle?.copyWith(fontWeight: FontWeight.w700),
+                        style: rowStyle
+                            ?.copyWith(fontWeight: FontWeight.w700)
+                            .tabularFigures,
                       ),
                     ],
                   ),
