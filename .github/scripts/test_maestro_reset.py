@@ -15,6 +15,7 @@ let writes = 0;
 let signups = 0;
 let error = null;
 const context = {
+  console: { log() {} },
   json: JSON.parse,
   output: {},
   http: {
@@ -53,8 +54,13 @@ class MaestroResetTest(unittest.TestCase):
         self.assertEqual(result, dict(deletes=1, writes=7, signups=1, error=None))
 
     def test_transient_server_error_retries_only_reset(self):
-        """직전 listen 연결 종료로 초기화가 실패하면 DELETE만 다시 요청한다."""
+        """초기화의 일시적 서버 오류는 DELETE만 다시 요청한다."""
         result = self.run_reset([500, 200])
+        self.assertEqual(result, dict(deletes=2, writes=7, signups=1, error=None))
+
+    def test_cancelled_listen_retries_only_reset(self):
+        """실제 에뮬레이터의 CANCELLED에 해당하는 HTTP 499도 초기화만 재시도한다."""
+        result = self.run_reset([499, 200])
         self.assertEqual(result, dict(deletes=2, writes=7, signups=1, error=None))
 
     def test_other_errors_fail_without_retry(self):
@@ -67,11 +73,13 @@ class MaestroResetTest(unittest.TestCase):
 
     def test_persistent_server_error_fails_after_three_requests(self):
         """서버 오류가 계속되면 세 요청 뒤 실패를 그대로 드러낸다."""
-        result = self.run_reset([500])
-        self.assertEqual(result['deletes'], 3)
-        self.assertEqual(result['writes'], 0)
-        self.assertEqual(result['signups'], 0)
-        self.assertIn('HTTP 500', result['error'])
+        for status in (499, 500):
+            with self.subTest(status=status):
+                result = self.run_reset([status])
+                self.assertEqual(result['deletes'], 3)
+                self.assertEqual(result['writes'], 0)
+                self.assertEqual(result['signups'], 0)
+                self.assertIn(f'HTTP {status}', result['error'])
 
 
 if __name__ == '__main__':
