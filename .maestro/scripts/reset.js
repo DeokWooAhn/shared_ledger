@@ -11,7 +11,16 @@ function checked(response) {
   return response.body ? json(response.body) : {};
 }
 
-checked(http.delete(storeBase + '/emulator/v1/projects/' + project + '/databases/(default)/documents'));
+function clearFirestore() {
+  // 이전 앱의 listen 연결이 닫힐 때 clearData가 일시적으로 HTTP 500을 돌려줄 수 있다.
+  // 초기화 DELETE만 재시도한다. 앱의 쓰기나 검증 실패는 다시 실행하지 않는다.
+  for (var attempt = 0; attempt < 3; attempt++) {
+    var response = http.delete(storeBase + '/emulator/v1/projects/' + project + '/databases/(default)/documents');
+    if (response.status !== 500 || attempt === 2) return checked(response);
+  }
+}
+
+clearFirestore();
 checked(http.delete(authBase + '/emulator/v1/projects/' + project + '/accounts'));
 var user = checked(http.post(authBase + '/identitytoolkit.googleapis.com/v1/accounts:signUp?key=fake-api-key', {
   headers: { 'Content-Type': 'application/json' },
