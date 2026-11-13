@@ -92,7 +92,7 @@ View(*_screen) ─→ Notifier(*_notifier) ─→ UseCase 홀더(core/providers/
 | 레이어 | import해도 되는 것 | 패키지 |
 | --- | --- | --- |
 | `domain` | domain | 없음(`dart:`만) |
-| `data` | domain, data | cloud_firestore, firebase_auth, google_sign_in |
+| `data` | domain, data | cloud_firestore, firebase_auth, google_sign_in, rxdart |
 | `core` | domain, core | flutter, flutter_riverpod |
 | `feature/<기능>` | domain, core, 자기 기능 폴더 | flutter, flutter_riverpod, go_router |
 | 앱(lib 바로 아래) | 모두 | 모두 |

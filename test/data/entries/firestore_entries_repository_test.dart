@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:rxdart/rxdart.dart';
 import 'package:shared_ledger/data/entries/firestore_entries_repository.dart';
 import 'package:shared_ledger/domain/model/expense_template.dart';
 import 'package:shared_ledger/domain/model/ledger_entries.dart';
@@ -932,12 +933,12 @@ void main() {
     });
   });
 
-  group('구독 묶기(combineLatest)', () {
+  group('구독 묶기(Rx.combineLatestList)', () {
     test('모든 스트림이 한 번씩 값을 낸 뒤부터 묶음을 내고, 하나가 바뀌면 다시 낸다', () async {
       final a = StreamController<int>();
       final b = StreamController<int>();
       final results = <List<int>>[];
-      final subscription = combineLatest([
+      final subscription = Rx.combineLatestList([
         a.stream,
         b.stream,
       ]).listen(results.add);
@@ -964,7 +965,7 @@ void main() {
         for (var i = 0; i < 4; i++)
           StreamController<int>(onCancel: () => cancelled++),
       ];
-      final subscription = combineLatest([
+      final subscription = Rx.combineLatestList([
         for (final s in streams) s.stream,
       ]).listen((_) {});
       await pumpEventQueue();
@@ -978,7 +979,7 @@ void main() {
       final a = StreamController<int>();
       final b = StreamController<int>();
       final errors = <Object>[];
-      final subscription = combineLatest([
+      final subscription = Rx.combineLatestList([
         a.stream,
         b.stream,
       ]).listen((_) {}, onError: errors.add);
@@ -991,7 +992,7 @@ void main() {
     });
 
     test('모든 스트림이 끝나면 함께 끝난다', () async {
-      final values = await combineLatest([
+      final values = await Rx.combineLatestList([
         Stream.value(1),
         Stream.value(2),
       ]).toList();
