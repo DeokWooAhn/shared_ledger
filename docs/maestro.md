@@ -12,7 +12,7 @@
 | `02_entry_save_edit.yaml` | 추가 지출 저장·수정, 목록·홈 요약 반영, 서버의 제목·금액·결제수단 |
 | `03_trash_restore.yaml` | 휴지통 이동·복원, 목록·합계 변화, 서버의 삭제 상태 |
 
-로컬과 GitHub Actions에서 실행한다. CI는 아래 경로 기준으로 Android smoke를 선택 실행한다.
+로컬과 GitHub Actions에서 실행한다. CI는 아래 경로 기준으로 Android·iOS smoke를 선택 실행한다.
 저장소 ruleset의 새 필수 검사 등록과 릴리스 배포 관문은 별도 설정이다.
 태그 `smoke`는 이 프로젝트에서 로컬 Firebase까지 포함한 기본 검증을 뜻한다.
 실제 Google·Apple 로그인, 두 기기 간 동시 편집, 오프라인 복구, Cloud Functions는 이 세 Flow에 포함되지 않는다.
@@ -85,9 +85,14 @@ Flow 시작 시 공용 Firebase 테스트 데이터를 초기화하므로 다른
 `Maestro 스모크 테스트`는 Flutter를 `.fvmrc` 버전으로 설치하고 전용 디버그 APK를 빌드한다.
 APK는 기존 Android CI와 같은 JDK 17로 빌드하고, Firebase·Maestro 실행 전에 JDK 21로 전환한다.
 Maestro 2.1.0·Firebase CLI 15.20.0을 사용하고, API 34 Android 에뮬레이터에서 로컬 Firebase와 실행한다.
-첫 탭 이동 Flow로 앱을 워밍업한 뒤 smoke 세 개를 실행한다. iOS는 로컬 검증으로 유지한다.
-실패 여부와 관계없이 `maestro-smoke-results` artifact에 스크린샷·JUnit·logcat·에뮬레이터 로그를 7일간 보관한다.
-캐시에는 부팅 후 패키지 작업이 안정된 AVD 스냅샷을 남긴다.
+첫 탭 이동 Flow로 앱을 워밍업한 뒤 smoke 세 개를 실행한다.
+
+iOS는 같은 변경 조건에서 `iOS Maestro 스모크 테스트`를 Xcode 27이 설치된 `xcode-27` 러너의 iPhone 시뮬레이터로 실행한다.
+고정 Flutter SDK로 `testing/maestro_main.dart`를 빌드하고, 로컬 Auth·Firestore와 같은 세 Flow를 검증한다.
+이 프로젝트의 Xcode 27 요구사항에 맞춰 러너를 선택한다. iPhone 17 Pro를 우선 사용하고 없으면 설치된 최신 iPhone 시뮬레이터를 사용한다.
+결과와 앱 로그는 `ios-maestro-smoke-results` artifact에 7일간 남기고 시뮬레이터를 종료한다.
+Android 결과는 실패 여부와 관계없이 `maestro-smoke-results` artifact에 스크린샷·JUnit·logcat·에뮬레이터 로그를 7일간 보관한다.
+Android 캐시에는 부팅 후 패키지 작업이 안정된 AVD 스냅샷을 남긴다.
 
 ## 화면 식별자
 

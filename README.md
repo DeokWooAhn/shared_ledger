@@ -94,7 +94,7 @@ fvm flutter test
 PR과 `main` 푸시마다 GitHub Actions가 같은 검사와 보안 규칙 테스트, Android 디버그 빌드를 돌립니다.
 
 Maestro 기본 테스트(탭 이동, 항목 추가·수정, 휴지통·복원)는 실제 기기 앱과 로컬 Auth·Firestore 에뮬레이터로 실행합니다.
-앱 관련 코드·설정이 바뀐 PR에서는 CI가 Android smoke를 실행하고, 문서·서버·단위 테스트만 바뀌면 생략합니다.
+앱 관련 코드·설정이 바뀐 PR에서는 CI가 Android·iOS smoke를 실행하고, 문서·서버·단위 테스트만 바뀌면 생략합니다.
 준비·로컬 실행 명령·CI 실행 조건과 검증 범위는 [Maestro 안내](docs/maestro.md)에 있습니다.
 
 ## 프로젝트 문서
