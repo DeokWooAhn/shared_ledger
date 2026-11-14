@@ -62,7 +62,15 @@ reviews:
     - "!firestore-tests/node_modules/**"
     # --- CI ---
     - ".github/workflows/**"
+    - ".github/scripts/**"
+    # --- Maestro Flow·실행 도구·전용 설정 ---
+    - ".maestro/**"
+    - "scripts/maestro-smoke.sh"
+    - "testing/maestro_main.dart"
+    - "firebase.maestro.json"
+    - "docs/maestro.md"
     # --- 규칙·설정 (에이전트 지침, 스킬, Claude Code 설정) ---
+    - ".coderabbit.yaml"
     - "AGENTS.md"
     - ".claude/**"
     - ".gitignore"
