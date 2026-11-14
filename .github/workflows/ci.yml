@@ -160,6 +160,89 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
 
+  maestro-smoke-ios:
+    name: iOS Maestro 스모크 테스트
+    needs: maestro-changes
+    if: needs.maestro-changes.outputs.run == 'true'
+    runs-on: xcode-27
+    timeout-minutes: 45
+    env:
+      MAESTRO_VERSION: 2.1.0
+      MAESTRO_DRIVER_STARTUP_TIMEOUT: 180000
+      MAESTRO_CLI_NO_ANALYTICS: 1
+      SIMULATOR_NAME: iPhone 17 Pro
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Read Flutter version
+        id: flutter-version
+        run: echo "version=$(jq -r .flutter .fvmrc)" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: ${{ steps.flutter-version.outputs.version }}
+          cache: true
+
+      - name: Set up JDK 21 for Firebase and Maestro
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Install packages
+        run: flutter pub get --enforce-lockfile
+
+      - name: Install test tools
+        run: |
+          npm install --global firebase-tools@15.20.0
+          curl -fsSL "https://github.com/mobile-dev-inc/Maestro/releases/download/cli-${MAESTRO_VERSION}/maestro.zip" -o "$RUNNER_TEMP/maestro.zip"
+          unzip -q "$RUNNER_TEMP/maestro.zip" -d "$RUNNER_TEMP/maestro-cli"
+          chmod +x "$RUNNER_TEMP/maestro-cli/maestro/bin/maestro"
+          echo "$RUNNER_TEMP/maestro-cli/maestro/bin" >> "$GITHUB_PATH"
+
+      - name: Boot iOS simulator
+        run: |
+          IOS_SIMULATOR_UDID=$(bash .github/scripts/ios-simulator-udid.sh "$SIMULATOR_NAME")
+          test -n "$IOS_SIMULATOR_UDID" || { echo "::error::iOS simulator not found"; exit 1; }
+          echo "IOS_SIMULATOR_UDID=$IOS_SIMULATOR_UDID" >> "$GITHUB_ENV"
+          xcrun simctl boot "$IOS_SIMULATOR_UDID" || true
+
+      - name: Build Maestro iOS simulator app
+        run: flutter build ios --simulator --debug --target testing/maestro_main.dart
+
+      - name: Run iOS Maestro smoke flows
+        run: |
+          xcrun simctl bootstatus "$IOS_SIMULATOR_UDID" -b
+          bash .github/scripts/maestro-ios-smoke.sh
+
+      - name: Upload iOS Maestro results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-maestro-smoke-results
+          path: |
+            build/maestro/ios/
+            *-debug.log
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Shut down iOS simulator
+        if: always()
+        run: |
+          if [ -n "${IOS_SIMULATOR_UDID:-}" ]; then
+            xcrun simctl shutdown "$IOS_SIMULATOR_UDID" || true
+          fi
+
   flutter:
     name: Flutter 포맷·분석·테스트
     runs-on: ubuntu-latest

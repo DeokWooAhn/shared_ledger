@@ -1,0 +1,5 @@
+# GitHub 공식 Xcode 27 프리뷰 레이블은 actionlint의 기본 목록에 아직 없어 별도로 허용한다.
+# 실제 실행은 GitHub 호스팅 러너다: https://github.com/actions/runner-images/issues/14404
+self-hosted-runner:
+  labels:
+    - xcode-27
