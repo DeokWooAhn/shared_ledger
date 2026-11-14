@@ -88,7 +88,7 @@ Flow 시작 시 공용 Firebase 테스트 데이터를 초기화하므로 다른
 
 위 실행 경로에 변경이 하나라도 있으면 세 Flow를 모두 실행한다. 공용 탭·상태·요약이 연결돼 있어 화면별로 하나만 고르지 않는다.
 삭제·이름 변경도 감지한다. 판별 규칙은 `.github/scripts/maestro_changes.py`, 회귀 검사는 같은 폴더의 Python 테스트에 있다.
-준비 단계의 인증 읽기·실패 처리는 `node --test .github/scripts/maestro-reset.test.cjs`로도 검사한다.
+준비 단계의 인증 읽기·실패 처리는 같은 폴더의 `test_maestro_reset.py`가 실제 초기화 스크립트로 검사한다.
 
 `Maestro 스모크 테스트`는 Flutter를 `.fvmrc` 버전으로 설치하고 전용 디버그 APK를 빌드한다.
 APK는 기존 Android CI와 같은 JDK 17로 빌드하고, Firebase·Maestro 실행 전에 JDK 21로 전환한다.

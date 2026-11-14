@@ -34,9 +34,6 @@ jobs:
       - name: Test change detection
         run: python3 -m unittest discover -s .github/scripts -p 'test_*.py' -v
 
-      - name: Test Maestro backend readiness
-        run: node --test .github/scripts/maestro-reset.test.cjs
-
       - name: Check app-related changes
         id: changes
         env:
