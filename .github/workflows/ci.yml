@@ -225,6 +225,15 @@ jobs:
           xcrun simctl bootstatus "$IOS_SIMULATOR_UDID" -b
           bash .github/scripts/maestro-ios-smoke.sh
 
+      - name: Collect iOS diagnostics
+        if: always()
+        run: |
+          if [ -n "${IOS_SIMULATOR_UDID:-}" ] && [ ! -f build/maestro/ios/diagnostics/summary.json ]; then
+            python3 .github/scripts/collect_ios_diagnostics.py --udid "$IOS_SIMULATOR_UDID" \
+              --app-id com.ahn.SharedLedger --process Runner --output build/maestro/ios/diagnostics \
+              --started build/maestro/ios/diagnostics-started
+          fi
+
       - name: Upload iOS Maestro results
         if: always()
         uses: actions/upload-artifact@v4

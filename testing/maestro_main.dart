@@ -11,6 +11,8 @@ import 'package:shared_ledger/data/entries/firestore_entries_repository.dart';
 import 'package:shared_ledger/di.dart';
 import 'package:shared_ledger/firebase_options.dart';
 
+import 'maestro_diagnostics.dart';
+
 /// Maestro 전용 시작점. 별도 Firebase 앱과 demo 프로젝트로 로컬 Auth·Firestore만 사용한다.
 /// 일반 앱(lib/main.dart)에서는 import하지 않고, 배포 빌드로는 실행할 수 없다.
 Future<void> main() async {
@@ -18,6 +20,7 @@ Future<void> main() async {
     throw UnsupportedError('Maestro 시작점은 디버그 빌드에서만 실행할 수 있습니다.');
   }
   WidgetsFlutterBinding.ensureInitialized();
+  debugPrint('MAESTRO_STARTUP firebase-initializing');
   await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
   final app = await Firebase.initializeApp(
     name: 'maestro',
@@ -29,6 +32,7 @@ Future<void> main() async {
       projectId: 'demo-shared-ledger',
     ),
   );
+  debugPrint('MAESTRO_STARTUP firebase-ready');
   // Android 에뮬레이터는 호스트의 loopback을 10.0.2.2로 본다. 실기기는 adb reverse를 쓴다.
   const hostOverride = String.fromEnvironment('MAESTRO_FIREBASE_HOST');
   final host = hostOverride.isNotEmpty
@@ -45,12 +49,15 @@ Future<void> main() async {
   firestore.useFirestoreEmulator(host, 18080, automaticHostMapping: false);
   // Flow마다 서버 데이터를 새로 준비하므로, 이전 실행의 문서를 캐시에서 그리지 않는다.
   firestore.settings = const Settings(persistenceEnabled: false);
+  debugPrint('MAESTRO_STARTUP authenticating');
   await auth.signInWithEmailAndPassword(
     email: 'maestro@example.test',
     password: 'maestro-test-password',
   );
+  debugPrint('MAESTRO_STARTUP authenticated');
   runApp(
     ProviderScope(
+      observers: [MaestroProviderDiagnostics(log: debugPrint)],
       overrides: [
         ...repositoryOverrides(
           auth: auth,

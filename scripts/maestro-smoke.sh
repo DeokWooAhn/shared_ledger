@@ -43,7 +43,8 @@ fi
 if $run_only; then
   maestro --device "$device" test .maestro --include-tags smoke \
     -e "APP_ID=$app_id" --format JUNIT --output "$result_dir/results.xml" \
-    --test-output-dir "$result_dir/artifacts"
+    --test-output-dir "$result_dir/artifacts" \
+    --debug-output "$result_dir/debug" --flatten-debug-output
   exit
 fi
 
