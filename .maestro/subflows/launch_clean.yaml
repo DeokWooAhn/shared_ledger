@@ -9,7 +9,8 @@ appId: ${APP_ID}
 - extendedWaitUntil:
     visible:
       id: remaining-cash
-    timeout: 30000
+    # CI의 첫 iOS 워밍업만 콜드스타트 예산을 별도로 받는다. 본 smoke는 30초다.
+    timeout: '${typeof STARTUP_TIMEOUT_MS === "undefined" ? 30000 : STARTUP_TIMEOUT_MS}'
 - assertVisible:
     id: remaining-cash
     text: "977,000원"

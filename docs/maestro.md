@@ -69,9 +69,6 @@ Flow 시작 시 공용 Firebase 테스트 데이터를 초기화하므로 다른
   서버의 제목·금액·결제수단·휴지통 상태가 일치할 때까지 30초 기한 안에서 읽기만 반복한다.
   즉시 재요청 몇 번으로 저장 실패를 판정하지 않는다. 마지막 `assertTrue`가 필수이며, 중복 항목·HTTP 오류는 즉시 실패한다.
   `MAESTRO_VERIFY`에는 일치 상태와 문서 개수만 남기고 입력값은 기록하지 않는다.
-- 관리자 쓰기 뒤에는 테스트 계정의 인증 토큰으로 홈의 8개 쿼리를 읽어 픽스처와 읽기 준비 상태를 확인한다.
-  첫 인증 구독이 느린 CI에서 홈 요약이 30초 화면 제한 뒤에 도착한 기록이 있다. 초기 서버 준비와 화면 검증을 구분하며,
-  읽기 거부·문서 개수 불일치는 즉시 실패한다. `MAESTRO_BACKEND`는 쿼리 이름과 준비 시간만 기록한다.
 - 테스트 계정과 비밀번호는 에뮬레이터에서만 쓰는 공개 가상 값이다. 개인 계정이나 운영 토큰을 넣지 않는다.
 - 앱이 보는 날짜는 2026-10-15로 고정한다. 가상 수입 1,000,000원과 지출 23,000원에서 시작한다.
   Android의 `inputText`가 한글을 지원하지 않아서 Flow가 입력하는 제목만 영문이다.
@@ -92,7 +89,7 @@ Flow 시작 시 공용 Firebase 테스트 데이터를 초기화하므로 다른
 
 위 실행 경로에 변경이 하나라도 있으면 세 Flow를 모두 실행한다. 공용 탭·상태·요약이 연결돼 있어 화면별로 하나만 고르지 않는다.
 삭제·이름 변경도 감지한다. 판별 규칙은 `.github/scripts/maestro_changes.py`, 회귀 검사는 같은 폴더의 Python 테스트에 있다.
-준비 단계의 인증 읽기·실패 처리는 같은 폴더의 `test_maestro_reset.py`가 실제 초기화 스크립트로 검사한다.
+초기화·서버 상태 검증의 실패 처리는 같은 폴더의 `test_maestro_reset.py`·`test_maestro_verify.py`가 실제 스크립트로 검사한다.
 
 `Maestro 스모크 테스트`는 Flutter를 `.fvmrc` 버전으로 설치하고 전용 디버그 APK를 빌드한다.
 APK는 기존 Android CI와 같은 JDK 17로 빌드하고, Firebase·Maestro 실행 전에 JDK 21로 전환한다.
@@ -103,6 +100,9 @@ iOS는 같은 변경 조건에서 `iOS Maestro 스모크 테스트`를 Xcode 27�
 고정 Flutter SDK로 `testing/maestro_main.dart`를 빌드하고, 로컬 Auth·Firestore와 같은 세 Flow를 검증한다.
 이 프로젝트의 Xcode 27 요구사항에 맞춰 러너를 선택한다. iPhone 17 Pro를 우선 사용하고 없으면 설치된 최신 iPhone 시뮬레이터를 사용한다.
 결과와 앱 로그는 `ios-maestro-smoke-results` artifact에 7일간 남기고 시뮬레이터를 종료한다.
+첫 iOS 워밍업에만 `STARTUP_TIMEOUT_MS=60000`을 전달한다. 새 CI 기기의 앱·Firebase SDK 초기화와
+첫 데이터 구독이 약 40초 걸린 실패 기록에 따른 예산이며, 조건이 충족되면 바로 진행한다.
+호스트 REST 준비가 빨라도 앱의 콜드스타트가 끝난 것은 아니다. 본 smoke 세 개는 기본 30초 제한을 사용한다.
 Android 결과는 실패 여부와 관계없이 `maestro-smoke-results` artifact에 스크린샷·JUnit·logcat·에뮬레이터 로그를 7일간 보관한다.
 Android 캐시에는 부팅 후 패키지 작업이 안정된 AVD 스냅샷을 남긴다.
 

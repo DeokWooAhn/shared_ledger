@@ -17,7 +17,7 @@ if [[ "${1:-}" == --flows ]]; then
   }
   trap collect_before_emulator_shutdown EXIT
   maestro --device "$IOS_SIMULATOR_UDID" test .maestro/flows/01_navigation.yaml \
-    -e APP_ID=com.ahn.SharedLedger --test-output-dir "$output/warmup" \
+    -e APP_ID=com.ahn.SharedLedger -e STARTUP_TIMEOUT_MS=60000 --test-output-dir "$output/warmup" \
     --debug-output "$output/warmup-debug" --flatten-debug-output \
     --format JUNIT --output "$output/warmup.xml"
   bash scripts/maestro-smoke.sh --run ios "$IOS_SIMULATOR_UDID"

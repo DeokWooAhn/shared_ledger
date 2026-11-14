@@ -66,27 +66,3 @@ put(ledger + '/paymentMethods/smoke-account', { name: '테스트 통장', kind: 
 put(ledger + '/categories/smoke-spending', { name: '테스트 소비', countsAsSaving: false, order: 0, hidden: false });
 put(ledger + '/months/2026-10/incomes/smoke-income', { memberId: 'owner', title: '테스트 수입', amount: 1000000, receivedOn: '2026-10-15' });
 put(ledger + '/months/2026-10/extras/smoke-expense', { memberId: 'owner', title: '테스트 지출', amount: 23000, paymentMethodId: 'smoke-account', spentOn: '2026-10-15' });
-
-// 관리자 쓰기는 보안 규칙을 거치지 않는다. 첫 인증 쿼리의 초기화가 느린 CI에서는
-// 앱 실행 뒤에야 읽기가 준비돼 화면의 30초 대기를 넘겼다. 같은 계정으로 홈의
-// 쿼리까지 확인한 뒤 앱을 띄운다. 앱의 실제 구독·쓰기·화면 단언은 그대로 실행한다.
-function prepareRead(label, parent, collection, expectedCount, where) {
-  var started = Date.now();
-  var query = { from: [{ collectionId: collection }] };
-  if (where) query.where = where;
-  var rows = checked(http.post(storeBase + database + parent + ':runQuery', {
-    headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + user.idToken },
-    body: JSON.stringify({ structuredQuery: query })
-  }));
-  var documents = rows.filter(function (row) { return row.document; });
-  if (documents.length !== expectedCount) throw new Error('테스트 읽기 준비 실패: ' + label);
-  console.log('MAESTRO_BACKEND ' + label + '=ready elapsed_ms=' + (Date.now() - started));
-}
-prepareRead('ledgers', '', 'ledgers', 1, {
-  fieldFilter: { field: { fieldPath: 'memberUids' }, op: 'ARRAY_CONTAINS', value: value(user.localId) }
-});
-prepareRead('categories', '/' + ledger, 'categories', 1);
-prepareRead('payment-methods', '/' + ledger, 'paymentMethods', 1);
-['incomes', 'fixedIncomes', 'planned', 'extras', 'cardBills'].forEach(function (kind) {
-  prepareRead(kind, '/' + ledger + '/months/2026-10', kind, kind === 'incomes' || kind === 'extras' ? 1 : 0);
-});
