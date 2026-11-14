@@ -70,7 +70,8 @@ Flow 시작 시 공용 Firebase 테스트 데이터를 초기화하므로 다른
   즉시 재요청 몇 번으로 저장 실패를 판정하지 않는다. 마지막 `assertTrue`가 필수이며, 중복 항목·HTTP 오류는 즉시 실패한다.
   `MAESTRO_VERIFY`에는 일치 상태·문서 개수·경과 시간만 남기고 입력값은 기록하지 않는다.
   iOS CI에서 연결의 `READ_CLOSE` 후 30초 뒤 `Connection reset by peer`가 기록됐고, 그동안 새 쓰기가
-  서버에 반영되지 않았다. [Firebase 에뮬레이터의 유사 keepalive 재현 보고](https://github.com/firebase/firebase-tools/issues/11238)도
+  서버에 반영되지 않았다. 저장 전 75초 유휴를 둔 별도 재현에서도 서버 확인에 약 88초가 걸렸고, 120초 기한에서 저장·수정 검증이 통과했다.
+  [Firebase 에뮬레이터의 유사 keepalive 재현 보고](https://github.com/firebase/firebase-tools/issues/11238)도
   iOS 쓰기 확인에 120초를 사용한다. 정확한 GOAWAY 원인까지 확인한 것은 아니며, 성공하면 즉시 넘어가고 쓰기를 재시도하지 않는다.
 - 테스트 계정과 비밀번호는 에뮬레이터에서만 쓰는 공개 가상 값이다. 개인 계정이나 운영 토큰을 넣지 않는다.
 - 앱이 보는 날짜는 2026-10-15로 고정한다. 가상 수입 1,000,000원과 지출 23,000원에서 시작한다.
