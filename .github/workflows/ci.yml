@@ -168,7 +168,8 @@ jobs:
     needs: maestro-changes
     if: needs.maestro-changes.outputs.run == 'true'
     runs-on: xcode-27
-    timeout-minutes: 45
+    # 단계별 상한 합계 69분에 setup·cleanup 여유를 더한다.
+    timeout-minutes: 75
     env:
       MAESTRO_VERSION: 2.1.0
       MAESTRO_DRIVER_STARTUP_TIMEOUT: 180000
@@ -176,15 +177,18 @@ jobs:
       SIMULATOR_NAME: iPhone 17 Pro
     steps:
       - name: Checkout
+        timeout-minutes: 2
         uses: actions/checkout@v4
         with:
           persist-credentials: false
 
       - name: Read Flutter version
+        timeout-minutes: 1
         id: flutter-version
         run: echo "version=$(jq -r .flutter .fvmrc)" >> "$GITHUB_OUTPUT"
 
       - name: Set up Flutter
+        timeout-minutes: 5
         uses: subosito/flutter-action@v2
         with:
           channel: stable
@@ -192,20 +196,24 @@ jobs:
           cache: true
 
       - name: Set up JDK 21 for Firebase and Maestro
+        timeout-minutes: 2
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: 21
 
       - name: Set up Node.js
+        timeout-minutes: 2
         uses: actions/setup-node@v4
         with:
           node-version: 24
 
       - name: Install packages
+        timeout-minutes: 3
         run: flutter pub get --enforce-lockfile
 
       - name: Install test tools
+        timeout-minutes: 5
         run: |
           npm install --global firebase-tools@15.20.0
           curl -fsSL "https://github.com/mobile-dev-inc/Maestro/releases/download/cli-${MAESTRO_VERSION}/maestro.zip" -o "$RUNNER_TEMP/maestro.zip"
@@ -214,6 +222,7 @@ jobs:
           echo "$RUNNER_TEMP/maestro-cli/maestro/bin" >> "$GITHUB_PATH"
 
       - name: Boot iOS simulator
+        timeout-minutes: 2
         run: |
           IOS_SIMULATOR_UDID=$(bash .github/scripts/ios-simulator-udid.sh "$SIMULATOR_NAME")
           test -n "$IOS_SIMULATOR_UDID" || { echo "::error::iOS simulator not found"; exit 1; }
@@ -221,6 +230,7 @@ jobs:
           xcrun simctl boot "$IOS_SIMULATOR_UDID" || true
 
       - name: Build Maestro iOS simulator app
+        timeout-minutes: 25
         run: flutter build ios --simulator --debug --target testing/maestro_main.dart
 
       - name: Run iOS Maestro smoke flows
@@ -231,6 +241,8 @@ jobs:
           bash .github/scripts/maestro-ios-smoke.sh
 
       - name: Collect iOS diagnostics
+        continue-on-error: true
+        timeout-minutes: 2
         if: always()
         run: |
           if [ -n "${IOS_SIMULATOR_UDID:-}" ] && [ ! -f build/maestro/ios/diagnostics/summary.json ]; then
@@ -240,6 +252,7 @@ jobs:
           fi
 
       - name: Upload iOS Maestro results
+        timeout-minutes: 3
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -251,6 +264,7 @@ jobs:
           retention-days: 7
 
       - name: Shut down iOS simulator
+        timeout-minutes: 2
         if: always()
         run: |
           if [ -n "${IOS_SIMULATOR_UDID:-}" ]; then
