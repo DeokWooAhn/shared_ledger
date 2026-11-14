@@ -13,6 +13,37 @@ from collect_ios_diagnostics import capture, collect, copy_reports
 
 
 class IosDiagnosticsTest(unittest.TestCase):
+    def test_ios_suite_uses_one_driver_session_and_preserves_result(self):
+        for status in (0, 7):
+            with self.subTest(status=status), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                source = Path(__file__).resolve().parents[2]
+                for relative in ('.github/scripts/maestro-ios-smoke.sh', 'scripts/maestro-smoke.sh'):
+                    target = root / relative
+                    target.parent.mkdir(parents=True, exist_ok=True)
+                    shutil.copy2(source / relative, target)
+                binaries = root / 'bin'
+                binaries.mkdir()
+                calls = root / 'calls.txt'
+                maestro = binaries / 'maestro'
+                maestro.write_text('#!/bin/sh\nprintf "%s\\n" "$*" >> "$MAESTRO_CALLS_FILE"\n'
+                                   f'exit {status}\n')
+                maestro.chmod(0o755)
+                python = binaries / 'python3'
+                python.write_text('#!/bin/sh\nexit 13\n')
+                python.chmod(0o755)
+                result = subprocess.run(
+                    ['bash', str(root / '.github/scripts/maestro-ios-smoke.sh'), '--flows'],
+                    cwd=root, capture_output=True, timeout=5,
+                    env={**os.environ, 'PATH': f'{binaries}{os.pathsep}{os.environ["PATH"]}',
+                         'HOME': str(root), 'IOS_SIMULATOR_UDID': 'test-device',
+                         'MAESTRO_CALLS_FILE': str(calls)},
+                )
+                self.assertEqual(result.returncode, status, result.stderr)
+                arguments = calls.read_text().splitlines()
+                self.assertEqual(len(arguments), 1)
+                self.assertIn('STARTUP_TIMEOUT_MS=60000', arguments[0])
+
     def test_failed_diagnostics_cannot_hide_maestro_failure(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

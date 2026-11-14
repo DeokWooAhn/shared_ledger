@@ -16,10 +16,7 @@ if [[ "${1:-}" == --flows ]]; then
     exit "$result"
   }
   trap collect_before_emulator_shutdown EXIT
-  maestro --device "$IOS_SIMULATOR_UDID" test .maestro/flows/01_navigation.yaml \
-    -e APP_ID=com.ahn.SharedLedger -e STARTUP_TIMEOUT_MS=60000 --test-output-dir "$output/warmup" \
-    --debug-output "$output/warmup-debug" --flatten-debug-output \
-    --format JUNIT --output "$output/warmup.xml"
+  # CLI를 두 번 띄우면 워밍업 드라이버 종료와 새 XCTest 세션이 겹칠 수 있다.
   bash scripts/maestro-smoke.sh --run ios "$IOS_SIMULATOR_UDID"
   exit
 fi

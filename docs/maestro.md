@@ -45,7 +45,7 @@ Android 실기기는 두 Firebase 포트에 `adb reverse`를 설정한다. 에�
 일반 배포 빌드는 `lib/main.dart`를 사용한다. 테스트 시작점은 디버그에서만 실행된다.
 
 결과는 `build/maestro/android/`·`build/maestro/ios/`의 JUnit `results.xml`과 `artifacts/`에 남는다.
-CI iOS 실행은 워밍업의 `warmup.xml`·`warmup-debug/`, 본 Flow의 `debug/`와 앱 로그도 남긴다.
+CI iOS 실행은 세 Flow를 한 Maestro 호출로 실행하고 `debug/`와 앱 로그도 남긴다.
 `diagnostics/summary.json`에는 도구·기기·프로세스·스크린샷·통합 로그 수집의 종료 코드와 새 크래시 보고서 목록을 기록한다.
 테스트가 실패해도 Firebase 에뮬레이터 종료 전에 진단을 수집하고, 수집 실패가 원래 실패 코드를 덮어쓰지 않는다.
 앱 로그의 `MAESTRO_STARTUP`과 `MAESTRO_DATA`는 초기화 단계·구독 상태·오류 코드만 기록한다. 금액·메모·계정 값은 기록하지 않는다.
@@ -100,9 +100,11 @@ iOS는 같은 변경 조건에서 `iOS Maestro 스모크 테스트`를 Xcode 27�
 고정 Flutter SDK로 `testing/maestro_main.dart`를 빌드하고, 로컬 Auth·Firestore와 같은 세 Flow를 검증한다.
 이 프로젝트의 Xcode 27 요구사항에 맞춰 러너를 선택한다. iPhone 17 Pro를 우선 사용하고 없으면 설치된 최신 iPhone 시뮬레이터를 사용한다.
 결과와 앱 로그는 `ios-maestro-smoke-results` artifact에 7일간 남기고 시뮬레이터를 종료한다.
-첫 iOS 워밍업에만 `STARTUP_TIMEOUT_MS=60000`을 전달한다. 새 CI 기기의 앱·Firebase SDK 초기화와
+iOS 실행에는 `STARTUP_TIMEOUT_MS=60000`을 전달한다. 새 CI 기기의 앱·Firebase SDK 초기화와
 첫 데이터 구독이 약 40초 걸린 실패 기록에 따른 예산이며, 조건이 충족되면 바로 진행한다.
-호스트 REST 준비가 빨라도 앱의 콜드스타트가 끝난 것은 아니다. 본 smoke 세 개는 기본 30초 제한을 사용한다.
+호스트 REST 준비가 빨라도 앱의 초기화가 끝난 것은 아니다. Android는 30초를 유지한다.
+별도 iOS 워밍업 CLI는 실행하지 않는다. 연속 CLI 실행 사이에 XCTest 드라이버 연결이 끊겨
+본 Flow의 `stopApp`부터 실패했던 기록이 있어, 한 드라이버 세션으로 세 Flow를 검증한다.
 Android 결과는 실패 여부와 관계없이 `maestro-smoke-results` artifact에 스크린샷·JUnit·logcat·에뮬레이터 로그를 7일간 보관한다.
 Android 캐시에는 부팅 후 패키지 작업이 안정된 AVD 스냅샷을 남긴다.
 

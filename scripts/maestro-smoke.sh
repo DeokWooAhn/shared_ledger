@@ -41,8 +41,13 @@ if [[ -z "${JAVA_HOME:-}" && -d "/Applications/Android Studio.app/Contents/jbr/C
 fi
 
 if $run_only; then
+  startup_timeout=30000
+  if [[ "$platform" == ios ]]; then
+    startup_timeout=60000
+  fi
   maestro --device "$device" test .maestro --include-tags smoke \
-    -e "APP_ID=$app_id" --format JUNIT --output "$result_dir/results.xml" \
+    -e "APP_ID=$app_id" -e "STARTUP_TIMEOUT_MS=$startup_timeout" \
+    --format JUNIT --output "$result_dir/results.xml" \
     --test-output-dir "$result_dir/artifacts" \
     --debug-output "$result_dir/debug" --flatten-debug-output
   exit
