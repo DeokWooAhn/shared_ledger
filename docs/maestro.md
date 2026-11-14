@@ -45,6 +45,10 @@ Android 실기기는 두 Firebase 포트에 `adb reverse`를 설정한다. 에�
 일반 배포 빌드는 `lib/main.dart`를 사용한다. 테스트 시작점은 디버그에서만 실행된다.
 
 결과는 `build/maestro/android/`·`build/maestro/ios/`의 JUnit `results.xml`과 `artifacts/`에 남는다.
+CI iOS 실행은 세 Flow를 한 Maestro 호출로 실행하고 `debug/`와 앱 로그도 남긴다.
+`diagnostics/summary.json`에는 도구·기기·프로세스·스크린샷·통합 로그 수집의 종료 코드와 새 크래시 보고서 목록을 기록한다.
+테스트가 실패해도 Firebase 에뮬레이터 종료 전에 진단을 수집하고, 수집 실패가 원래 실패 코드를 덮어쓰지 않는다.
+앱 로그의 `MAESTRO_STARTUP`과 `MAESTRO_DATA`는 초기화 단계·구독 상태·오류 코드만 기록한다. 금액·메모·계정 값은 기록하지 않는다.
 실행하지 못한 플랫폼은 검증 완료로 보지 않는다.
 Maestro 명령은 Android·iOS를 포함해 순서대로 실행한다. 동시에 실행하면 기기 드라이버 연결이 충돌할 수 있고,
 Flow 시작 시 공용 Firebase 테스트 데이터를 초기화하므로 다른 Flow의 상태도 바뀐다.
@@ -61,6 +65,14 @@ Flow 시작 시 공용 Firebase 테스트 데이터를 초기화하므로 다른
   최대 세 번 요청하고, 다른 오류나 계속되는 서버 오류는 실패로 처리한다. 앱의 쓰기·화면 검증은 재시도하지 않는다.
 - 초기 픽스처는 Emulator REST API의 관리자 접근으로 준비한다. 이후 앱의 추가·수정·휴지통·복원은
   저장소의 실제 `firestore.rules`를 적용받는다. 보안 규칙을 완화하지 않는다.
+- 새 항목은 서버 응답 전에 화면에 반영된다. `subflows/verify_entry.yaml`은 화면 합계를 계속 확인하며
+  서버의 제목·금액·결제수단·휴지통 상태가 일치할 때까지 읽기만 반복한다(Android 30초, iOS 120초).
+  즉시 재요청 몇 번으로 저장 실패를 판정하지 않는다. 마지막 `assertTrue`가 필수이며, 중복 항목·HTTP 오류는 즉시 실패한다.
+  `MAESTRO_VERIFY`에는 일치 상태·문서 개수·경과 시간만 남기고 입력값은 기록하지 않는다.
+  iOS CI에서 연결의 `READ_CLOSE` 후 30초 뒤 `Connection reset by peer`가 기록됐고, 그동안 새 쓰기가
+  서버에 반영되지 않았다. 저장 전 75초 유휴를 둔 별도 재현에서도 서버 확인에 약 88초가 걸렸고, 120초 기한에서 저장·수정 검증이 통과했다.
+  [Firebase 에뮬레이터의 유사 keepalive 재현 보고](https://github.com/firebase/firebase-tools/issues/11238)도
+  iOS 쓰기 확인에 120초를 사용한다. 정확한 GOAWAY 원인까지 확인한 것은 아니며, 성공하면 즉시 넘어가고 쓰기를 재시도하지 않는다.
 - 테스트 계정과 비밀번호는 에뮬레이터에서만 쓰는 공개 가상 값이다. 개인 계정이나 운영 토큰을 넣지 않는다.
 - 앱이 보는 날짜는 2026-10-15로 고정한다. 가상 수입 1,000,000원과 지출 23,000원에서 시작한다.
   Android의 `inputText`가 한글을 지원하지 않아서 Flow가 입력하는 제목만 영문이다.
@@ -76,11 +88,12 @@ Flow 시작 시 공용 Firebase 테스트 데이터를 초기화하므로 다른
 | `lib/**`, `assets/**` | 실행: 화면·상태·경로·계산·저장소 동작 |
 | `android/**`, `ios/**`, `.fvmrc`, `pubspec.yaml`, `pubspec.lock` | 실행: 앱 설정·의존성 |
 | `firestore.rules`, `firestore.indexes.json`, `firebase.maestro.json` | 실행: 저장·권한·에뮬레이터 |
-| `.maestro/**`, `testing/maestro_main.dart`, `scripts/maestro-smoke.sh`, `.github/scripts/**`, `.github/workflows/ci.yml` | 실행: 테스트·CI 자체 |
+| `.maestro/**`, `testing/maestro_main.dart`, `testing/maestro_diagnostics.dart`, `scripts/maestro-smoke.sh`, `.github/scripts/**`, `.github/workflows/ci.yml` | 실행: 테스트·CI 자체 |
 | 문서·디자인 원본·`test/**`·`functions/**`·`firestore-tests/**`만 변경 | smoke 생략: 각 영역의 기존 CI 검사는 유지 |
 
 위 실행 경로에 변경이 하나라도 있으면 세 Flow를 모두 실행한다. 공용 탭·상태·요약이 연결돼 있어 화면별로 하나만 고르지 않는다.
 삭제·이름 변경도 감지한다. 판별 규칙은 `.github/scripts/maestro_changes.py`, 회귀 검사는 같은 폴더의 Python 테스트에 있다.
+초기화·서버 상태 검증의 실패 처리는 같은 폴더의 `test_maestro_reset.py`·`test_maestro_verify.py`가 실제 스크립트로 검사한다.
 
 `Maestro 스모크 테스트`는 Flutter를 `.fvmrc` 버전으로 설치하고 전용 디버그 APK를 빌드한다.
 APK는 기존 Android CI와 같은 JDK 17로 빌드하고, Firebase·Maestro 실행 전에 JDK 21로 전환한다.
@@ -91,6 +104,11 @@ iOS는 같은 변경 조건에서 `iOS Maestro 스모크 테스트`를 Xcode 27�
 고정 Flutter SDK로 `testing/maestro_main.dart`를 빌드하고, 로컬 Auth·Firestore와 같은 세 Flow를 검증한다.
 이 프로젝트의 Xcode 27 요구사항에 맞춰 러너를 선택한다. iPhone 17 Pro를 우선 사용하고 없으면 설치된 최신 iPhone 시뮬레이터를 사용한다.
 결과와 앱 로그는 `ios-maestro-smoke-results` artifact에 7일간 남기고 시뮬레이터를 종료한다.
+iOS 실행에는 `STARTUP_TIMEOUT_MS=60000`을 전달한다. 새 CI 기기의 앱·Firebase SDK 초기화와
+첫 데이터 구독이 약 40초 걸린 실패 기록에 따른 예산이며, 조건이 충족되면 바로 진행한다.
+호스트 REST 준비가 빨라도 앱의 초기화가 끝난 것은 아니다. Android는 30초를 유지한다.
+별도 iOS 워밍업 CLI는 실행하지 않는다. 연속 CLI 실행 사이에 XCTest 드라이버 연결이 끊겨
+본 Flow의 `stopApp`부터 실패했던 기록이 있어, 한 드라이버 세션으로 세 Flow를 검증한다.
 Android 결과는 실패 여부와 관계없이 `maestro-smoke-results` artifact에 스크린샷·JUnit·logcat·에뮬레이터 로그를 7일간 보관한다.
 Android 캐시에는 부팅 후 패키지 작업이 안정된 AVD 스냅샷을 남긴다.
 

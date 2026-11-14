@@ -14,6 +14,8 @@ tags: [smoke]
     id: entry-title
 # Android inputText는 한글 입력을 지원하지 않아서 가상 항목 제목만 영문으로 쓴다.
 - inputText: "Smoke expense"
+# iOS는 식별자 노드 아래의 입력란에 값이 노출된다. 가상 입력값 자체를 확인한다.
+- assertVisible: "Smoke expense"
 - hideKeyboard
 - tapOn:
     id: entry-method-smoke-account
@@ -23,20 +25,24 @@ tags: [smoke]
     direction: DOWN
 - tapOn:
     id: entry-save
+# 입력한 제목이 실제 목록에 반영됐는지도 확인한다.
+- extendedWaitUntil:
+    visible:
+      id: entry-title-.*
+      text: "Smoke expense"
+    timeout: 30000
 - tapOn:
     id: tab-home
 - assertVisible:
     id: remaining-cash
     text: "952,400원"
-- retry:
-    maxRetries: 3
-    commands:
-      - runScript:
-          file: ../scripts/verify_entry.js
-          env:
-            EXPECTED_TITLE: "Smoke expense"
-            EXPECTED_AMOUNT: "24600"
-            EXPECTED_TRASHED: "false"
+- runFlow:
+    file: ../subflows/verify_entry.yaml
+    env:
+      EXPECTED_TITLE: "Smoke expense"
+      EXPECTED_AMOUNT: "24600"
+      EXPECTED_TRASHED: "false"
+      EXPECTED_CASH: "952,400원"
 - tapOn:
     id: tab-entries
 - tapOn:
@@ -49,6 +55,7 @@ tags: [smoke]
     id: entry-title
 - eraseText
 - inputText: "Edited expense"
+- assertVisible: "Edited expense"
 - hideKeyboard
 - scrollUntilVisible:
     element:
@@ -67,9 +74,10 @@ tags: [smoke]
 - assertVisible:
     id: remaining-cash
     text: "941,300원"
-- runScript:
-    file: ../scripts/verify_entry.js
+- runFlow:
+    file: ../subflows/verify_entry.yaml
     env:
       EXPECTED_TITLE: "Edited expense"
       EXPECTED_AMOUNT: "35700"
       EXPECTED_TRASHED: "false"
+      EXPECTED_CASH: "941,300원"

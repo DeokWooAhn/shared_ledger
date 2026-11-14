@@ -9,7 +9,8 @@ appId: ${APP_ID}
 - extendedWaitUntil:
     visible:
       id: remaining-cash
-    timeout: 30000
+    # iOS 앱·SDK 초기화에는 60초, Android와 직접 실행에는 기본 30초를 쓴다.
+    timeout: '${typeof STARTUP_TIMEOUT_MS === "undefined" ? 30000 : STARTUP_TIMEOUT_MS}'
 - assertVisible:
     id: remaining-cash
     text: "977,000원"

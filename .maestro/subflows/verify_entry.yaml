@@ -1,0 +1,21 @@
+appId: ${APP_ID}
+---
+# 새 항목 추가는 서버 응답 전에 끝난다. iOS 에뮬레이터 연결 전환은 별도 확인 기한을 받는다.
+- evalScript: '${output.entryVerified = false; output.entryVerifyStartedAt = Date.now(); output.entryVerifyDeadline = output.entryVerifyStartedAt + (typeof SERVER_VERIFY_TIMEOUT_MS === "undefined" ? 30000 : Number(SERVER_VERIFY_TIMEOUT_MS)); output.entryVerifyState = ""}'
+- repeat:
+    times: 1000
+    while:
+      true: ${!output.entryVerified && Date.now() < output.entryVerifyDeadline}
+    commands:
+      - assertVisible:
+          id: remaining-cash
+          text: ${EXPECTED_CASH}
+      - runScript:
+          file: ../scripts/verify_entry.js
+          env:
+            EXPECTED_TITLE: ${EXPECTED_TITLE}
+            EXPECTED_AMOUNT: ${EXPECTED_AMOUNT}
+            EXPECTED_TRASHED: ${EXPECTED_TRASHED}
+- assertTrue:
+    condition: ${output.entryVerified}
+    label: 서버의 제목·금액·결제수단·휴지통 상태가 화면과 일치한다
