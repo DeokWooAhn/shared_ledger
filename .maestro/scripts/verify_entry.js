@@ -13,7 +13,8 @@ var state = !doc ? 'missing'
 output.entryVerified = state === 'ready';
 if (output.entryVerifyState !== state) {
   // 입력값은 기록하지 않고 누락·불일치 종류와 서버 문서 개수만 남긴다.
-  console.log('MAESTRO_VERIFY state=' + state + ' documents=' + docs.length);
+  var elapsed = Date.now() - (output.entryVerifyStartedAt || Date.now());
+  console.log('MAESTRO_VERIFY state=' + state + ' documents=' + docs.length + ' elapsed_ms=' + elapsed);
   output.entryVerifyState = state;
 }
 if (output.entryVerified) output.entryId = doc.name.substring(doc.name.lastIndexOf('/') + 1);

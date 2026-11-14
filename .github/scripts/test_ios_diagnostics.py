@@ -43,6 +43,7 @@ class IosDiagnosticsTest(unittest.TestCase):
                 arguments = calls.read_text().splitlines()
                 self.assertEqual(len(arguments), 1)
                 self.assertIn('STARTUP_TIMEOUT_MS=60000', arguments[0])
+                self.assertIn('SERVER_VERIFY_TIMEOUT_MS=120000', arguments[0])
 
     def test_failed_diagnostics_cannot_hide_maestro_failure(self):
         with tempfile.TemporaryDirectory() as directory:

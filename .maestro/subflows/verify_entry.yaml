@@ -1,9 +1,9 @@
 appId: ${APP_ID}
 ---
-# 새 항목 추가는 서버 응답 전에 끝난다. 화면 합계를 유지하면서 서버 반영을 최대 30초 확인한다.
-- evalScript: ${output.entryVerified = false; output.entryVerifyDeadline = Date.now() + 30000; output.entryVerifyState = ""}
+# 새 항목 추가는 서버 응답 전에 끝난다. iOS 에뮬레이터 연결 전환은 별도 확인 기한을 받는다.
+- evalScript: '${output.entryVerified = false; output.entryVerifyStartedAt = Date.now(); output.entryVerifyDeadline = output.entryVerifyStartedAt + (typeof SERVER_VERIFY_TIMEOUT_MS === "undefined" ? 30000 : Number(SERVER_VERIFY_TIMEOUT_MS)); output.entryVerifyState = ""}'
 - repeat:
-    times: 100
+    times: 1000
     while:
       true: ${!output.entryVerified && Date.now() < output.entryVerifyDeadline}
     commands:
