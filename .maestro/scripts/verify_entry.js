@@ -4,9 +4,16 @@ var response = http.get(url, { headers: { Authorization: 'Bearer owner' } });
 if (response.status !== 200) throw new Error('항목 읽기 실패: HTTP ' + response.status);
 var docs = json(response.body).documents || [];
 var found = docs.filter(function (doc) { return doc.fields.title.stringValue === EXPECTED_TITLE; });
-if (found.length !== 1) throw new Error('기대한 항목이 하나가 아닙니다: ' + EXPECTED_TITLE);
+if (found.length > 1) throw new Error('서버에 같은 테스트 항목이 중복 저장됐습니다.');
 var doc = found[0];
-if (Number(doc.fields.amount.integerValue) !== Number(EXPECTED_AMOUNT)) throw new Error('서버의 금액이 다릅니다.');
-if (Boolean(doc.fields.deletedAt) !== (EXPECTED_TRASHED === 'true')) throw new Error('서버의 휴지통 상태가 다릅니다.');
-if (doc.fields.paymentMethodId.stringValue !== 'smoke-account') throw new Error('서버의 결제수단이 다릅니다.');
-output.entryId = doc.name.substring(doc.name.lastIndexOf('/') + 1);
+var state = !doc ? 'missing'
+  : Number(doc.fields.amount.integerValue) !== Number(EXPECTED_AMOUNT) ? 'amount-mismatch'
+  : Boolean(doc.fields.deletedAt) !== (EXPECTED_TRASHED === 'true') ? 'trash-mismatch'
+  : doc.fields.paymentMethodId.stringValue !== 'smoke-account' ? 'method-mismatch' : 'ready';
+output.entryVerified = state === 'ready';
+if (output.entryVerifyState !== state) {
+  // 입력값은 기록하지 않고 누락·불일치 종류와 서버 문서 개수만 남긴다.
+  console.log('MAESTRO_VERIFY state=' + state + ' documents=' + docs.length);
+  output.entryVerifyState = state;
+}
+if (output.entryVerified) output.entryId = doc.name.substring(doc.name.lastIndexOf('/') + 1);

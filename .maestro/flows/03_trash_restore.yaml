@@ -20,12 +20,13 @@ tags: [smoke]
 - assertVisible:
     id: remaining-cash
     text: "1,000,000원"
-- runScript:
-    file: ../scripts/verify_entry.js
+- runFlow:
+    file: ../subflows/verify_entry.yaml
     env:
       EXPECTED_TITLE: "테스트 지출"
       EXPECTED_AMOUNT: "23000"
       EXPECTED_TRASHED: "true"
+      EXPECTED_CASH: "1,000,000원"
 - tapOn:
     id: tab-settings
 - scrollUntilVisible:
@@ -53,9 +54,10 @@ tags: [smoke]
 - assertVisible:
     id: remaining-cash
     text: "977,000원"
-- runScript:
-    file: ../scripts/verify_entry.js
+- runFlow:
+    file: ../subflows/verify_entry.yaml
     env:
       EXPECTED_TITLE: "테스트 지출"
       EXPECTED_AMOUNT: "23000"
       EXPECTED_TRASHED: "false"
+      EXPECTED_CASH: "977,000원"

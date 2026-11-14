@@ -1,0 +1,21 @@
+appId: ${APP_ID}
+---
+# 새 항목 추가는 서버 응답 전에 끝난다. 화면 합계를 유지하면서 서버 반영을 최대 30초 확인한다.
+- evalScript: ${output.entryVerified = false; output.entryVerifyDeadline = Date.now() + 30000; output.entryVerifyState = ""}
+- repeat:
+    times: 100
+    while:
+      true: ${!output.entryVerified && Date.now() < output.entryVerifyDeadline}
+    commands:
+      - assertVisible:
+          id: remaining-cash
+          text: ${EXPECTED_CASH}
+      - runScript:
+          file: ../scripts/verify_entry.js
+          env:
+            EXPECTED_TITLE: ${EXPECTED_TITLE}
+            EXPECTED_AMOUNT: ${EXPECTED_AMOUNT}
+            EXPECTED_TRASHED: ${EXPECTED_TRASHED}
+- assertTrue:
+    condition: ${output.entryVerified}
+    label: 서버의 제목·금액·결제수단·휴지통 상태가 화면과 일치한다
