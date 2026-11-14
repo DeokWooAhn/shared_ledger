@@ -195,6 +195,7 @@ class EntryRow extends StatelessWidget {
                 children: [
                   Text(
                     _title,
+                    semanticsIdentifier: 'entry-title-${entry.id}',
                     overflow: TextOverflow.ellipsis,
                     style: theme.textTheme.bodyMedium?.copyWith(
                       fontWeight: FontWeight.w500,
@@ -227,6 +228,7 @@ class EntryRow extends StatelessWidget {
                 else
                   Text(
                     won(amount),
+                    semanticsIdentifier: 'entry-amount-${entry.id}',
                     style: theme.textTheme.bodyMedium
                         ?.copyWith(fontWeight: FontWeight.w700)
                         .tabularFigures,

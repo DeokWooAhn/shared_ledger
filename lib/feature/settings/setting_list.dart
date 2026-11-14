@@ -155,6 +155,7 @@ class SettingLinkRow extends StatelessWidget {
     required this.title,
     required this.onTap,
     this.subtitle,
+    this.identifier,
     super.key,
   });
 
@@ -165,6 +166,9 @@ class SettingLinkRow extends StatelessWidget {
   final String? subtitle;
   final VoidCallback onTap;
 
+  /// 실제 기기의 접근성 계층에서 이동 단추를 찾을 식별자.
+  final String? identifier;
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -173,6 +177,7 @@ class SettingLinkRow extends StatelessWidget {
     // 화면 읽기 도구가 이름과 설명을 한 줄의 버튼으로 읽게 한다.
     return MergeSemantics(
       child: Semantics(
+        identifier: identifier,
         button: true,
         child: InkWell(
           onTap: onTap,

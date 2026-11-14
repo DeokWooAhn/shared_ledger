@@ -18,6 +18,148 @@ permissions:
   contents: read
 
 jobs:
+  maestro-changes:
+    name: Maestro 실행 조건 확인
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      run: ${{ steps.changes.outputs.run }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Test change detection
+        run: python3 -m unittest discover -s .github/scripts -p 'test_*.py' -v
+
+      - name: Check app-related changes
+        id: changes
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: python3 .github/scripts/maestro_changes.py
+
+  maestro-smoke:
+    name: Maestro 스모크 테스트
+    needs: maestro-changes
+    if: needs.maestro-changes.outputs.run == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      MAESTRO_VERSION: 2.1.0
+      API_LEVEL: 34
+      AVD_CACHE_VERSION: 1
+      ANDROID_SERIAL: emulator-5554
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Read Flutter version
+        id: flutter-version
+        run: echo "version=$(jq -r .flutter .fvmrc)" >> "$GITHUB_OUTPUT"
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: ${{ steps.flutter-version.outputs.version }}
+          cache: true
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Install packages
+        run: flutter pub get --enforce-lockfile
+
+      - name: Build Maestro debug APK
+        run: >-
+          flutter build apk --debug --target testing/maestro_main.dart
+          --dart-define=MAESTRO_FIREBASE_HOST=10.0.2.2
+
+      # APK 빌드는 기존 Android job과 같은 17, Firebase 에뮬레이터 실행은 21을 쓴다.
+      - name: Set up JDK 21 for Firebase
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Install test tools
+        run: |
+          npm install --global firebase-tools@15.20.0
+          curl -fsSL "https://github.com/mobile-dev-inc/Maestro/releases/download/cli-${MAESTRO_VERSION}/maestro.zip" -o "$RUNNER_TEMP/maestro.zip"
+          unzip -q "$RUNNER_TEMP/maestro.zip" -d "$RUNNER_TEMP/maestro-cli"
+          chmod +x "$RUNNER_TEMP/maestro-cli/maestro/bin/maestro"
+          echo "$RUNNER_TEMP/maestro-cli/maestro/bin" >> "$GITHUB_PATH"
+
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Restore AVD cache
+        id: avd-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.android/avd/*
+          key: maestro-avd-${{ runner.os }}-${{ env.API_LEVEL }}-google_apis-x86_64-4core-4096M-v${{ env.AVD_CACHE_VERSION }}
+
+      - name: Create settled AVD snapshot
+        if: steps.avd-cache.outputs.cache-hit != 'true'
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: ${{ env.API_LEVEL }}
+          target: google_apis
+          arch: x86_64
+          cores: 4
+          ram-size: 4096M
+          force-avd-creation: false
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          disable-animations: false
+          script: bash .github/scripts/emulator-settle.sh 300
+
+      - name: Run Maestro smoke flows
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: ${{ env.API_LEVEL }}
+          target: google_apis
+          arch: x86_64
+          cores: 4
+          ram-size: 4096M
+          force-avd-creation: false
+          emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          disable-animations: true
+          script: |
+            bash .github/scripts/emulator-settle.sh 120
+            bash .github/scripts/maestro-smoke.sh
+
+      - name: Upload Maestro results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: maestro-smoke-results
+          path: |
+            build/maestro/
+            *-debug.log
+          if-no-files-found: ignore
+          retention-days: 7
+
   flutter:
     name: Flutter 포맷·분석·테스트
     runs-on: ubuntu-latest

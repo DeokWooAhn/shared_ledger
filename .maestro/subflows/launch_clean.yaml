@@ -1,0 +1,15 @@
+appId: ${APP_ID}
+---
+- stopApp
+- runScript: ../scripts/reset.js
+# 테스트 시작점은 영속 캐시를 쓰지 않고 매번 에뮬레이터에 로그인한다. 앱 데이터를 지울 필요가 없다.
+- launchApp:
+    clearState: false
+    permissions: {}
+- extendedWaitUntil:
+    visible:
+      id: remaining-cash
+    timeout: 30000
+- assertVisible:
+    id: remaining-cash
+    text: "977,000원"

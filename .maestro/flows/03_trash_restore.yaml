@@ -1,0 +1,61 @@
+appId: ${APP_ID}
+name: 휴지통 이동과 복원이 목록과 합계에 반영된다
+tags: [smoke]
+---
+- runFlow: ../subflows/launch_clean.yaml
+- tapOn:
+    id: tab-entries
+- tapOn:
+    id: entry-title-smoke-expense
+- scrollUntilVisible:
+    element:
+      id: entry-trash
+    direction: DOWN
+- tapOn:
+    id: entry-trash
+- assertNotVisible:
+    id: entry-title-smoke-expense
+- tapOn:
+    id: tab-home
+- assertVisible:
+    id: remaining-cash
+    text: "1,000,000원"
+- runScript:
+    file: ../scripts/verify_entry.js
+    env:
+      EXPECTED_TITLE: "테스트 지출"
+      EXPECTED_AMOUNT: "23000"
+      EXPECTED_TRASHED: "true"
+- tapOn:
+    id: tab-settings
+- scrollUntilVisible:
+    element:
+      id: open-trash
+    direction: DOWN
+    centerElement: true
+- tapOn:
+    id: open-trash
+- assertVisible:
+    id: trash-title-smoke-expense
+- tapOn:
+    id: restore-smoke-expense
+- assertNotVisible:
+    id: trash-title-smoke-expense
+- tapOn:
+    id: tab-entries
+- assertVisible:
+    id: entry-title-smoke-expense
+- assertVisible:
+    id: entry-amount-smoke-expense
+    text: "23,000원"
+- tapOn:
+    id: tab-home
+- assertVisible:
+    id: remaining-cash
+    text: "977,000원"
+- runScript:
+    file: ../scripts/verify_entry.js
+    env:
+      EXPECTED_TITLE: "테스트 지출"
+      EXPECTED_AMOUNT: "23000"
+      EXPECTED_TRASHED: "false"

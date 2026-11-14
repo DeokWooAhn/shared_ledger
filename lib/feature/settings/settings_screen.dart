@@ -105,6 +105,7 @@ class SettingsScreen extends ConsumerWidget {
             ),
             SettingLinkRow(
               key: const Key('open-trash'),
+              identifier: 'open-trash',
               icon: Icons.delete_outline,
               title: '휴지통',
               subtitle: trashed == null || trashed.isEmpty

@@ -17,31 +17,38 @@ import 'firebase_options.dart';
 ///
 /// 구현은 처음 쓸 때 만든다. Firebase를 초기화한 뒤 [ProviderScope]의 overrides로 넘긴다(main.dart).
 /// 항목 저장소([entries])는 앱을 켤 때 다른 Firestore 작업보다 먼저 확인할 것이 있어 시작점이 만들어 넘긴다.
+/// [auth]·[firestore]를 넘기면 테스트 전용 Firebase 앱을 쓰고, 생략하면 기본 앱을 쓴다.
 List<Override> repositoryOverrides({
   required FirestoreEntriesRepository entries,
+  FirebaseAuth? auth,
+  FirebaseFirestore? firestore,
 }) => [
   authRepositoryProvider.overrideWith(
     (ref) => FirebaseAuthRepository(
-      auth: FirebaseAuth.instance,
+      auth: auth ?? FirebaseAuth.instance,
       googleSignIn: GoogleSignIn.instance,
       // Android는 google-services.json에서 읽으므로 null이다.
       iosClientId: DefaultFirebaseOptions.currentPlatform.iosClientId,
     ),
   ),
   ledgerRepositoryProvider.overrideWith(
-    (ref) => FirestoreLedgerRepository(FirebaseFirestore.instance),
+    (ref) => FirestoreLedgerRepository(firestore ?? FirebaseFirestore.instance),
   ),
   settingsRepositoryProvider.overrideWith(
-    (ref) => FirestoreSettingsRepository(FirebaseFirestore.instance),
+    (ref) =>
+        FirestoreSettingsRepository(firestore ?? FirebaseFirestore.instance),
   ),
   entriesRepositoryProvider.overrideWithValue(entries),
   templatesRepositoryProvider.overrideWith(
-    (ref) => FirestoreTemplatesRepository(FirebaseFirestore.instance),
+    (ref) =>
+        FirestoreTemplatesRepository(firestore ?? FirebaseFirestore.instance),
   ),
   activityRepositoryProvider.overrideWith(
-    (ref) => FirestoreActivityRepository(FirebaseFirestore.instance),
+    (ref) =>
+        FirestoreActivityRepository(firestore ?? FirebaseFirestore.instance),
   ),
   holidaysRepositoryProvider.overrideWith(
-    (ref) => FirestoreHolidaysRepository(FirebaseFirestore.instance),
+    (ref) =>
+        FirestoreHolidaysRepository(firestore ?? FirebaseFirestore.instance),
   ),
 ];

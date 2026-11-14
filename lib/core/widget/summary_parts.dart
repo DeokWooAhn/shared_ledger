@@ -78,13 +78,22 @@ class SectionTitle extends StatelessWidget {
 
 /// 큰 금액. 글자를 키우거나 금액이 길어도 잘리지 않게 폭이 모자라면 줄인다.
 class AmountText extends StatelessWidget {
-  const AmountText(this.amount, {required this.style, this.textKey, super.key});
+  const AmountText(
+    this.amount, {
+    required this.style,
+    this.textKey,
+    this.identifier,
+    super.key,
+  });
 
   final int amount;
   final TextStyle? style;
 
   /// 테스트에서 금액 글자를 찾을 키.
   final Key? textKey;
+
+  /// 실제 기기의 접근성 계층에서 금액을 찾을 식별자.
+  final String? identifier;
 
   @override
   Widget build(BuildContext context) {
@@ -93,6 +102,7 @@ class AmountText extends StatelessWidget {
       alignment: AlignmentDirectional.centerStart,
       child: Text(
         won(amount),
+        semanticsIdentifier: identifier,
         key: textKey,
         maxLines: 1,
         style: style?.tabularFigures,

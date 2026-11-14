@@ -258,6 +258,7 @@ class _TrashRow extends StatelessWidget {
                     children: [
                       Text(
                         title,
+                        semanticsIdentifier: 'trash-title-${entry.id}',
                         overflow: TextOverflow.ellipsis,
                         style: theme.textTheme.bodyMedium?.copyWith(
                           fontWeight: FontWeight.w500,
@@ -297,7 +298,7 @@ class _TrashRow extends StatelessWidget {
                   style: TextButton.styleFrom(minimumSize: const Size(64, 48)),
                   onPressed: busy ? null : onRestore,
                   icon: const Icon(Icons.restore, size: 20),
-                  label: const Text('복원'),
+                  label: Text('복원', semanticsIdentifier: 'restore-${entry.id}'),
                 ),
                 if (!stays)
                   TextButton.icon(

@@ -1,0 +1,75 @@
+appId: ${APP_ID}
+name: 항목 추가와 수정이 목록과 홈 요약에 반영된다
+tags: [smoke]
+---
+- runFlow: ../subflows/launch_clean.yaml
+- tapOn:
+    id: tab-entries
+- tapOn:
+    id: add-entry
+- tapOn:
+    id: entry-amount
+- inputText: "24600"
+- tapOn:
+    id: entry-title
+# Android inputText는 한글 입력을 지원하지 않아서 가상 항목 제목만 영문으로 쓴다.
+- inputText: "Smoke expense"
+- hideKeyboard
+- tapOn:
+    id: entry-method-smoke-account
+- scrollUntilVisible:
+    element:
+      id: entry-save
+    direction: DOWN
+- tapOn:
+    id: entry-save
+- tapOn:
+    id: tab-home
+- assertVisible:
+    id: remaining-cash
+    text: "952,400원"
+- retry:
+    maxRetries: 3
+    commands:
+      - runScript:
+          file: ../scripts/verify_entry.js
+          env:
+            EXPECTED_TITLE: "Smoke expense"
+            EXPECTED_AMOUNT: "24600"
+            EXPECTED_TRASHED: "false"
+- tapOn:
+    id: tab-entries
+- tapOn:
+    id: entry-title-${output.entryId}
+- tapOn:
+    id: entry-amount
+- eraseText
+- inputText: "35700"
+- tapOn:
+    id: entry-title
+- eraseText
+- inputText: "Edited expense"
+- hideKeyboard
+- scrollUntilVisible:
+    element:
+      id: entry-save
+    direction: DOWN
+- tapOn:
+    id: entry-save
+- assertVisible:
+    id: entry-title-${output.entryId}
+    text: "Edited expense"
+- assertVisible:
+    id: entry-amount-${output.entryId}
+    text: "35,700원"
+- tapOn:
+    id: tab-home
+- assertVisible:
+    id: remaining-cash
+    text: "941,300원"
+- runScript:
+    file: ../scripts/verify_entry.js
+    env:
+      EXPECTED_TITLE: "Edited expense"
+      EXPECTED_AMOUNT: "35700"
+      EXPECTED_TRASHED: "false"
