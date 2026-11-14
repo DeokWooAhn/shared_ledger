@@ -70,6 +70,11 @@ class MaestroChangesTest(unittest.TestCase):
         self.put("firebase.maestro.json", "에뮬레이터 설정 변경")
         self.assertTrue(self.decision())
 
+    def test_diagnostics_changes_run_smoke(self):
+        """앱에 포함되는 진단 코드도 두 플랫폼 실행으로 확인한다."""
+        self.put("testing/maestro_diagnostics.dart", "진단 변경")
+        self.assertTrue(self.decision())
+
     def test_paths_with_spaces_and_newlines_are_not_split(self):
         """공백·줄바꿈이 있는 경로도 Git의 NUL 구분을 그대로 읽는다."""
         path = "assets/화면 자료\n테스트.txt"

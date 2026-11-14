@@ -34,6 +34,9 @@ jobs:
       - name: Test change detection
         run: python3 -m unittest discover -s .github/scripts -p 'test_*.py' -v
 
+      - name: Test Maestro backend readiness
+        run: node --test .github/scripts/maestro-reset.test.cjs
+
       - name: Check app-related changes
         id: changes
         env:
@@ -221,6 +224,8 @@ jobs:
         run: flutter build ios --simulator --debug --target testing/maestro_main.dart
 
       - name: Run iOS Maestro smoke flows
+        # 테스트가 멈춰도 job 전체 제한 전에 진단·artifact 수집 시간을 남긴다.
+        timeout-minutes: 15
         run: |
           xcrun simctl bootstatus "$IOS_SIMULATOR_UDID" -b
           bash .github/scripts/maestro-ios-smoke.sh

@@ -45,6 +45,10 @@ Android 실기기는 두 Firebase 포트에 `adb reverse`를 설정한다. 에�
 일반 배포 빌드는 `lib/main.dart`를 사용한다. 테스트 시작점은 디버그에서만 실행된다.
 
 결과는 `build/maestro/android/`·`build/maestro/ios/`의 JUnit `results.xml`과 `artifacts/`에 남는다.
+CI iOS 실행은 워밍업의 `warmup.xml`·`warmup-debug/`, 본 Flow의 `debug/`와 앱 로그도 남긴다.
+`diagnostics/summary.json`에는 도구·기기·프로세스·스크린샷·통합 로그 수집의 종료 코드와 새 크래시 보고서 목록을 기록한다.
+테스트가 실패해도 Firebase 에뮬레이터 종료 전에 진단을 수집하고, 수집 실패가 원래 실패 코드를 덮어쓰지 않는다.
+앱 로그의 `MAESTRO_STARTUP`과 `MAESTRO_DATA`는 초기화 단계·구독 상태·오류 코드만 기록한다. 금액·메모·계정 값은 기록하지 않는다.
 실행하지 못한 플랫폼은 검증 완료로 보지 않는다.
 Maestro 명령은 Android·iOS를 포함해 순서대로 실행한다. 동시에 실행하면 기기 드라이버 연결이 충돌할 수 있고,
 Flow 시작 시 공용 Firebase 테스트 데이터를 초기화하므로 다른 Flow의 상태도 바뀐다.
@@ -61,6 +65,9 @@ Flow 시작 시 공용 Firebase 테스트 데이터를 초기화하므로 다른
   최대 세 번 요청하고, 다른 오류나 계속되는 서버 오류는 실패로 처리한다. 앱의 쓰기·화면 검증은 재시도하지 않는다.
 - 초기 픽스처는 Emulator REST API의 관리자 접근으로 준비한다. 이후 앱의 추가·수정·휴지통·복원은
   저장소의 실제 `firestore.rules`를 적용받는다. 보안 규칙을 완화하지 않는다.
+- 관리자 쓰기 뒤에는 테스트 계정의 인증 토큰으로 홈의 8개 쿼리를 읽어 픽스처와 읽기 준비 상태를 확인한다.
+  첫 인증 구독이 느린 CI에서 홈 요약이 30초 화면 제한 뒤에 도착한 기록이 있다. 초기 서버 준비와 화면 검증을 구분하며,
+  읽기 거부·문서 개수 불일치는 즉시 실패한다. `MAESTRO_BACKEND`는 쿼리 이름과 준비 시간만 기록한다.
 - 테스트 계정과 비밀번호는 에뮬레이터에서만 쓰는 공개 가상 값이다. 개인 계정이나 운영 토큰을 넣지 않는다.
 - 앱이 보는 날짜는 2026-10-15로 고정한다. 가상 수입 1,000,000원과 지출 23,000원에서 시작한다.
   Android의 `inputText`가 한글을 지원하지 않아서 Flow가 입력하는 제목만 영문이다.
@@ -76,11 +83,12 @@ Flow 시작 시 공용 Firebase 테스트 데이터를 초기화하므로 다른
 | `lib/**`, `assets/**` | 실행: 화면·상태·경로·계산·저장소 동작 |
 | `android/**`, `ios/**`, `.fvmrc`, `pubspec.yaml`, `pubspec.lock` | 실행: 앱 설정·의존성 |
 | `firestore.rules`, `firestore.indexes.json`, `firebase.maestro.json` | 실행: 저장·권한·에뮬레이터 |
-| `.maestro/**`, `testing/maestro_main.dart`, `scripts/maestro-smoke.sh`, `.github/scripts/**`, `.github/workflows/ci.yml` | 실행: 테스트·CI 자체 |
+| `.maestro/**`, `testing/maestro_main.dart`, `testing/maestro_diagnostics.dart`, `scripts/maestro-smoke.sh`, `.github/scripts/**`, `.github/workflows/ci.yml` | 실행: 테스트·CI 자체 |
 | 문서·디자인 원본·`test/**`·`functions/**`·`firestore-tests/**`만 변경 | smoke 생략: 각 영역의 기존 CI 검사는 유지 |
 
 위 실행 경로에 변경이 하나라도 있으면 세 Flow를 모두 실행한다. 공용 탭·상태·요약이 연결돼 있어 화면별로 하나만 고르지 않는다.
 삭제·이름 변경도 감지한다. 판별 규칙은 `.github/scripts/maestro_changes.py`, 회귀 검사는 같은 폴더의 Python 테스트에 있다.
+준비 단계의 인증 읽기·실패 처리는 `node --test .github/scripts/maestro-reset.test.cjs`로도 검사한다.
 
 `Maestro 스모크 테스트`는 Flutter를 `.fvmrc` 버전으로 설치하고 전용 디버그 APK를 빌드한다.
 APK는 기존 Android CI와 같은 JDK 17로 빌드하고, Firebase·Maestro 실행 전에 JDK 21로 전환한다.

@@ -14,6 +14,7 @@ APP_FILES = {
     "firestore.indexes.json",
     "firebase.maestro.json",
     "testing/maestro_main.dart",
+    "testing/maestro_diagnostics.dart",
     "scripts/maestro-smoke.sh",
     ".github/workflows/ci.yml",
 }

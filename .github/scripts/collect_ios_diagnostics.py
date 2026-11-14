@@ -21,7 +21,7 @@ def capture(command, output, timeout=20):
     return {"command": command, "exit_code": code, "file": output.name}
 
 
-def copy_reports(sources, destination, since, process):
+def copy_reports(sources, destination, since, process, errors=None):
     destination.mkdir(parents=True, exist_ok=True)
     prefixes = (process, "maestro-driver", "xctest", "JetsamEvent", "SpringBoard", "Simulator")
     copied = []
@@ -37,8 +37,9 @@ def copy_reports(sources, destination, since, process):
                 target = destination / f"{index}-{path.name}"
                 shutil.copy2(path, target)
                 copied.append(target.name)
-            except OSError:
-                # 다른 파일을 계속 수집한다. 누락 여부는 보고서 목록과 stderr로 확인한다.
+            except OSError as error:
+                if errors is not None:
+                    errors.append({"file": path.name, "error": str(error)})
                 continue
     return copied
 
@@ -63,8 +64,10 @@ def collect(udid, app_id, process, output, started=None):
     home = Path.home()
     sources = [home / "Library/Logs/DiagnosticReports",
                home / f"Library/Developer/CoreSimulator/Devices/{udid}/data/Library/Logs/CrashReporter"]
-    reports = copy_reports(sources, output / "crash-reports", since, process)
-    summary = {"udid": udid, "app_id": app_id, "commands": results, "crash_reports": reports}
+    errors = []
+    reports = copy_reports(sources, output / "crash-reports", since, process, errors)
+    summary = {"udid": udid, "app_id": app_id, "commands": results,
+               "crash_reports": reports, "crash_report_errors": errors}
     (output / "summary.json").write_text(json.dumps(summary, ensure_ascii=False, indent=2) + "\n")
     return summary
 
