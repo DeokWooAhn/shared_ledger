@@ -6,18 +6,21 @@ import '../../core/widget/keep_all.dart';
 /// 예정일 이름. 31일은 '말일'이다. 예: '25일', '말일'
 String dueDayLabel(int dueDay) => dueDay == lastDueDay ? '말일' : '$dueDay일';
 
-/// 고정 지출의 매달 예정일 칸. 누르면 날짜를 고르는 시트([showDueDaySheet])가 뜬다.
+/// 고정 지출·고정 수입의 매달 예정일 칸. 누르면 날짜를 고르는 시트([showDueDaySheet])가 뜬다.
 ///
+/// [income]이면 돈이 들어오는 날, 아니면 나가는 날로 안내한다.
 /// 칸 전체가 하나의 버튼이라 이름표와 고른 값을 함께 읽게 직접 알린다.
 class DueDayField extends StatelessWidget {
   const DueDayField({
     required this.dueDay,
+    required this.income,
     required this.errorText,
     required this.onTap,
     super.key,
   });
 
   final int? dueDay;
+  final bool income;
   final String? errorText;
   final VoidCallback? onTap;
 
@@ -45,7 +48,7 @@ class DueDayField extends StatelessWidget {
             child: InputDecorator(
               isEmpty: text == null,
               decoration: InputDecoration(
-                hintText: '매달 빠져나가는 날을 골라 주세요',
+                hintText: income ? '매달 들어오는 날을 골라 주세요' : '매달 나가는 날을 골라 주세요',
                 errorText: errorText,
                 enabled: onTap != null,
                 suffixIcon: const ExcludeSemantics(
@@ -68,6 +71,8 @@ Future<int?> showDueDaySheet(BuildContext context, {required int? selected}) =>
     showModalBottomSheet<int>(
       context: context,
       showDragHandle: true,
+      // 기본 높이(화면의 9/16)로는 작은 화면에서 마지막 줄이 넘쳐서, 내용만큼 키우고 넘치면 스크롤한다.
+      isScrollControlled: true,
       builder: (_) => _DueDaySheet(selected: selected),
     );
 
@@ -81,10 +86,9 @@ class _DueDaySheet extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return SafeArea(
-      child: Padding(
+      child: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
         child: Column(
-          mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           spacing: 6,
           children: [

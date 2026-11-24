@@ -160,6 +160,10 @@ enum EntryTab {
   /// 이 칸에 보이는 종류. 보이는 순서다.
   final List<EntryKind> kinds;
 
+  /// [kind]가 보이는 칸.
+  static EntryTab of(EntryKind kind) =>
+      values.firstWhere((tab) => tab.kinds.contains(kind));
+
   /// + 버튼이 이 칸에서 여는 종류. 수입·지출 칸은 자주 적는 추가 수입·추가 지출이다(입력 화면의 종류 칸에서 바꾼다).
   EntryKind get addKind => switch (this) {
     EntryTab.income => EntryKind.income,

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../core/providers/providers.dart';
 import '../../domain/model/ledger_entries.dart';
 import '../../core/widget/entry_kind_label.dart';
 import '../../core/widget/keep_all.dart';
@@ -66,6 +67,8 @@ class EntryKindField extends StatelessWidget {
 }
 
 /// 종류를 고르는 시트를 띄우고 고른 종류를 돌려준다. 고르지 않고 닫으면 null.
+///
+/// [selected]가 보이는 칸(수입·지출)의 종류만 보여준다. 수입 칸에서 열었으면 수입 중에서만 고른다.
 Future<EntryKind?> showEntryKindSheet(
   BuildContext context, {
   required EntryKind selected,
@@ -76,21 +79,23 @@ Future<EntryKind?> showEntryKindSheet(
   builder: (_) => _EntryKindSheet(selected: selected),
 );
 
-/// 종류 고르기 시트(design/app/05c). 수입·지출·카드로 묶어 이름과 짧은 설명을 보여준다.
+/// 종류 고르기 시트의 제목. 카드 대금 칸은 고를 것이 하나뿐이라 시트를 띄우지 않는다.
+String _sheetTitle(EntryTab tab) => switch (tab) {
+  EntryTab.income => '어떤 수입인가요?',
+  EntryTab.expense => '어떤 지출인가요?',
+  EntryTab.cardBill => '무엇을 적을까요?',
+};
+
+/// 종류 고르기 시트(design/app/05c). [selected]가 보이는 칸의 종류만 이름과 짧은 설명으로 보여준다.
 class _EntryKindSheet extends StatelessWidget {
   const _EntryKindSheet({required this.selected});
 
   final EntryKind selected;
 
-  static const _groups = [
-    ('수입', [EntryKind.fixedIncome, EntryKind.income]),
-    ('지출', [EntryKind.planned, EntryKind.extra]),
-    ('카드', [EntryKind.cardBill]),
-  ];
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final tab = EntryTab.of(selected);
     return SafeArea(
       child: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
@@ -99,22 +104,17 @@ class _EntryKindSheet extends StatelessWidget {
           children: [
             Semantics(
               header: true,
-              child: Text('무엇을 적을까요?', style: theme.textTheme.titleMedium),
+              child: Text(_sheetTitle(tab), style: theme.textTheme.titleMedium),
             ),
-            for (final (group, kinds) in _groups) ...[
-              Padding(
-                padding: const EdgeInsets.only(top: 14, bottom: 2),
-                child: Text(group, style: theme.textTheme.labelMedium),
+            const SizedBox(height: 8),
+            for (final (index, kind) in tab.kinds.indexed) ...[
+              if (index > 0)
+                Divider(height: 1, color: theme.colorScheme.outlineVariant),
+              _KindOption(
+                key: Key('entry-kind-${kind.name}'),
+                kind: kind,
+                selected: kind == selected,
               ),
-              for (final (index, kind) in kinds.indexed) ...[
-                if (index > 0)
-                  Divider(height: 1, color: theme.colorScheme.outlineVariant),
-                _KindOption(
-                  key: Key('entry-kind-${kind.name}'),
-                  kind: kind,
-                  selected: kind == selected,
-                ),
-              ],
             ],
           ],
         ),
