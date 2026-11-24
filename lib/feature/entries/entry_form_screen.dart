@@ -239,9 +239,12 @@ class _EntryFormScreenState extends ConsumerState<EntryFormScreen> {
     );
     final enabled = !state.busy;
     final fields = <Widget>[
+      // 종류는 연 칸(수입·지출) 안에서만 바꾼다. 카드 대금처럼 고를 것이 하나뿐이면 누를 수 없다.
       EntryKindField(
         kind: kind,
-        onTap: isEdit || !enabled ? null : () => _pickKind(kind),
+        onTap: isEdit || !enabled || EntryTab.of(kind).kinds.length < 2
+            ? null
+            : () => _pickKind(kind),
       ),
       WonAmountField(
         controller: _amount,
@@ -351,6 +354,7 @@ class _EntryFormScreenState extends ConsumerState<EntryFormScreen> {
       if (fixed)
         DueDayField(
           dueDay: state.dueDay ?? template?.dueDay,
+          income: kind == EntryKind.fixedIncome,
           errorText: errorOf({EntryProblem.dueDayMissing}),
           onTap: enabled
               ? () => _pickDueDay(state.dueDay ?? template?.dueDay)

@@ -109,9 +109,11 @@ Future<void> tapInForm(WidgetTester tester, Key key) async {
   await settle(tester);
 }
 
+// 글자를 넣으면 그 칸이 커서를 보이게 스크롤한다. 끝날 때까지 그려야 다음 칸으로 옮긴 스크롤이 되돌려지지 않는다.
 Future<void> enterInForm(WidgetTester tester, Key key, String text) async {
   await showInForm(tester, key);
   await tester.enterText(inForm(find.byKey(key)), text);
+  await settle(tester);
 }
 
 Future<void> openAddForm(WidgetTester tester) async {
@@ -386,6 +388,67 @@ void main() {
       expect(added.entry.date, DateTime(2026, 10, 15));
       expect(added.entry.dueOn, DateTime(2026, 10, 31));
       expect(find.text('공동 통장 · 10/15 지급'), findsOneWidget);
+    });
+
+    testWidgets('종류 고르기 시트는 연 칸(수입·지출)의 종류만 보여준다', (tester) async {
+      await pumpEntries(tester);
+
+      await openAddForm(tester);
+      await tester.tap(find.byKey(const Key('entry-kind')));
+      await settle(tester);
+      expect(find.text('어떤 지출인가요?'), findsOneWidget);
+      expect(find.byKey(const Key('entry-kind-planned')), findsOneWidget);
+      expect(find.byKey(const Key('entry-kind-extra')), findsOneWidget);
+      expect(find.byKey(const Key('entry-kind-fixedIncome')), findsNothing);
+      expect(find.byKey(const Key('entry-kind-income')), findsNothing);
+      expect(find.byKey(const Key('entry-kind-cardBill')), findsNothing);
+      await tester.tap(find.byKey(const Key('entry-kind-extra')));
+      await settle(tester);
+      await tester.tap(find.byKey(const Key('entry-close')));
+      await settleRoute(tester);
+
+      await tester.tap(inList(find.byKey(const Key('entry-tab-income'))));
+      await settle(tester);
+      await openAddForm(tester);
+      await tester.tap(find.byKey(const Key('entry-kind')));
+      await settle(tester);
+      expect(find.text('어떤 수입인가요?'), findsOneWidget);
+      expect(find.byKey(const Key('entry-kind-fixedIncome')), findsOneWidget);
+      expect(find.byKey(const Key('entry-kind-income')), findsOneWidget);
+      expect(find.byKey(const Key('entry-kind-planned')), findsNothing);
+      expect(find.byKey(const Key('entry-kind-extra')), findsNothing);
+      expect(find.byKey(const Key('entry-kind-cardBill')), findsNothing);
+    });
+
+    testWidgets('카드 대금은 고를 종류가 하나뿐이라 종류 칸을 누를 수 없다', (tester) async {
+      await pumpEntries(tester);
+      await tester.tap(inList(find.byKey(const Key('entry-tab-cardBill'))));
+      await settle(tester);
+      await openAddForm(tester);
+
+      expect(
+        tester
+            .widget<InkWell>(inForm(find.byKey(const Key('entry-kind'))))
+            .onTap,
+        isNull,
+      );
+    });
+
+    testWidgets('작은 화면에서도 매달 예정일 시트가 넘치지 않고 말일까지 고를 수 있다', (tester) async {
+      await pumpEntries(tester, size: const Size(360, 640));
+      await openAddForm(tester);
+      await chooseEntryKind(tester, EntryKind.planned);
+      await showInForm(tester, const Key('entry-due-day'));
+      expect(inForm(find.text('매달 나가는 날을 골라 주세요')), findsOneWidget);
+
+      await tapInForm(tester, const Key('entry-due-day'));
+      expect(tester.takeException(), isNull);
+      await tester.ensureVisible(find.byKey(const Key('due-day-31')));
+      await settle(tester);
+      await tester.tap(find.byKey(const Key('due-day-31')));
+      await settle(tester);
+
+      expect(inForm(find.text('매월 말일')), findsOneWidget);
     });
 
     testWidgets('날짜는 한국어 달력에서 그달 안의 날로 고른다', (tester) async {
@@ -874,6 +937,8 @@ void main() {
         findsNothing,
       );
       expect(find.text('받은 날'), findsNothing);
+      // 고정 수입의 예정일은 돈이 들어오는 날이다.
+      expect(inForm(find.text('매달 들어오는 날을 골라 주세요')), findsOneWidget);
       await enterInForm(tester, const Key('entry-amount'), '3000000');
       await enterInForm(tester, const Key('entry-title'), '월급');
       await tapInForm(tester, const Key('entry-due-day'));

@@ -15259,122 +15259,10 @@
                   "id": "A1RR5N",
                   "name": "Sheet Title",
                   "fill": "$text-primary",
-                  "content": "무엇을 적을까요?",
+                  "content": "어떤 지출인가요?",
                   "fontFamily": "$font",
                   "fontSize": 19,
                   "fontWeight": "700"
-                },
-                {
-                  "type": "frame",
-                  "id": "InIan",
-                  "name": "Group 수입",
-                  "width": "fill_container",
-                  "layout": "vertical",
-                  "padding": [
-                    10,
-                    0,
-                    0,
-                    0
-                  ],
-                  "children": [
-                    {
-                      "type": "text",
-                      "id": "ZJaee",
-                      "name": "Group Label",
-                      "fill": "$text-muted",
-                      "content": "수입",
-                      "fontFamily": "$font",
-                      "fontSize": 13,
-                      "fontWeight": "600"
-                    },
-                    {
-                      "type": "frame",
-                      "id": "P5bXz",
-                      "name": "Kind 고정 수입",
-                      "width": "fill_container",
-                      "height": 60,
-                      "stroke": "$line-soft",
-                      "strokeWidth": {
-                        "bottom": 1
-                      },
-                      "gap": 12,
-                      "alignItems": "center",
-                      "children": [
-                        {
-                          "type": "frame",
-                          "id": "YVMyy",
-                          "name": "Text",
-                          "width": "fill_container",
-                          "layout": "vertical",
-                          "gap": 2,
-                          "children": [
-                            {
-                              "type": "text",
-                              "id": "alX4M",
-                              "name": "Kind Title",
-                              "fill": "$text-primary",
-                              "content": "고정 수입",
-                              "fontFamily": "$font",
-                              "fontSize": 16,
-                              "fontWeight": "600"
-                            },
-                            {
-                              "type": "text",
-                              "id": "lkbHM",
-                              "name": "Kind Desc",
-                              "fill": "$text-muted",
-                              "content": "월급처럼 매달 들어오는 돈",
-                              "fontFamily": "$font",
-                              "fontSize": 13,
-                              "fontWeight": "normal"
-                            }
-                          ]
-                        }
-                      ]
-                    },
-                    {
-                      "type": "frame",
-                      "id": "qvbY5",
-                      "name": "Kind 추가 수입",
-                      "width": "fill_container",
-                      "height": 60,
-                      "stroke": "$line-soft",
-                      "gap": 12,
-                      "alignItems": "center",
-                      "children": [
-                        {
-                          "type": "frame",
-                          "id": "ZeN1D",
-                          "name": "Text",
-                          "width": "fill_container",
-                          "layout": "vertical",
-                          "gap": 2,
-                          "children": [
-                            {
-                              "type": "text",
-                              "id": "d5lw7u",
-                              "name": "Kind Title",
-                              "fill": "$text-primary",
-                              "content": "추가 수입",
-                              "fontFamily": "$font",
-                              "fontSize": 16,
-                              "fontWeight": "600"
-                            },
-                            {
-                              "type": "text",
-                              "id": "ncwuc",
-                              "name": "Kind Desc",
-                              "fill": "$text-muted",
-                              "content": "그때그때 들어온 돈",
-                              "fontFamily": "$font",
-                              "fontSize": 13,
-                              "fontWeight": "normal"
-                            }
-                          ]
-                        }
-                      ]
-                    }
-                  ]
                 },
                 {
                   "type": "frame",
@@ -15383,22 +15271,12 @@
                   "width": "fill_container",
                   "layout": "vertical",
                   "padding": [
-                    10,
+                    2,
                     0,
                     0,
                     0
                   ],
                   "children": [
-                    {
-                      "type": "text",
-                      "id": "qUDUY",
-                      "name": "Group Label",
-                      "fill": "$text-muted",
-                      "content": "지출",
-                      "fontFamily": "$font",
-                      "fontSize": 13,
-                      "fontWeight": "600"
-                    },
                     {
                       "type": "frame",
                       "id": "ERtQy",
@@ -15493,73 +15371,6 @@
                           "icon": "check",
                           "library": "lucide",
                           "fill": "$accent-text"
-                        }
-                      ]
-                    }
-                  ]
-                },
-                {
-                  "type": "frame",
-                  "id": "y6pvML",
-                  "name": "Group 카드",
-                  "width": "fill_container",
-                  "layout": "vertical",
-                  "padding": [
-                    10,
-                    0,
-                    0,
-                    0
-                  ],
-                  "children": [
-                    {
-                      "type": "text",
-                      "id": "wS26R",
-                      "name": "Group Label",
-                      "fill": "$text-muted",
-                      "content": "카드",
-                      "fontFamily": "$font",
-                      "fontSize": 13,
-                      "fontWeight": "600"
-                    },
-                    {
-                      "type": "frame",
-                      "id": "n2XP8R",
-                      "name": "Kind 카드 대금",
-                      "width": "fill_container",
-                      "height": 60,
-                      "stroke": "$line-soft",
-                      "gap": 12,
-                      "alignItems": "center",
-                      "children": [
-                        {
-                          "type": "frame",
-                          "id": "G7F3pj",
-                          "name": "Text",
-                          "width": "fill_container",
-                          "layout": "vertical",
-                          "gap": 2,
-                          "children": [
-                            {
-                              "type": "text",
-                              "id": "q7jGJ6",
-                              "name": "Kind Title",
-                              "fill": "$text-primary",
-                              "content": "카드 대금",
-                              "fontFamily": "$font",
-                              "fontSize": 16,
-                              "fontWeight": "600"
-                            },
-                            {
-                              "type": "text",
-                              "id": "T7elxx",
-                              "name": "Kind Desc",
-                              "fill": "$text-muted",
-                              "content": "지난달 카드값이 빠져나간 돈",
-                              "fontFamily": "$font",
-                              "fontSize": 13,
-                              "fontWeight": "normal"
-                            }
-                          ]
                         }
                       ]
                     }
