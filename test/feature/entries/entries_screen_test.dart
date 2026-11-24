@@ -552,6 +552,24 @@ void main() {
       expect(tester.testTextInput.isVisible, isTrue);
     });
 
+    testWidgets('금액 줄 위에서 시작해 스크롤해도 키보드를 닫는다', (tester) async {
+      await pumpEntries(tester);
+      await openAddForm(tester, EntryKind.extra);
+      final amount = inForm(find.byKey(const Key('entry-amount')));
+      await tester.tap(amount);
+      await settle(tester);
+      expect(tester.testTextInput.isVisible, isTrue);
+
+      final field = tester.getRect(amount);
+      await tester.dragFrom(
+        Offset(field.right + 150, field.center.dy),
+        const Offset(0, -200),
+      );
+      await settle(tester);
+
+      expect(tester.testTextInput.isVisible, isFalse);
+    });
+
     testWidgets('입력 중에 아래 칸을 고르면 키보드를 닫고 화면은 그 자리에 둔다', (tester) async {
       await pumpEntries(tester);
       await openAddForm(tester, EntryKind.extra);

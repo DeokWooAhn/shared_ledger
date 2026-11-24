@@ -468,6 +468,9 @@ class _EntryFormScreenState extends ConsumerState<EntryFormScreen> {
                 ),
                 Expanded(
                   child: ListView(
+                    // 입력란이나 금액 줄 위에서 시작한 스크롤은 밖을 누른 것으로 치지 않아서, 스크롤하면 키보드를 닫는다.
+                    keyboardDismissBehavior:
+                        ScrollViewKeyboardDismissBehavior.onDrag,
                     padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
                     children: [
                       for (final (index, field) in fields.indexed) ...[
