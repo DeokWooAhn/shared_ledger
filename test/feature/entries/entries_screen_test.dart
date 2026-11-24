@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_ledger/core/providers/providers.dart';
 import 'package:shared_ledger/domain/model/expense_template.dart';
 import 'package:shared_ledger/domain/model/auth_user.dart';
 import 'package:shared_ledger/domain/model/category.dart';
@@ -10,6 +11,7 @@ import 'package:shared_ledger/domain/model/payment_method.dart';
 import 'package:shared_ledger/domain/model/year_month.dart';
 import 'package:shared_ledger/feature/entries/entries_screen.dart';
 import 'package:shared_ledger/feature/entries/entry_form_screen.dart';
+import 'package:shared_ledger/feature/entries/entry_tabs.dart';
 import 'package:shared_ledger/feature/home/home_shell.dart';
 
 import '../../../testing/app.dart';
@@ -116,9 +118,11 @@ Future<void> enterInForm(WidgetTester tester, Key key, String text) async {
   await settle(tester);
 }
 
-Future<void> openAddForm(WidgetTester tester) async {
+// + 버튼으로 입력 화면을 연다. [kind]를 주면 종류 칸에서 그 종류로 바꾼다(+ 버튼은 칸의 첫 번째 종류로 연다).
+Future<void> openAddForm(WidgetTester tester, [EntryKind? kind]) async {
   await tester.tap(find.byKey(const Key('add-entry')));
   await settleRoute(tester);
+  if (kind != null) await chooseEntryKind(tester, kind);
 }
 
 String? textIn(WidgetTester tester, Key key) =>
@@ -208,8 +212,8 @@ void main() {
       await tester.tap(inList(find.byKey(const Key('entry-tab-expense'))));
       await settle(tester);
 
-      await openAddForm(tester);
-      expect(find.text('항목 추가'), findsOneWidget);
+      await openAddForm(tester, EntryKind.extra);
+      expect(find.text('지출 추가'), findsOneWidget);
       expect(find.text('쓴 날'), findsOneWidget);
       await enterInForm(tester, const Key('entry-amount'), '186000');
       expect(find.text('186,000'), findsOneWidget);
@@ -236,7 +240,7 @@ void main() {
       await tester.tap(inList(find.byKey(const Key('entry-tab-income'))));
       await settle(tester);
 
-      await openAddForm(tester);
+      await openAddForm(tester, EntryKind.income);
       await enterInForm(tester, const Key('entry-amount'), '3000000');
       await enterInForm(tester, const Key('entry-title'), '월급');
       await tapInForm(tester, const Key('entry-save'));
@@ -261,7 +265,7 @@ void main() {
       await tester.tap(inList(find.byKey(const Key('entry-tab-income'))));
       await settle(tester);
 
-      await openAddForm(tester);
+      await openAddForm(tester, EntryKind.income);
       await enterInForm(tester, const Key('entry-amount'), '50000');
       await enterInForm(tester, const Key('entry-title'), '용돈');
       await tapInForm(tester, const Key('entry-save'));
@@ -290,7 +294,7 @@ void main() {
           title: '',
           amount: 300000,
         )),
-        '서버가 받지 않아 목록에서 빠졌어요.\n카드 대금 · 300,000원\n쓰기 권한이 있는지 확인해 주세요.',
+        '서버가 받지 않아 목록에서 빠졌어요.\n카드 지출 · 300,000원\n쓰기 권한이 있는지 확인해 주세요.',
       );
       expect(
         rejectedEntryMessage((
@@ -321,14 +325,14 @@ void main() {
       await swipeMonth(tester);
       await openTab(tester, HomeTab.entries);
 
-      await openAddForm(tester);
+      await openAddForm(tester, EntryKind.extra);
       expect(find.text('쓴 날'), findsOneWidget);
       // 이번 달이 아니면 날짜는 비워 둔다.
       expect(find.text('날짜를 고를 수 있어요 (선택)'), findsOneWidget);
       await enterInForm(tester, const Key('entry-amount'), '5000');
       await enterInForm(tester, const Key('entry-title'), '간식');
       await tapInForm(tester, const Key('entry-method-p-shared'));
-      expect(findSentence('카드로 낸 돈은 다음 달 카드 대금으로 빠져나가요.'), findsOneWidget);
+      expect(findSentence('카드로 낸 돈은 다음 달 카드 지출로 빠져나가요.'), findsOneWidget);
       await tapInForm(tester, const Key('entry-save'));
       await settleRoute(tester);
 
@@ -366,9 +370,8 @@ void main() {
       await pumpEntries(tester, templates: templates);
 
       await openAddForm(tester);
-      // + 버튼은 지출 칸에서 추가 지출로 연다.
-      expect(inForm(find.text('추가 지출')), findsOneWidget);
-      await chooseEntryKind(tester, EntryKind.planned);
+      // + 버튼은 지출 칸에서 첫 번째 종류인 고정 지출로 연다.
+      expect(inForm(find.text('고정 지출')), findsOneWidget);
       expect(find.text('지급한 날'), findsNothing);
       await enterInForm(tester, const Key('entry-title'), '관리비');
       await tapInForm(tester, const Key('entry-category-c-living'));
@@ -420,7 +423,7 @@ void main() {
       expect(find.byKey(const Key('entry-kind-cardBill')), findsNothing);
     });
 
-    testWidgets('카드 대금은 고를 종류가 하나뿐이라 종류 칸을 누를 수 없다', (tester) async {
+    testWidgets('카드 지출은 고를 종류가 하나뿐이라 종류 칸을 누를 수 없다', (tester) async {
       await pumpEntries(tester);
       await tester.tap(inList(find.byKey(const Key('entry-tab-cardBill'))));
       await settle(tester);
@@ -455,7 +458,7 @@ void main() {
       await pumpEntries(tester);
       await tester.tap(inList(find.byKey(const Key('entry-tab-income'))));
       await settle(tester);
-      await openAddForm(tester);
+      await openAddForm(tester, EntryKind.income);
 
       await tapInForm(tester, const Key('entry-date'));
       expect(find.text('받은 날'), findsWidgets);
@@ -466,6 +469,104 @@ void main() {
       expect(find.text('2026년 10월 3일'), findsOneWidget);
       await tapInForm(tester, const Key('entry-date-clear'));
       expect(find.text('날짜를 고를 수 있어요 (선택)'), findsOneWidget);
+    });
+
+    testWidgets('+ 버튼은 칸의 첫 번째 종류로 열고, 제목은 칸 이름 추가다', (tester) async {
+      await pumpEntries(tester);
+      for (final (tab, title, kind) in [
+        (EntryTab.income, '수입 추가', '고정 수입'),
+        (EntryTab.expense, '지출 추가', '고정 지출'),
+        (EntryTab.cardBill, '카드 지출 추가', '카드 지출'),
+      ]) {
+        await tester.tap(inList(find.byKey(EntryTabs.keyOf(tab))));
+        await settle(tester);
+        await openAddForm(tester);
+        expect(inForm(find.text(title)), findsOneWidget);
+        expect(inForm(find.text(kind)), findsOneWidget);
+        await tester.tap(find.byKey(const Key('entry-close')));
+        await settleRoute(tester);
+      }
+    });
+
+    testWidgets('수입의 받은 날은 전달 날짜도 고를 수 있고, 지출의 날짜는 그달 안에서만 고른다', (
+      tester,
+    ) async {
+      await pumpEntries(tester);
+      await tester.tap(inList(find.byKey(const Key('entry-tab-income'))));
+      await settle(tester);
+      await openAddForm(tester, EntryKind.income);
+
+      await tapInForm(tester, const Key('entry-date'));
+      await tester.tap(find.byIcon(Icons.chevron_left));
+      await settle(tester);
+      await tester.tap(find.text('25'));
+      await tester.tap(find.text('확인'));
+      await settle(tester);
+      expect(inForm(find.text('2026년 9월 25일')), findsOneWidget);
+      await tester.tap(find.byKey(const Key('entry-close')));
+      await settleRoute(tester);
+
+      await tester.tap(inList(find.byKey(const Key('entry-tab-expense'))));
+      await settle(tester);
+      await openAddForm(tester, EntryKind.extra);
+      await tapInForm(tester, const Key('entry-date'));
+      final previous = find.ancestor(
+        of: find.byIcon(Icons.chevron_left),
+        matching: find.byType(IconButton),
+      );
+      expect(tester.widget<IconButton>(previous).onPressed, isNull);
+    });
+
+    testWidgets('금액에서 다음 키를 누르면 내용 칸으로 가고, 내용에서 완료하면 키보드를 닫는다', (tester) async {
+      await pumpEntries(tester);
+      await openAddForm(tester, EntryKind.extra);
+      FocusNode titleFocus() => tester
+          .widget<TextField>(inForm(find.byKey(const Key('entry-title'))))
+          .focusNode!;
+
+      await enterInForm(tester, const Key('entry-amount'), '5000');
+      await tester.testTextInput.receiveAction(TextInputAction.next);
+      await settle(tester);
+      expect(titleFocus().hasFocus, isTrue);
+
+      await tester.testTextInput.receiveAction(TextInputAction.done);
+      await settle(tester);
+      expect(titleFocus().hasFocus, isFalse);
+      expect(tester.testTextInput.isVisible, isFalse);
+    });
+
+    testWidgets('금액 칸은 키보드가 내려가 있어도 줄의 빈 곳을 누르면 키보드가 다시 뜬다', (tester) async {
+      await pumpEntries(tester);
+      await openAddForm(tester, EntryKind.extra);
+      final amount = inForm(find.byKey(const Key('entry-amount')));
+      await tester.tap(amount);
+      await settle(tester);
+      expect(tester.testTextInput.isVisible, isTrue);
+
+      // 사용자가 뒤로 키로 키보드만 내린 상태. 금액 칸의 초점은 남아 있다.
+      tester.testTextInput.hide();
+      final field = tester.getRect(amount);
+      await tester.tapAt(Offset(field.right + 150, field.center.dy));
+      await settle(tester);
+
+      expect(tester.testTextInput.isVisible, isTrue);
+    });
+
+    testWidgets('입력 중에 아래 칸을 고르면 키보드를 닫고 화면은 그 자리에 둔다', (tester) async {
+      await pumpEntries(tester);
+      await openAddForm(tester, EntryKind.extra);
+      await enterInForm(tester, const Key('entry-title'), '점심');
+      final scrollable = tester.state<ScrollableState>(
+        inForm(find.byType(Scrollable)).first,
+      );
+
+      await showInForm(tester, const Key('entry-method-p-account'));
+      final offset = scrollable.position.pixels;
+      await tester.tap(inForm(find.byKey(const Key('entry-method-p-account'))));
+      await settle(tester);
+
+      expect(tester.testTextInput.isVisible, isFalse);
+      expect(scrollable.position.pixels, offset);
     });
 
     testWidgets('잘못 저장된 그달 밖의 날짜도 달력은 그달 안에서 연다', (tester) async {
@@ -929,9 +1030,8 @@ void main() {
       await settle(tester);
 
       await openAddForm(tester);
-      // + 버튼은 수입 칸에서 추가 수입으로 연다.
-      expect(inForm(find.text('추가 수입')), findsOneWidget);
-      await chooseEntryKind(tester, EntryKind.fixedIncome);
+      // + 버튼은 수입 칸에서 첫 번째 종류인 고정 수입으로 연다.
+      expect(inForm(find.text('고정 수입')), findsOneWidget);
       expect(
         inForm(find.byKey(const Key('entry-category-c-living'))),
         findsNothing,

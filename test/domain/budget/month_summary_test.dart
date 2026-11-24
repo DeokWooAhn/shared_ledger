@@ -158,7 +158,7 @@ void main() {
     expect(summary.totals.cardUsage, 383000);
   });
 
-  test('카드 결제수단도 카드 대금도 없으면 카드 영역을 숨긴다', () {
+  test('카드 결제수단도 카드 지출도 없으면 카드 영역을 숨긴다', () {
     expect(
       summarize(
         const MonthLedger(),
@@ -179,7 +179,7 @@ void main() {
     expect(withBill.cardBillCount, 1);
   });
 
-  test('숨긴 카드만 있고 그달에 카드로 쓴 돈도 카드 대금도 없으면 카드 영역을 숨긴다', () {
+  test('숨긴 카드만 있고 그달에 카드로 쓴 돈도 카드 지출도 없으면 카드 영역을 숨긴다', () {
     const hiddenCard = PaymentMethod(
       id: 'p-sky-card',
       name: '하늘 카드',

@@ -38,7 +38,7 @@ Flutter의 `TextEditingController`·`ScrollController`와 헷갈리지 않게 �
 - 보고 있는 달은 `selectedMonthProvider`를 읽는다(탭을 옮겨도 같은 달). 오늘 날짜가 필요하면 `clockProvider`.
   머리말로 오가는 달은 `ledgerMonthsProvider`(가계부가 있는 달, 이번 달도 추가해야 들어간다. 목록을 아직 모으지 않았으면 null)이고, 달력은 모든 달을 보여준다.
   새 항목을 더하는 쓰기는 `Ledger.needsToRecord(month)`로 그달을 가계부의 달 목록에 같이 더한다(`SaveEntryUseCase`, `docs/firestore.md`의 `months`).
-- 내역 탭은 세 칸이다(`EntryTab`: 수입·지출·카드 대금). 고정 수입·고정 지출은 따로 된 화면 없이 수입·지출 칸과 입력 화면에서 다룬다.
+- 내역 탭은 세 칸이다(`EntryTab`: 수입·지출·카드 지출). 고정 수입·고정 지출은 따로 된 화면 없이 수입·지출 칸과 입력 화면에서 다룬다.
   달력은 내역 탭 머리말의 달력 단추로 연다. 홈의 카드는 누르면 내역 탭의 그에 맞는 칸으로 간다(현금 카드는 카드 전체가 누름 자리 하나).
 - 통계 탭은 '통계' 제목과 기간 아이콘을 머리말로 쓰고(홈과 헷갈리지 않게), 보는 달 대신 따로 고른 기간(`statsPeriodProvider`)을 본다.
 - `+` 버튼은 내역 탭에서만 탭 막대 위에 떠 있어서, 있든 없든 탭 막대의 폭과 탭 위치가 바뀌지 않는다.

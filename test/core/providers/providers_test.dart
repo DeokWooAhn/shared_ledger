@@ -222,11 +222,13 @@ void main() {
       expect(container.read(selectedEntryTabProvider), EntryTab.income);
     });
 
-    test('지출 칸은 고정 지출과 추가 지출을 보이고, + 버튼은 추가 지출로 연다', () {
+    test('지출 칸은 고정 지출과 추가 지출을 보이고, + 버튼은 칸의 첫 번째 종류로 연다', () {
       expect(EntryTab.expense.kinds, [EntryKind.planned, EntryKind.extra]);
-      expect(EntryTab.expense.addKind, EntryKind.extra);
-      expect(EntryTab.income.addKind, EntryKind.income);
+      expect(EntryTab.expense.addKind, EntryKind.planned);
+      expect(EntryTab.income.addKind, EntryKind.fixedIncome);
       expect(EntryTab.cardBill.addKind, EntryKind.cardBill);
+      expect(EntryTab.of(EntryKind.extra), EntryTab.expense);
+      expect(EntryTab.of(EntryKind.income), EntryTab.income);
       expect([
         for (final tab in EntryTab.values) ...tab.kinds,
       ], unorderedEquals(EntryKind.values));

@@ -66,7 +66,7 @@ String _titleHint(EntryKind kind) => switch (kind) {
 /// 넓은 화면에서는 가운데 560폭으로 둔다.
 ///
 /// 맨 위 종류 칸을 누르면 종류 고르기 시트(05c)가 뜬다. 종류마다 칸이 다르다. 고정 지출은 분류·매달 예정일·지급 완료,
-/// 고정 수입은 매달 예정일·받음 완료, 추가 수입은 받은 날, 카드 대금은 어느 카드인지를 받는다.
+/// 고정 수입은 매달 예정일·받음 완료, 추가 수입은 받은 날, 카드 지출은 어느 카드인지를 받는다.
 /// 반복 설정이 있는 고정 지출·고정 수입을 고칠 때는 '다음 달부터도 이 금액으로'를 고르고, 지우는 대신 그만한다.
 /// 저장하거나 휴지통에 넣거나 그만하면 [EntryFormOutcome]을 돌려주며 닫힌다.
 class EntryFormScreen extends ConsumerStatefulWidget {
@@ -83,6 +83,8 @@ class _EntryFormScreenState extends ConsumerState<EntryFormScreen> {
   late final TextEditingController _amount;
   late final TextEditingController _title;
   late final TextEditingController _memo;
+  // 금액에서 키보드의 다음 키를 누르면 내용 칸으로 옮긴다.
+  final _titleFocus = FocusNode();
 
   @override
   void initState() {
@@ -106,6 +108,7 @@ class _EntryFormScreenState extends ConsumerState<EntryFormScreen> {
     _amount.dispose();
     _title.dispose();
     _memo.dispose();
+    _titleFocus.dispose();
     super.dispose();
   }
 
@@ -142,11 +145,18 @@ class _EntryFormScreenState extends ConsumerState<EntryFormScreen> {
 
   Future<void> _pickDate(EntryFormState state) async {
     final month = widget.args.month;
-    final first = DateTime(month.year, month.month);
+    // 수입은 전달에 받은 돈으로 이번 달을 살기도 해서(25일 월급) 받은 날을 전달 1일부터 고른다.
+    final first = switch (state.kind) {
+      EntryKind.income ||
+      EntryKind.fixedIncome => DateTime(month.year, month.month - 1),
+      EntryKind.planned ||
+      EntryKind.extra ||
+      EntryKind.cardBill => DateTime(month.year, month.month),
+    };
     final last = DateTime(month.year, month.month + 1, 0);
     final now = ref.read(clockProvider)();
     final today = DateTime(now.year, now.month, now.day);
-    // 달력은 처음 날짜가 고를 수 있는 범위 밖이면 멈춘다. 잘못 저장된 날짜도 그달 안으로 맞춘다.
+    // 달력은 처음 날짜가 고를 수 있는 범위 밖이면 멈춘다. 잘못 저장된 날짜도 고를 수 있는 범위 안으로 맞춘다.
     final wanted = state.date ?? today;
     final initial = wanted.isBefore(first)
         ? first
@@ -239,7 +249,7 @@ class _EntryFormScreenState extends ConsumerState<EntryFormScreen> {
     );
     final enabled = !state.busy;
     final fields = <Widget>[
-      // 종류는 연 칸(수입·지출) 안에서만 바꾼다. 카드 대금처럼 고를 것이 하나뿐이면 누를 수 없다.
+      // 종류는 연 칸(수입·지출) 안에서만 바꾼다. 카드 지출처럼 고를 것이 하나뿐이면 누를 수 없다.
       EntryKindField(
         kind: kind,
         onTap: isEdit || !enabled || EntryTab.of(kind).kinds.length < 2
@@ -258,6 +268,13 @@ class _EntryFormScreenState extends ConsumerState<EntryFormScreen> {
           EntryProblem.amountNegative,
         }),
         onChanged: (_) => notifier.textEdited(EntryTextField.amount),
+        // 내용 칸이 있으면 다음 키로 내용 칸에 간다. 카드 지출은 내용 칸이 없어 완료 키로 키보드를 닫는다.
+        textInputAction: kind == EntryKind.cardBill
+            ? TextInputAction.done
+            : TextInputAction.next,
+        onEditingComplete: kind == EntryKind.cardBill
+            ? null
+            : _titleFocus.requestFocus,
       ),
       if (isEdit && template != null)
         _AmountForLater(
@@ -272,6 +289,7 @@ class _EntryFormScreenState extends ConsumerState<EntryFormScreen> {
           child: TextField(
             key: const Key('entry-title'),
             controller: _title,
+            focusNode: _titleFocus,
             enabled: enabled,
             maxLength: entryTitleMaxLength,
             decoration: InputDecoration(
@@ -282,7 +300,9 @@ class _EntryFormScreenState extends ConsumerState<EntryFormScreen> {
                 EntryProblem.titleTooLong,
               }),
             ),
-            textInputAction: TextInputAction.next,
+            // 아래는 고르는 칸이라 완료 키로 키보드를 닫는다.
+            textInputAction: TextInputAction.done,
+            onTapOutside: (_) => _titleFocus.unfocus(),
             onChanged: (_) => notifier.textEdited(EntryTextField.title),
           ),
         ),
@@ -321,7 +341,7 @@ class _EntryFormScreenState extends ConsumerState<EntryFormScreen> {
           label: '결제수단',
           errorText: errorOf({EntryProblem.paymentMethodMissing}),
           empty: methods.isEmpty ? '설정에서 결제수단을 먼저 추가해 주세요.' : null,
-          note: paidByCard ? '카드로 낸 돈은 다음 달 카드 대금으로 빠져나가요.' : null,
+          note: paidByCard ? '카드로 낸 돈은 다음 달 카드 지출로 빠져나가요.' : null,
           noteKey: const Key('entry-card-note'),
           children: [
             for (final method in methods)
@@ -387,6 +407,7 @@ class _EntryFormScreenState extends ConsumerState<EntryFormScreen> {
             errorText: errorOf({EntryProblem.memoTooLong}),
           ),
           textInputAction: TextInputAction.done,
+          onTapOutside: (_) => FocusManager.instance.primaryFocus?.unfocus(),
           onChanged: (_) => notifier.textEdited(EntryTextField.memo),
         ),
       ),
@@ -439,7 +460,7 @@ class _EntryFormScreenState extends ConsumerState<EntryFormScreen> {
               children: [
                 FormNavBar(
                   title: !isEdit
-                      ? '항목 추가'
+                      ? '${entryTabLabel(EntryTab.of(kind))} 추가'
                       : template != null
                       ? '${entryKindLabel(kind)} 고치기'
                       : '항목 고치기',

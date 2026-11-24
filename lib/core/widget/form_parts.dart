@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../theme/app_theme.dart';
 import 'back_circle_button.dart';
@@ -57,6 +60,8 @@ class WonAmountField extends StatefulWidget {
     required this.enabled,
     required this.errorText,
     required this.onChanged,
+    this.textInputAction,
+    this.onEditingComplete,
     this.identifier,
     super.key,
   });
@@ -70,6 +75,12 @@ class WonAmountField extends StatefulWidget {
   final bool enabled;
   final String? errorText;
   final ValueChanged<String> onChanged;
+
+  /// 키보드의 완료 키 종류. [onEditingComplete]로 다음 칸에 초점을 옮길 때 [TextInputAction.next]를 준다.
+  final TextInputAction? textInputAction;
+
+  /// 키보드의 완료 키를 눌렀을 때. null이면 [textInputAction]의 기본 동작을 따른다.
+  final VoidCallback? onEditingComplete;
 
   /// 실제 기기의 접근성 계층에서 입력란을 찾을 식별자.
   final String? identifier;
@@ -89,6 +100,16 @@ class _WonAmountFieldState extends State<WonAmountField> {
   }
 
   void _focusChanged() => setState(() {});
+
+  // 줄 어디를 눌러도 입력을 받는다. 초점은 남은 채 키보드만 내려가 있으면 requestFocus가 아무것도 하지 않아서
+  // 키보드를 직접 다시 띄운다.
+  void _showKeyboard() {
+    if (_focus.hasFocus) {
+      unawaited(SystemChannels.textInput.invokeMethod<void>('TextInput.show'));
+    } else {
+      _focus.requestFocus();
+    }
+  }
 
   @override
   void dispose() {
@@ -118,65 +139,73 @@ class _WonAmountFieldState extends State<WonAmountField> {
         spacing: 6,
         children: [
           // 숫자 오른쪽 빈 곳을 눌러도 입력란에 들어가게 한다. 화면 읽기 도구에는 입력란만 알린다.
-          GestureDetector(
-            behavior: HitTestBehavior.translucent,
-            excludeFromSemantics: true,
-            onTap: widget.enabled ? _focus.requestFocus : null,
-            child: Container(
-              padding: EdgeInsets.only(bottom: 12 - (lineWidth - 1)),
-              decoration: BoxDecoration(
-                border: Border(
-                  bottom: BorderSide(color: lineColor, width: lineWidth),
+          // 입력란의 일부로 쳐서, 이 줄을 눌러도 아래의 '밖을 누르면 키보드를 닫는' 동작이 일어나지 않게 한다.
+          TextFieldTapRegion(
+            child: GestureDetector(
+              behavior: HitTestBehavior.translucent,
+              excludeFromSemantics: true,
+              onTap: widget.enabled ? _showKeyboard : null,
+              child: Container(
+                padding: EdgeInsets.only(bottom: 12 - (lineWidth - 1)),
+                decoration: BoxDecoration(
+                  border: Border(
+                    bottom: BorderSide(color: lineColor, width: lineWidth),
+                  ),
                 ),
-              ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.baseline,
-                textBaseline: TextBaseline.alphabetic,
-                spacing: 4,
-                children: [
-                  Flexible(
-                    child: IntrinsicWidth(
-                      child: TextField(
-                        key: widget.fieldKey,
-                        controller: widget.controller,
-                        focusNode: _focus,
-                        enabled: widget.enabled,
-                        autofocus: widget.autofocus,
-                        keyboardType: TextInputType.number,
-                        inputFormatters: const [WonInputFormatter()],
-                        style: number,
-                        // 밑줄은 줄 전체에 직접 그리므로 테마의 바탕·테두리를 모두 끈다.
-                        decoration: InputDecoration(
-                          isCollapsed: true,
-                          filled: false,
-                          contentPadding: EdgeInsets.zero,
-                          border: InputBorder.none,
-                          enabledBorder: InputBorder.none,
-                          focusedBorder: InputBorder.none,
-                          disabledBorder: InputBorder.none,
-                          errorBorder: InputBorder.none,
-                          focusedErrorBorder: InputBorder.none,
-                          hintText: widget.optional ? '금액 미정' : '0',
-                          hintStyle: number?.copyWith(
-                            color: context.appColors.textMuted,
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.baseline,
+                  textBaseline: TextBaseline.alphabetic,
+                  spacing: 4,
+                  children: [
+                    Flexible(
+                      child: IntrinsicWidth(
+                        child: TextField(
+                          key: widget.fieldKey,
+                          controller: widget.controller,
+                          focusNode: _focus,
+                          enabled: widget.enabled,
+                          autofocus: widget.autofocus,
+                          keyboardType: TextInputType.number,
+                          textInputAction: widget.textInputAction,
+                          onEditingComplete: widget.onEditingComplete,
+                          // 입력 중에 다른 곳을 누르거나 스크롤하면 키보드를 닫는다. 초점이 남으면 다음 그리기 때
+                          // 입력란이 커서를 보이려고 화면을 되돌린다.
+                          onTapOutside: (_) => _focus.unfocus(),
+                          inputFormatters: const [WonInputFormatter()],
+                          style: number,
+                          // 밑줄은 줄 전체에 직접 그리므로 테마의 바탕·테두리를 모두 끈다.
+                          decoration: InputDecoration(
+                            isCollapsed: true,
+                            filled: false,
+                            contentPadding: EdgeInsets.zero,
+                            border: InputBorder.none,
+                            enabledBorder: InputBorder.none,
+                            focusedBorder: InputBorder.none,
+                            disabledBorder: InputBorder.none,
+                            errorBorder: InputBorder.none,
+                            focusedErrorBorder: InputBorder.none,
+                            hintText: widget.optional ? '금액 미정' : '0',
+                            hintStyle: number?.copyWith(
+                              color: context.appColors.textMuted,
+                            ),
                           ),
+                          onChanged: widget.onChanged,
                         ),
-                        onChanged: widget.onChanged,
                       ),
                     ),
-                  ),
-                  // 화면 읽기 도구에는 숫자만 읽힌다.
-                  ExcludeSemantics(
-                    child: Text(
-                      '원',
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w600,
-                        color: scheme.onSurfaceVariant,
+                    // 화면 읽기 도구에는 숫자만 읽힌다.
+                    ExcludeSemantics(
+                      child: Text(
+                        '원',
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w600,
+                          color: scheme.onSurfaceVariant,
+                        ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),

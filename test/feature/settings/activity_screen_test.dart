@@ -9,6 +9,7 @@ import 'package:shared_ledger/core/widget/keep_all.dart';
 import 'package:shared_ledger/feature/entries/entries_screen.dart';
 import 'package:shared_ledger/feature/entries/entry_form_screen.dart';
 import 'package:shared_ledger/feature/home/home_shell.dart';
+import 'package:shared_ledger/domain/model/ledger_entries.dart';
 import 'package:shared_ledger/feature/settings/activity_screen.dart';
 
 import '../../../testing/app.dart';
@@ -119,6 +120,7 @@ void main() {
       await settle(tester);
       await tester.tap(find.byKey(const Key('add-entry')));
       await settleRoute(tester);
+      await chooseEntryKind(tester, EntryKind.extra);
       await showInForm(tester, const Key('entry-amount'));
       await tester.enterText(
         inForm(find.byKey(const Key('entry-amount'))),

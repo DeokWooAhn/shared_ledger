@@ -71,7 +71,7 @@ void main() {
       expect(calendar.undatedCount, 0);
     });
 
-    test('한 날의 항목은 수입·고정 지출·추가 지출·카드 대금 순, 같은 종류는 제목 순이다', () {
+    test('한 날의 항목은 수입·고정 지출·추가 지출·카드 지출 순, 같은 종류는 제목 순이다', () {
       final day = DateTime(2026, 10, 18);
       final calendar = CalendarMonth.of(
         MonthLedger(

@@ -7,6 +7,11 @@ tags: [smoke]
     id: tab-entries
 - tapOn:
     id: add-entry
+# + 버튼은 지출 칸의 첫 번째 종류(고정 지출)로 열어서 추가 지출로 바꾼다.
+- tapOn:
+    id: entry-kind
+- tapOn:
+    id: entry-kind-extra
 - tapOn:
     id: entry-amount
 - inputText: "24600"

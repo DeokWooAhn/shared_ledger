@@ -35,6 +35,7 @@ class EntryKindField extends StatelessWidget {
         Semantics(
           container: true,
           button: onTap != null,
+          identifier: 'entry-kind',
           label: '종류',
           value: label,
           child: InkWell(
@@ -79,7 +80,7 @@ Future<EntryKind?> showEntryKindSheet(
   builder: (_) => _EntryKindSheet(selected: selected),
 );
 
-/// 종류 고르기 시트의 제목. 카드 대금 칸은 고를 것이 하나뿐이라 시트를 띄우지 않는다.
+/// 종류 고르기 시트의 제목. 카드 지출 칸은 고를 것이 하나뿐이라 시트를 띄우지 않는다.
 String _sheetTitle(EntryTab tab) => switch (tab) {
   EntryTab.income => '어떤 수입인가요?',
   EntryTab.expense => '어떤 지출인가요?',
@@ -137,6 +138,7 @@ class _KindOption extends StatelessWidget {
     return Semantics(
       button: true,
       selected: selected,
+      identifier: 'entry-kind-${kind.name}',
       child: InkWell(
         onTap: () => Navigator.of(context).pop(kind),
         child: ConstrainedBox(

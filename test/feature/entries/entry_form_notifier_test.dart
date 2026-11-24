@@ -255,7 +255,7 @@ void main() {
         EntryProblem.titleMissing,
         EntryProblem.paymentMethodMissing,
       });
-      // 카드 대금은 제목이 없다.
+      // 카드 지출은 제목이 없다.
       expect(container.read(bill).problems, {
         EntryProblem.amountMissing,
         EntryProblem.cardMissing,

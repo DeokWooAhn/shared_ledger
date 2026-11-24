@@ -72,7 +72,7 @@ Future<void> openStartPath(WidgetTester tester, Key key) async {
   await settleRoute(tester);
 }
 
-/// 내역 탭에서 [kind]가 보이는 칸(수입·지출·카드 대금)을 고른다. 이미 그 칸이면 그대로 둔다.
+/// 내역 탭에서 [kind]가 보이는 칸(수입·지출·카드 지출)을 고른다. 이미 그 칸이면 그대로 둔다.
 Future<void> showEntryTabOf(WidgetTester tester, EntryKind kind) async {
   final tab = EntryTab.values.firstWhere((t) => t.kinds.contains(kind));
   await tester.tap(

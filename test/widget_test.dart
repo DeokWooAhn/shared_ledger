@@ -823,7 +823,7 @@ void main() {
       expect(inCards('10월'), findsOneWidget);
       expect(inCards('853,000원'), findsOneWidget);
       expect(findSentence('11월 출금 예정'), findsOneWidget);
-      expect(findSentence('10월 출금 · 카드 대금 2건'), findsOneWidget);
+      expect(findSentence('10월 출금 · 카드 지출 2건'), findsOneWidget);
       // 결제수단에 있어도 이번 달에 쓰지 않은 카드는 줄을 만들지 않는다.
       expect(find.byKey(const ValueKey('card-p-account')), findsNothing);
       expect(find.byKey(const Key('empty-month')), findsNothing);
@@ -1023,7 +1023,7 @@ void main() {
 
       expect(monthTitle(tester), '11월');
       expect(textOf(tester, const Key('remaining-cash')), '1,000원');
-      expect(findSentence('11월 출금 · 카드 대금 0건'), findsOneWidget);
+      expect(findSentence('11월 출금 · 카드 지출 0건'), findsOneWidget);
     });
 
     testWidgets('항목을 불러오지 못하면 안내한다', (tester) async {
