@@ -119,7 +119,7 @@ void main() {
       expect(broken?.dueOn, isNull);
     });
 
-    test('추가 지출과 카드 대금을 읽는다', () {
+    test('추가 지출과 카드 지출을 읽는다', () {
       final extra = extraExpenseFromFirestore('e1', {
         'memberId': 'owner',
         'paymentMethodId': 'card-1',
@@ -440,7 +440,7 @@ void main() {
       expect(data['updatedAt'], serverTime);
     });
 
-    test('카드 대금을 고칠 때는 제목·결제수단 칸을 쓰지 않는다', () {
+    test('카드 지출을 고칠 때는 제목·결제수단 칸을 쓰지 않는다', () {
       final data = entryUpdateData(drafts[EntryKind.cardBill]!, uid: 'me');
 
       expect(data.keys, containsAll(['cardId', 'paidOn']));
@@ -723,7 +723,7 @@ void main() {
         entryFromFirestore(EntryKind.cardBill, 'b1', data),
         isA<CardBill>(),
       );
-      // 추가 지출은 결제수단이 있어야 해서 카드 대금 문서로는 읽지 못한다.
+      // 추가 지출은 결제수단이 있어야 해서 카드 지출 문서로는 읽지 못한다.
       expect(entryFromFirestore(EntryKind.extra, 'b1', data), isNull);
     });
   });
@@ -915,7 +915,7 @@ void main() {
       });
     });
 
-    test('제목이 없는 카드 대금은 빈 제목으로 알린다', () {
+    test('제목이 없는 카드 지출은 빈 제목으로 알린다', () {
       expect(
         rejectedEntryOf(
           doc('b1', {'amount': 300000, 'cardId': 'p-card'}),

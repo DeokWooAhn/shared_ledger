@@ -17,7 +17,7 @@ import '../../domain/format/won.dart';
 /// 고정 지출의 분류별·구성원별 소계는 통계 탭에 있다.
 ///
 /// 카드를 누르면 내역 탭의 그에 맞는 칸으로 간다. 현금 카드는 수입 칸, 이번 달 지출·저축·카드 이번 달 사용분은
-/// 지출 칸, 카드 저번 달 사용분은 카드 대금 칸이다.
+/// 지출 칸, 카드 저번 달 사용분은 카드 지출 칸이다.
 ///
 /// 저장소를 부르는 동작이 없어 Notifier 없이 [monthSummaryProvider]만 읽는다.
 class SummaryScreen extends ConsumerWidget {
@@ -511,8 +511,8 @@ class _MetricTile extends StatelessWidget {
   }
 }
 
-/// 카드: 이번 달 사용분(다음 달 청구 예정)과 카드별 소계, 저번 달 사용분(이번 달 카드 대금).
-/// 이번 달 사용분 줄을 누르면 내역의 지출 칸, 저번 달 사용분 줄을 누르면 카드 대금 칸으로 간다.
+/// 카드: 이번 달 사용분(다음 달 청구 예정)과 카드별 소계, 저번 달 사용분(이번 달 카드 지출).
+/// 이번 달 사용분 줄을 누르면 내역의 지출 칸, 저번 달 사용분 줄을 누르면 카드 지출 칸으로 간다.
 class _CardSection extends StatelessWidget {
   const _CardSection({
     required this.summary,
@@ -594,7 +594,7 @@ class _CardSection extends StatelessWidget {
               onTap: onBills,
               month: month,
               title: '저번 달 사용분',
-              caption: '${month.month}월 출금 · 카드 대금 ${summary.cardBillCount}건',
+              caption: '${month.month}월 출금 · 카드 지출 ${summary.cardBillCount}건',
               amount: totals.cardBillTotal,
             ),
           ],

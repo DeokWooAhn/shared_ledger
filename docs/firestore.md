@@ -225,7 +225,7 @@ holidays/{yyyy}
 규칙(`validEntry`)은 아래 표의 필드만 받고(종류마다 `keys().hasOnly`), 만들 때와 고칠 때 모두 고친 뒤의 문서 전체를 본다.
 
 - `memberId`는 `owner`·`partner`만, 표에서 ✓인 id 칸(`categoryId`·`paymentMethodId`·`cardId`)은 비지 않은 문자열이어야 한다.
-- `title`은 카드 대금 말고 꼭 있어야 하고 1~40자, `memo`는 200자까지, 날짜는 `yyyy-MM-dd` 형식 문자열이다.
+- `title`은 카드 지출 말고 꼭 있어야 하고 1~40자, `memo`는 200자까지, 날짜는 `yyyy-MM-dd` 형식 문자열이다.
   규칙의 문자열 길이는 UTF-16 단위로 세서 이모지는 한 개가 두 글자다. 앱도 `String.length`로 센다(`entryTitleMaxLength`).
 - 앱의 쓰기 데이터는 `newEntryData`·`entryUpdateData`(고칠 때 비운 칸은 `FieldValue.delete()`)·`trashEntryUpdate`·`restoreEntryUpdate`다.
   쓸 때마다 변경 기록을 같은 일괄 쓰기·트랜잭션으로 남긴다(아래 `activity`).

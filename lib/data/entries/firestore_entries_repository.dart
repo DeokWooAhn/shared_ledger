@@ -618,7 +618,7 @@ Future<bool?> existsOnServer(
   return null;
 }
 
-/// 거부된 새 항목 문서를 알림 값으로 바꾼다. 제목이 없는 종류(카드 대금)는 빈 제목이다.
+/// 거부된 새 항목 문서를 알림 값으로 바꾼다. 제목이 없는 종류(카드 지출)는 빈 제목이다.
 RejectedEntry rejectedEntryOf(
   EntryDoc doc, {
   required YearMonth month,
@@ -793,7 +793,7 @@ ExtraExpense? extraExpenseFromFirestore(String id, Map<String, dynamic> data) {
   );
 }
 
-/// Firestore 카드 대금 문서를 [CardBill]로 바꾼다. 누가·카드·금액이 없거나 잘못됐으면 null.
+/// Firestore 카드 지출 문서를 [CardBill]로 바꾼다. 누가·카드·금액이 없거나 잘못됐으면 null.
 CardBill? cardBillFromFirestore(String id, Map<String, dynamic> data) {
   final memberId = data['memberId'];
   final cardId = data['cardId'];

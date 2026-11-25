@@ -166,7 +166,7 @@ String _entryKindLabel(EntryKind kind) => switch (kind) {
   EntryKind.fixedIncome => '고정 수입',
   EntryKind.planned => '고정 지출',
   EntryKind.extra => '추가 지출',
-  EntryKind.cardBill => '카드 대금',
+  EntryKind.cardBill => '카드 지출',
 };
 
 String _entryDateLabel(EntryKind kind) => switch (kind) {

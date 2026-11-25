@@ -141,7 +141,7 @@ void main() {
       );
     });
 
-    test('카드 대금은 제목 없이, 금액 미정 고정 지출은 금액 미정으로 적는다', () {
+    test('카드 지출은 제목 없이, 금액 미정 고정 지출은 금액 미정으로 적는다', () {
       String summary(EntryDraft entry) => entryActivity(
         ActivityAction.entryTrash,
         month: october,
@@ -158,7 +158,7 @@ void main() {
             cardId: 'p-card',
           ),
         ),
-        '10월 카드 대금 500,000원',
+        '10월 카드 지출 500,000원',
       );
       expect(
         summary(

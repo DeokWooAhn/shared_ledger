@@ -7,12 +7,12 @@ String entryKindLabel(EntryKind kind) => switch (kind) {
   EntryKind.fixedIncome => '고정 수입',
   EntryKind.planned => '고정 지출',
   EntryKind.extra => '추가 지출',
-  EntryKind.cardBill => '카드 대금',
+  EntryKind.cardBill => '카드 지출',
 };
 
 /// 내역 탭의 칸 이름.
 String entryTabLabel(EntryTab tab) => switch (tab) {
   EntryTab.income => '수입',
   EntryTab.expense => '지출',
-  EntryTab.cardBill => '카드 대금',
+  EntryTab.cardBill => '카드 지출',
 };

@@ -135,7 +135,7 @@ void main() {
     expect(summary.cardUsage, 3000);
   });
 
-  test('카드 대금은 현금 유출과 저번 달 사용분에 들어가고 이번 달 지출에는 들어가지 않는다', () {
+  test('카드 지출은 현금 유출과 저번 달 사용분에 들어가고 이번 달 지출에는 들어가지 않는다', () {
     final summary = _calculator.summarize(
       const MonthLedger(
         cardBills: [

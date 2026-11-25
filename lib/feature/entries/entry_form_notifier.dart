@@ -385,7 +385,7 @@ class EntryFormNotifier extends Notifier<EntryFormState> {
     );
   }
 
-  /// 카드 대금이 빠져나간 카드를 고른다.
+  /// 카드 지출이 빠져나간 카드를 고른다.
   void selectCard(String id) {
     if (state.busy) return;
     state = state.copyWith(

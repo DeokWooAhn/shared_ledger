@@ -121,6 +121,7 @@ Android·iOS가 같은 식별자를 사용하며 좌표나 번역된 버튼 문�
 | --- | --- |
 | 하단·옆 탭 | `tab-home`, `tab-entries`, `tab-stats`, `tab-settings` |
 | 항목 추가 | `add-entry` |
+| 종류 칸·종류 시트 | `entry-kind`, `entry-kind-<종류>`(예: `entry-kind-extra`) |
 | 입력란·저장·휴지통 | `entry-amount`, `entry-title`, `entry-save`, `entry-trash` |
 | 입력 화면 결제수단 | `entry-method-<id>` |
 | 내역 제목·금액 | `entry-title-<id>`, `entry-amount-<id>` |

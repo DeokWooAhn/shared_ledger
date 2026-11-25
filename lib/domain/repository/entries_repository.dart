@@ -25,7 +25,7 @@ class EntryWriteException implements Exception {
 }
 
 /// 서버가 받지 않은 새 항목. 기다리지 않고 기기 캐시에 넣었던 것이라 목록에서 다시 빠진다.
-/// 어느 항목인지 알릴 수 있게 [title](카드 대금은 빈 문자열)과 [amount]를 같이 담는다.
+/// 어느 항목인지 알릴 수 있게 [title](카드 지출은 빈 문자열)과 [amount]를 같이 담는다.
 typedef RejectedEntry = ({
   String id,
   YearMonth month,
@@ -34,7 +34,7 @@ typedef RejectedEntry = ({
   int? amount,
 });
 
-/// 가계부 항목(고정 수입·추가 수입·고정 지출·추가 지출·카드 대금)을 읽고 쓴다.
+/// 가계부 항목(고정 수입·추가 수입·고정 지출·추가 지출·카드 지출)을 읽고 쓴다.
 ///
 /// 오프라인에서는 보기와 새 항목 추가만 된다(docs/plan.md). 고치기·휴지통은 서버에 바로 닿아야 해서,
 /// 연결이 없으면 [EntryWriteException]([EntryWriteFailure.offline])으로 실패한다.

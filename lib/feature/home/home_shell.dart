@@ -78,7 +78,7 @@ class HomeShell extends ConsumerWidget {
   );
 
   // + 버튼은 쓸 수 있는 사람에게 내역 탭에서만, 보고 있는 달의 가계부가 있을 때만 보인다(달은 달 고르기에서 추가한다).
-  // 달 목록을 아직 모으지 않은 옛 가계부(null)는 가리지 않는다. 보던 칸의 종류(지출 칸은 추가 지출)로 연다.
+  // 달 목록을 아직 모으지 않은 옛 가계부(null)는 가리지 않는다. 보던 칸의 첫 번째 종류(지출 칸은 고정 지출)로 연다.
   // 고정 지출은 입력 화면의 종류 칸에서 고른다. 홈의 카드는 누르면 그에 맞는 탭으로 간다.
   VoidCallback? _addEntry(BuildContext context, WidgetRef ref) {
     final canWrite = ref.watch(myRoleProvider)?.canWrite ?? false;

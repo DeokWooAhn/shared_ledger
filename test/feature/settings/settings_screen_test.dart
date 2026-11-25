@@ -4,6 +4,7 @@ import 'package:shared_ledger/domain/model/auth_user.dart';
 import 'package:shared_ledger/domain/model/category.dart';
 import 'package:shared_ledger/domain/model/expense_template.dart';
 import 'package:shared_ledger/domain/model/ledger.dart';
+import 'package:shared_ledger/core/providers/providers.dart';
 import 'package:shared_ledger/domain/model/ledger_entries.dart';
 import 'package:shared_ledger/domain/model/member.dart';
 import 'package:shared_ledger/domain/model/month_ledger.dart';
@@ -201,7 +202,7 @@ Future<void> openEntryForm(WidgetTester tester, EntryKind kind) async {
   await showEntryTabOf(tester, kind);
   await tester.tap(find.byKey(const Key('add-entry')));
   await settleRoute(tester);
-  if (kind == EntryKind.planned) await chooseEntryKind(tester, kind);
+  if (kind != EntryTab.of(kind).addKind) await chooseEntryKind(tester, kind);
 }
 
 void main() {
@@ -588,7 +589,7 @@ void main() {
   });
 
   group('결제수단·카드', () {
-    testWidgets('카드를 추가하면 그 카드로 카드 대금과 카드 지출을 적고, 요약에 카드별로 보인다', (
+    testWidgets('카드를 추가하면 그 카드로 카드 지출과 카드로 쓴 돈을 적고, 요약에 카드별로 보인다', (
       tester,
     ) async {
       final settings = settingsOf(paymentMethods: const [account]);
@@ -616,7 +617,7 @@ void main() {
       ));
       expect(inMethods(find.text('하늘 카드')), findsOneWidget);
 
-      // 카드 대금: 저번 달에 그 카드로 쓴 돈이 이번 달에 빠져나간다.
+      // 카드 지출: 저번 달에 그 카드로 쓴 돈이 이번 달에 빠져나간다.
       await openEntryForm(tester, EntryKind.cardBill);
       await tester.enterText(
         inEntryForm(find.byKey(const Key('entry-amount'))),
@@ -628,7 +629,7 @@ void main() {
       expect(entries.added.single.draft.cardId, 'method-new-1');
       expect(inEntries(find.text('하늘 카드')), findsOneWidget);
 
-      // 카드 지출: 이번 달에 쓴 돈은 다음 달 청구 예정이다.
+      // 카드로 쓴 돈: 이번 달에 쓴 돈은 다음 달 청구 예정이다.
       await openEntryForm(tester, EntryKind.extra);
       await tester.enterText(
         inEntryForm(find.byKey(const Key('entry-amount'))),
@@ -664,7 +665,7 @@ void main() {
         ),
         findsOneWidget,
       );
-      // 카드 지출은 이번 달 현금 유출이 아니고, 카드 대금만 빠져나간다.
+      // 카드로 쓴 돈은 이번 달 현금 유출이 아니고, 카드 지출만 빠져나간다.
       expect(textOf(tester, const Key('cash-out')), '320,000원');
     });
 

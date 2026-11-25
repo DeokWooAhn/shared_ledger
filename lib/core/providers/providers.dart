@@ -164,12 +164,8 @@ enum EntryTab {
   static EntryTab of(EntryKind kind) =>
       values.firstWhere((tab) => tab.kinds.contains(kind));
 
-  /// + 버튼이 이 칸에서 여는 종류. 수입·지출 칸은 자주 적는 추가 수입·추가 지출이다(입력 화면의 종류 칸에서 바꾼다).
-  EntryKind get addKind => switch (this) {
-    EntryTab.income => EntryKind.income,
-    EntryTab.expense => EntryKind.extra,
-    EntryTab.cardBill => EntryKind.cardBill,
-  };
+  /// + 버튼이 이 칸에서 여는 종류. 칸의 첫 번째 종류(고정 수입·고정 지출)다(입력 화면의 종류 칸에서 바꾼다).
+  EntryKind get addKind => kinds.first;
 }
 
 /// 내역 탭에서 보고 있는 칸. 처음에는 지출이다.

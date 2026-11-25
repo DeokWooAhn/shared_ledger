@@ -16,7 +16,7 @@ enum EntryKind {
   /// 추가 지출
   extra,
 
-  /// 카드 대금
+  /// 카드 지출
   cardBill;
 
   /// 반복 설정으로 매달 만들어지는 종류(고정 수입·고정 지출)인지.
@@ -191,7 +191,7 @@ class ExtraExpense extends LedgerEntry {
   DateTime? get date => spentOn;
 }
 
-/// 카드 대금 (이번 달 실제로 출금된 카드값 = 저번 달 카드 사용분).
+/// 카드 지출 (이번 달 실제로 출금된 카드값 = 저번 달 카드 사용분).
 class CardBill extends LedgerEntry {
   const CardBill({
     required this.id,
@@ -297,7 +297,7 @@ class EntryDraft {
   /// 금액(원). 고정 지출만 비워 둘 수 있다(금액 미정).
   final int? amount;
 
-  /// 카드 대금은 쓰지 않는다.
+  /// 카드 지출은 쓰지 않는다.
   final String title;
 
   /// 고정 지출만 쓴다.
@@ -306,7 +306,7 @@ class EntryDraft {
   /// 고정 지출과 추가 지출만 쓴다.
   final String? paymentMethodId;
 
-  /// 카드 대금만 쓴다.
+  /// 카드 지출만 쓴다.
   final String? cardId;
 
   /// 받은 날·지급한 날·쓴 날·출금일. 고정 지출은 이 값이 있어야 지급 완료, 고정 수입은 받음 완료다.
@@ -368,7 +368,7 @@ enum EntryProblem {
 
 /// 저장할 값을 검사한다. 문제가 없으면 빈 집합.
 ///
-/// 금액은 고정 지출만 비울 수 있고(금액 미정), 적으면 0원부터다. 제목은 카드 대금 말고 꼭 적는다.
+/// 금액은 고정 지출만 비울 수 있고(금액 미정), 적으면 0원부터다. 제목은 카드 지출 말고 꼭 적는다.
 /// 길이는 보안 규칙처럼 UTF-16 단위로 센다(`entryTitleMaxLength`).
 /// 누가는 이름표 자리(`owner`·`partner`)여야 하고, 분류·결제수단·카드는 빈 id면 고르지 않은 것으로 본다.
 /// 입력 화면은 고르기 칸이라 대개 막히지만, UseCase를 다른 곳에서 불러도 보안 규칙이 늦게 거부하지 않게 여기서 막는다.

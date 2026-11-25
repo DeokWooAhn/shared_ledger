@@ -219,7 +219,7 @@ void main() {
       expect(find.text('점심'), findsOneWidget);
     });
 
-    testWidgets('최근에 넣은 것부터 보여주고, 카드 대금은 카드 이름을 제목으로 쓴다', (tester) async {
+    testWidgets('최근에 넣은 것부터 보여주고, 카드 지출은 카드 이름을 제목으로 쓴다', (tester) async {
       final entries = FakeEntriesRepository({
         october: MonthLedger(
           trashed: [

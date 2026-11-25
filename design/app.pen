@@ -1405,7 +1405,7 @@
                       "content": "저번 달 사용분"
                     },
                     "wbd4n": {
-                      "content": "이번 달 출금 · 카드 대금 2건"
+                      "content": "이번 달 출금 · 카드 지출 2건"
                     },
                     "QuIii": {
                       "content": "853,000원"
@@ -2580,7 +2580,7 @@
                       "id": "ofXcl",
                       "name": "Label",
                       "fill": "$text-secondary",
-                      "content": "카드 대금",
+                      "content": "카드 지출",
                       "fontFamily": "$font",
                       "fontSize": 14,
                       "fontWeight": "500"
@@ -3571,7 +3571,7 @@
                   "id": "oliFM",
                   "name": "Title",
                   "fill": "$text-primary",
-                  "content": "항목 추가",
+                  "content": "지출 추가",
                   "fontFamily": "$font",
                   "fontSize": 17,
                   "fontWeight": "700"
@@ -3969,7 +3969,7 @@
                       "fill": "$accent-text",
                       "textGrowth": "fixed-width",
                       "width": "fill_container",
-                      "content": "카드로 낸 돈은 다음 달 카드 대금으로 빠져나가요.",
+                      "content": "카드로 낸 돈은 다음 달 카드 지출로 빠져나가요.",
                       "fontFamily": "$font",
                       "fontSize": 12,
                       "fontWeight": "500"
@@ -14752,7 +14752,7 @@
                   "id": "HtsyK",
                   "name": "Title",
                   "fill": "$text-primary",
-                  "content": "항목 추가",
+                  "content": "지출 추가",
                   "fontFamily": "$font",
                   "fontSize": 17,
                   "fontWeight": "700"
@@ -15150,7 +15150,7 @@
                       "fill": "$accent-text",
                       "textGrowth": "fixed-width",
                       "width": "fill_container",
-                      "content": "카드로 낸 돈은 다음 달 카드 대금으로 빠져나가요.",
+                      "content": "카드로 낸 돈은 다음 달 카드 지출로 빠져나가요.",
                       "fontFamily": "$font",
                       "fontSize": 12,
                       "fontWeight": "500"

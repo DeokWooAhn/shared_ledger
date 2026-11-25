@@ -189,7 +189,7 @@ class _TrashContent extends ConsumerWidget {
     FixedIncome(:final title) ||
     PlannedExpense(:final title) ||
     ExtraExpense(:final title) => title,
-    CardBill(:final cardId) => methods[cardId]?.name ?? '카드 대금',
+    CardBill(:final cardId) => methods[cardId]?.name ?? '카드 지출',
   };
 }
 
